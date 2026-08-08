@@ -1,22 +1,22 @@
 # Arquitetura
 
-MonÃ³lito modular em Next.js e PostgreSQL/Supabase. A UI coleta fatos; regras financeiras, horÃ¡rios confiÃ¡veis e transaÃ§Ãµes crÃ­ticas pertencem ao backend. PostgreSQL Ã© a fonte de verdade; Excel Ã© somente entrada/saÃ­da validada. Entidades operacionais serÃ£o vinculadas a unit_id.
+Monólito modular em Next.js e PostgreSQL/Supabase. A UI coleta fatos; regras financeiras, horários confiáveis e transações críticas pertencem ao backend. PostgreSQL é a fonte de verdade; Excel é somente entrada/saída validada. Entidades operacionais serão vinculadas a unit_id.
 
-# OperaÃ§Ã£o real do frentista
+# Operação real do frentista
 
-O ciclo operacional usa uma Ãºnica fonte de verdade no PostgreSQL:
+O ciclo operacional usa uma única fonte de verdade no PostgreSQL:
 
-`vehicles` â†’ `parking_sessions` â†’ `payments` â†’ encerramento da sessÃ£o.
+`vehicles` → `parking_sessions` → `payments` → encerramento da sessão.
 
-- `tariff_rules` versiona valores por unidade e tipo de veÃ­culo. Cada sessÃ£o guarda um `tariff_snapshot`, portanto mudanÃ§as futuras nÃ£o alteram estadias antigas.
+- `tariff_rules` versiona valores por unidade e tipo de veículo. Cada sessão guarda um `tariff_snapshot`, portanto mudanças futuras não alteram estadias antigas.
 - `parking_sessions` usa os estados `OPEN`, `PAYMENT_PENDING`, `PAID`, `EXITED`, `CANCELLED` e `MANUAL_REVIEW`.
-- Um Ã­ndice parcial impede duas sessÃµes ativas do mesmo veÃ­culo na mesma unidade.
-- `payments` aceita PIX, cartÃ£o e dinheiro. PIX nÃ£o pode ser confirmado sem provider; cartÃ£o e dinheiro sÃ£o registros manuais auditados.
-- `cash_shifts` mantÃ©m abertura, dinheiro esperado, valor declarado e diferenÃ§a no fechamento.
-- `monthly_subscriptions` Ã© uma fundaÃ§Ã£o mÃ­nima e somente consultÃ¡vel pelo operador.
+- Um índice parcial impede duas sessões ativas do mesmo veículo na mesma unidade.
+- `payments` aceita PIX, cartão e dinheiro. PIX não pode ser confirmado sem provider; cartão e dinheiro são registros manuais auditados.
+- `cash_shifts` mantém abertura, dinheiro esperado, valor declarado e diferença no fechamento.
+- `monthly_subscriptions` é uma fundação mínima e somente consultável pelo operador.
 
-As mutaÃ§Ãµes crÃ­ticas sÃ£o RPCs `security definer` que validam `auth.uid()`, perfil ativo e papel `operator` na unidade. O navegador nunca escolhe unidade, operador, horÃ¡rio, tarifa ou valor final.
+As mutações críticas são RPCs `security definer` que validam `auth.uid()`, perfil ativo e papel `operator` na unidade. O navegador nunca escolhe unidade, operador, horário, tarifa ou valor final.
 
-Fluxo: entrada atÃ´mica â†’ sessÃ£o `OPEN` â†’ cÃ¡lculo oficial sob demanda â†’ inÃ­cio de saÃ­da e congelamento da cobranÃ§a â†’ pagamento confirmado â†’ sessÃ£o `PAID` â†’ liberaÃ§Ã£o idempotente â†’ `EXITED` â†’ vaga disponÃ­vel.
+Fluxo: entrada atômica → sessão `OPEN` → cálculo oficial sob demanda → início de saída e congelamento da cobrança → pagamento confirmado → sessão `PAID` → liberação idempotente → `EXITED` → vaga disponível.
 
-Todas as tabelas pÃºblicas operacionais tÃªm RLS. Operadores leem somente unidades vinculadas e nÃ£o recebem permissÃµes diretas de escrita; as escritas passam exclusivamente pelas RPCs autorizadas.
+Todas as tabelas públicas operacionais têm RLS. Operadores leem somente unidades vinculadas e não recebem permissões diretas de escrita; as escritas passam exclusivamente pelas RPCs autorizadas.
