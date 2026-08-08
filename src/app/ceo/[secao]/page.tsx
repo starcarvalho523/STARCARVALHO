@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { AreaSectionPage, type SectionDefinition } from "@/components/area-section-page";
 import type { NavItem } from "@/components/dashboard-shell";
 
-const nav: NavItem[] = [{label:"Painel do CEO",href:"/ceo",icon:Home},{label:"Unidades",href:"/ceo/unidades",icon:Building2},{label:"Financeiro",href:"/ceo/financeiro",icon:WalletCards},{label:"Relatórios",href:"/ceo/relatorios",icon:FileText},{label:"Convênios",href:"/ceo/convenios",icon:Handshake},{label:"Clientes",href:"/ceo/clientes",icon:Users},{label:"Alertas",href:"/ceo/alertas",icon:Bell},{label:"Configurações",href:"/ceo/configuracoes",icon:Settings},{label:"Ajuda",href:"/ceo/ajuda",icon:CircleHelp}];
+const nav: NavItem[] = [{label:"Painel do CEO",href:"/ceo",icon:Home},{label:"Unidades",href:"/ceo/unidades",icon:Building2},{label:"Financeiro",href:"/ceo/financeiro",icon:WalletCards},{label:"Tarifas",href:"/ceo/tarifas",icon:WalletCards},{label:"Relatórios",href:"/ceo/relatorios",icon:FileText},{label:"Convênios",href:"/ceo/convenios",icon:Handshake},{label:"Clientes",href:"/ceo/clientes",icon:Users},{label:"Alertas",href:"/ceo/alertas",icon:Bell},{label:"Configurações",href:"/ceo/configuracoes",icon:Settings},{label:"Ajuda",href:"/ceo/ajuda",icon:CircleHelp}];
 const sections: Record<string, SectionDefinition> = {
   unidades:{title:"Unidades",description:"Compare capacidade, ocupação e desempenho por estacionamento.",icon:Building2,highlights:["Visão consolidada","Capacidade","Desempenho"]},
   financeiro:{title:"Financeiro",description:"Analise receitas, recebimentos e conciliação.",icon:WalletCards,highlights:["Receita","Formas de pagamento","Conciliação"]},

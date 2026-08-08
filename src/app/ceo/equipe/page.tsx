@@ -4,7 +4,7 @@ import { requireCapability } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { disableEmployee } from "./actions";
 import { InviteForm } from "./invite-form";
-const nav: NavItem[] = [{ label: "Painel do CEO", href: "/ceo", icon: Home }, { label: "Unidades", href: "/ceo/unidades", icon: Building2 }, { label: "Equipe", href: "/ceo/equipe", icon: Users }];
+const nav: NavItem[] = [{ label: "Painel do CEO", href: "/ceo", icon: Home }, { label: "Unidades", href: "/ceo/unidades", icon: Building2 }, { label: "Tarifas", href: "/ceo/tarifas", icon: Building2 }, { label: "Equipe", href: "/ceo/equipe", icon: Users }];
 const roleName: Record<string,string> = { owner: "Proprietário", manager: "Gerente", operator: "Frentista", finance: "Financeiro", auditor: "Auditor" };
 export const dynamic = "force-dynamic";
 export default async function TeamPage() {
