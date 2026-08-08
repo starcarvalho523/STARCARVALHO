@@ -5,6 +5,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Star Cavalos Parking",
   description: "Gest\u00e3o operacional e financeira do estacionamento Star Cavalos.",
+  icons: { icon: "/favicon.svg" },
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
