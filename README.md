@@ -1,10 +1,29 @@
-# Star Cavalos Parking
+Exit code: 0
+Wall time: 1.2 seconds
+Output:
+# Star Carvalhos Parking
 
-Sistema de gestão operacional e financeira. Fase 1: aplicação web, design system, integração Supabase e schema versionado.
+Sistema web de gestão operacional e financeira de estacionamento, com áreas separadas para CEO, frentista e cliente.
 
 Stack: Next.js 16, TypeScript strict, Tailwind 4, shadcn/ui e Supabase/PostgreSQL 17.
 
-Copie .env.example para .env.local, configure URL e publishable key. Nunca exponha service_role no navegador. Valide com npm run lint, npm run typecheck e npm run build.
+Copie `.env.example` para `.env.local`, configure URL e publishable key. Nunca exponha `service_role` no navegador.
 
-Auditoria de 7/8/2026: repositório vazio, sem remoto ou planilhas. Supabase starcarvalho523 ativo, sem tabelas públicas, migrations ou Edge Functions. O risco public.rls_auto_enable() é tratado na migration.
+## Validação
+
+```bash
+npm run lint
+npm run typecheck
+npm run build
+```
+
+O teste SQL `supabase/tests/hardening_regression.sql` valida privilégios mínimos e fechamento divergente de caixa dentro de uma transação com rollback.
+
+## Estado das integrações
+
+- Supabase Auth, PostgreSQL, RLS e RPCs transacionais estão ativos.
+- Cartão e dinheiro são confirmações manuais auditadas.
+- PIX está bloqueado até existir provedor, webhook autenticado e idempotência de confirmação.
+- O slug técnico `star-cavalos-central` é preservado para compatibilidade; a marca visível é Star Carvalhos.
+
 

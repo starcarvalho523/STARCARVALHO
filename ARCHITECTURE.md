@@ -1,3 +1,6 @@
+Exit code: 0
+Wall time: 0.9 seconds
+Output:
 # Arquitetura
 
 Monólito modular em Next.js e PostgreSQL/Supabase. A UI coleta fatos; regras financeiras, horários confiáveis e transações críticas pertencem ao backend. PostgreSQL é a fonte de verdade; Excel é somente entrada/saída validada. Entidades operacionais serão vinculadas a unit_id.
@@ -15,11 +18,12 @@ O ciclo operacional usa uma única fonte de verdade no PostgreSQL:
 - `parking_sessions` usa os estados `OPEN`, `PAYMENT_PENDING`, `PAID`, `EXITED`, `CANCELLED` e `MANUAL_REVIEW`.
 - Um índice parcial impede duas sessões ativas do mesmo veículo na mesma unidade.
 - `payments` aceita PIX, cartão e dinheiro. PIX não pode ser confirmado sem provider; cartão e dinheiro são registros manuais auditados.
-- `cash_shifts` mantém abertura, dinheiro esperado, valor declarado e diferença no fechamento.
+- `cash_shifts` mantém abertura, dinheiro esperado, valor declarado e diferença no fechamento. Divergências exigem justificativa no banco e geram evento de auditoria próprio.
 - `monthly_subscriptions` é uma fundação mínima e somente consultável pelo operador.
 
 As mutações críticas são RPCs `security definer` que validam `auth.uid()`, perfil ativo e papel `operator` na unidade. O navegador nunca escolhe unidade, operador, horário, tarifa ou valor final.
 
 Fluxo: entrada atômica → sessão `OPEN` → cálculo oficial sob demanda → início de saída e congelamento da cobrança → pagamento confirmado → sessão `PAID` → liberação idempotente → `EXITED` → vaga disponível.
 
-Todas as tabelas públicas operacionais têm RLS. Operadores leem somente unidades vinculadas e não recebem permissões diretas de escrita; as escritas passam exclusivamente pelas RPCs autorizadas.
+Todas as tabelas públicas operacionais têm RLS. `anon` não possui privilégios de tabela e `authenticated` recebe apenas leitura segmentada por políticas, além da escrita do próprio cadastro de cliente. Operadores não recebem escrita direta nas tabelas críticas; as mutações passam exclusivamente pelas RPCs autorizadas.
+

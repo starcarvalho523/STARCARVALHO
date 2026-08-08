@@ -1,3 +1,6 @@
+Exit code: 0
+Wall time: 1 seconds
+Output:
 import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
 import { Bell, CircleHelp, LogOut, ParkingSquare } from "lucide-react";
@@ -10,7 +13,7 @@ export type NavItem = { label: string; href: string; icon: LucideIcon };
 export function Brand({ href = "/" }: { href?: string }) {
   return <Link href={href} aria-label="Ir para o painel principal" className="flex items-center gap-3 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-blue-600">
     <span className="grid size-10 place-items-center rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 text-white shadow-lg"><ParkingSquare className="size-5" /></span>
-    <span className="text-xl font-bold text-slate-950">Star Cavalos</span>
+    <span className="text-xl font-bold text-slate-950">Star Carvalhos</span>
   </Link>;
 }
 
@@ -47,6 +50,7 @@ function Navigation({ nav, active }: { nav: NavItem[]; active: string }) {
 export function DemoNotice() {
   return <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-700">Dados demonstrativos</span>;
 }
+
 
 
 
