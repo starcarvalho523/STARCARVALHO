@@ -1,6 +1,3 @@
-Exit code: 0
-Wall time: 1 seconds
-Output:
 import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
 import { Bell, CircleHelp, LogOut, ParkingSquare } from "lucide-react";

@@ -1,6 +1,3 @@
-Exit code: 0
-Wall time: 1 seconds
-Output:
 import Link from "next/link";
 import { ArrowLeft, CarFront, CircleHelp, Clock3, FileText, History, LockKeyhole, ParkingSquare } from "lucide-react";
 import { notFound } from "next/navigation";

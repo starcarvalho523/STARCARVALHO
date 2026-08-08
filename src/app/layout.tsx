@@ -1,6 +1,3 @@
-Exit code: 0
-Wall time: 0.9 seconds
-Output:
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import "./globals.css";

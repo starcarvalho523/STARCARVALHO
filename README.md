@@ -1,6 +1,3 @@
-Exit code: 0
-Wall time: 1.2 seconds
-Output:
 # Star Carvalhos Parking
 
 Sistema web de gestão operacional e financeira de estacionamento, com áreas separadas para CEO, frentista e cliente.

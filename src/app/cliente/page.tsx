@@ -1,6 +1,3 @@
-Exit code: 0
-Wall time: 0.9 seconds
-Output:
 import Link from "next/link";
 import { CarFront,CheckCircle2,ChevronDown,CircleHelp,Clock3,CreditCard,FileText,History,LockKeyhole,MapPin,QrCode,RefreshCw,Tag } from "lucide-react";
 import { Brand,DemoNotice } from "@/components/dashboard-shell";

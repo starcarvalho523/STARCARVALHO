@@ -1,6 +1,3 @@
-Exit code: 0
-Wall time: 0.9 seconds
-Output:
 -- Visible branding changes; the technical slug is intentionally preserved for integrations.
 update public.parking_units
 set name = 'Star Carvalhos Central', updated_at = clock_timestamp()

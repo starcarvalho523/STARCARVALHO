@@ -1,6 +1,3 @@
-Exit code: 0
-Wall time: 1 seconds
-Output:
 import { BarChart3, CarFront, CheckCircle2, LockKeyhole, ParkingSquare, ShieldCheck, Smartphone, UserRound } from "lucide-react";
 import { redirect } from "next/navigation";
 import { getAccess } from "@/lib/auth";
