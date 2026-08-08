@@ -1,0 +1,9 @@
+import type { LucideIcon } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
+import { cn } from "@/lib/utils";
+export function MetricCard({label,value,icon:Icon,tone="blue",note}:{label:string;value:string;icon:LucideIcon;tone?:"blue"|"green"|"violet"|"orange";note?:string}){const tones={blue:"bg-blue-50 text-blue-600",green:"bg-emerald-50 text-emerald-600",violet:"bg-violet-50 text-violet-600",orange:"bg-orange-50 text-orange-600"};return <div className="rounded-2xl border bg-white p-4 shadow-sm"><div className="flex items-center gap-3"><span className={cn("grid size-11 place-items-center rounded-2xl",tones[tone])}><Icon className="size-5"/></span><div><p className="text-xs font-medium text-slate-500">{label}</p><p className="mt-0.5 text-xl font-bold">{value}</p></div></div>{note&&<p className="mt-3 flex items-center gap-1 text-[11px] font-medium text-emerald-600"><ArrowUpRight className="size-3"/>{note}</p>}</div>}
+export function Sparkline({color="#1769ff",fill="#e8f0ff",variant=1}:{color?:string;fill?:string;variant?:number}){const line=variant===1?"M0 92 C35 82 44 67 80 69 S132 61 160 48 S215 48 250 27 S300 38 340 12":"M0 92 C34 98 55 87 82 84 S122 68 152 58 S205 30 230 38 S280 13 310 22 S330 40 340 49";return <svg viewBox="0 0 340 110" className="h-full w-full" preserveAspectRatio="none"><path d={line+" L340 110 L0 110 Z"} fill={fill}/><path d={line} fill="none" stroke={color} strokeWidth="3"/><path d="M0 35H340M0 70H340" stroke="#e8edf5"/></svg>}
+export function StatusPill({children,tone="green"}:{children:React.ReactNode;tone?:"green"|"amber"|"blue"|"red"}){const tones={green:"bg-emerald-50 text-emerald-700",amber:"bg-amber-50 text-amber-700",blue:"bg-blue-50 text-blue-700",red:"bg-red-50 text-red-700"};return <span className={cn("rounded-full px-2.5 py-1 text-[11px] font-semibold",tones[tone])}>{children}</span>}
+
+
+
