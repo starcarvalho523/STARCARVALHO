@@ -7,7 +7,7 @@ import type { PaymentProvider, ProviderWebhookEvent } from "./payment-provider";
 type Reservation={paymentId:string;transactionId:string;state:string;amount:number;isCreator:boolean;qrCodePayload?:string|null;qrCodeImageBase64?:string|null;expiresAt?:string|null;hostedPaymentUrl?:string|null};
 
 export class PaymentService{
-  constructor(private readonly provider:PaymentProvider=getPaymentProvider(),private readonly admin=createAdminClient()){}
+  constructor(private readonly provider?:PaymentProvider,private readonly admin=createAdminClient()){}
 
   async createPix(sessionId:string,userClient:SupabaseClient){
     const{data,error}=await userClient.rpc("reserve_pix_payment",{session_id:sessionId,request_key:crypto.randomUUID()});
@@ -17,7 +17,7 @@ export class PaymentService{
     const customerId=process.env.ASAAS_SANDBOX_CUSTOMER_ID;
     if(!customerId){await this.fail(reservation.transactionId,"ASAAS_SANDBOX_CUSTOMER_NOT_CONFIGURED");throw new Error("ASAAS_SANDBOX_CUSTOMER_NOT_CONFIGURED");}
     try{
-      const charge=await this.provider.createPixCharge({customerId,amount:Number(reservation.amount),dueDate:sandboxDueDate(),description:"Estadia Star Carvalhos",externalReference:`starcarvalhos:parking:${reservation.paymentId}`});
+      const charge=await (this.provider??getPaymentProvider()).createPixCharge({customerId,amount:Number(reservation.amount),dueDate:sandboxDueDate(),description:"Estadia Star Carvalhos",externalReference:`starcarvalhos:parking:${reservation.paymentId}`});
       const{error:saveError}=await this.admin.rpc("mark_provider_payment_created",{transaction_id:reservation.transactionId,provider_payment_id:charge.providerPaymentId,provider_customer_id:charge.providerCustomerId,provider_status:charge.providerStatus,hosted_payment_url:charge.hostedPaymentUrl,qr_code_payload:charge.qrCodePayload,qr_code_image_base64:charge.qrCodeImageBase64,expires_at:charge.expiresAt});
       if(saveError)throw new Error(saveError.message);
       return{...reservation,state:"PENDING",qrCodePayload:charge.qrCodePayload,qrCodeImageBase64:charge.qrCodeImageBase64,expiresAt:charge.expiresAt,hostedPaymentUrl:charge.hostedPaymentUrl};

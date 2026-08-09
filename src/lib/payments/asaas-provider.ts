@@ -41,9 +41,7 @@ export class AsaasProvider implements PaymentProvider {
   getHostedPaymentUrl(payment:ProviderCharge){return payment.hostedPaymentUrl}
 
   validateWebhook(receivedToken:string|null,expectedToken:string){
-    if(!receivedToken||!expectedToken)return false;
-    const received=Buffer.from(receivedToken);const expected=Buffer.from(expectedToken);
-    return received.length===expected.length&&timingSafeEqual(received,expected);
+    return safeTokenEquals(receivedToken,expectedToken);
   }
 
   parseWebhook(payload:unknown):ProviderWebhookEvent{
@@ -63,6 +61,12 @@ export class AsaasProvider implements PaymentProvider {
     if(!response.ok)throw new Error(`ASAAS_HTTP_${response.status}`);
     return body as T;
   }
+}
+
+export function safeTokenEquals(receivedToken:string|null,expectedToken:string){
+  if(!receivedToken||!expectedToken)return false;
+  const received=Buffer.from(receivedToken);const expected=Buffer.from(expectedToken);
+  return received.length===expected.length&&timingSafeEqual(received,expected);
 }
 
 export function mapAsaasPaymentState(status:string,eventType?:string):ProviderPaymentState{
