@@ -1,0 +1,2 @@
+export default function Loading(){return <main className="min-h-screen bg-slate-100"><div className="mx-auto max-w-[1120px] animate-pulse space-y-5 px-4 py-8"><div className="h-14 w-72 rounded-2xl bg-slate-200"/><div className="h-72 rounded-3xl bg-white shadow-sm"/><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{Array.from({length:4},(_,index)=><div key={index} className="h-32 rounded-2xl bg-white shadow-sm"/>)}</div></div></main>}
+
