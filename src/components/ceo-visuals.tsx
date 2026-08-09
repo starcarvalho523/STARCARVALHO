@@ -11,9 +11,12 @@ export function AnalyticsChart({ title, rows, field, empty }: { title: string; r
     {max === 0 ? <p className="grid min-h-24 place-items-center px-4 text-center text-sm text-slate-500">{empty}</p> :
       <div className="mt-5 flex h-44 items-end gap-1" aria-label={title}>{rows.map((row, index) => {
         const detail = field === "revenue" ? `${row.label} · ${formatMoney(row.revenue)} · ${row.payments} ${row.payments === 1 ? "pagamento" : "pagamentos"}` : `${row.label} · ${row.occupancy.toFixed(0)}%`;
-        return <div key={`${row.label}-${index}`} title={detail} aria-label={detail} className="group flex min-w-0 flex-1 flex-col items-center justify-end">
-          <span className="pointer-events-none absolute z-10 mb-8 hidden rounded-lg bg-slate-950 px-2 py-1 text-[10px] text-white shadow-lg group-hover:block group-focus-within:block">{detail}</span>
-          <i className={`w-full rounded-t transition-opacity group-hover:opacity-75 ${field === "revenue" ? "bg-blue-500" : "bg-emerald-500"}`} style={{ height: `${Math.max(4, row[field] / max * 100)}%` }} />
+        return <div key={`${row.label}-${index}`} title={detail} aria-label={detail} tabIndex={0} className="group relative flex h-full min-w-0 flex-1 flex-col items-center justify-end outline-none">
+          <span className="pointer-events-none absolute bottom-full z-10 mb-1 hidden whitespace-nowrap rounded-lg bg-slate-950 px-2 py-1 text-[10px] text-white shadow-lg group-hover:block group-focus:block">{detail}</span>
+          <div className="relative flex h-[calc(100%-1.25rem)] w-full items-end">
+            {row[field] > 0 ? <span className="absolute inset-x-0 z-[1] text-center text-[9px] font-bold text-blue-700" style={{ bottom: `calc(${row[field] / max * 100}% + 2px)` }}>{field === "revenue" ? formatMoney(row.revenue) : `${row.occupancy.toFixed(0)}%`}</span> : null}
+            <div className={`w-full min-h-0.5 rounded-t transition-opacity group-hover:opacity-75 ${field === "revenue" ? "bg-blue-500" : "bg-emerald-500"}`} style={{ height: `${row[field] > 0 ? Math.max(8, row[field] / max * 100) : 1}%` }} />
+          </div>
           <span className="mt-2 max-w-full truncate text-[9px] text-slate-400">{row.label}</span>
         </div>;
       })}</div>}

@@ -14,6 +14,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ p
   const payments = data.payments.filter((payment) => (!query.method || query.method === "all" || payment.method === query.method) && (!query.status || query.status === "all" || payment.status === query.status));
   const selectedShift = data.shifts.find((shift) => shift.id === query.shift);
   const cashReceived = (shiftId: string) => data.paid.filter((payment) => payment.cash_shift_id === shiftId && payment.method === "CASH").reduce((sum, payment) => sum + Number(payment.amount), 0);
+  const expectedCash = (shift: (typeof data.shifts)[number]) => shift.status === "OPEN" ? Number(shift.opening_amount) + cashReceived(shift.id) : shift.expected_cash_amount;
+  for (const shift of data.shifts) if (shift.status === "OPEN") shift.expected_cash_amount = expectedCash(shift);
   return <DashboardShell nav={ceoNav} active="Financeiro" role="CEO"><div className="mx-auto max-w-[1500px] space-y-5">
     <CeoPageHeader title="Financeiro" description="Analise receitas confirmadas, pagamentos e caixas."><CeoFilters units={data.units}/></CeoPageHeader>
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">{[["Receita confirmada",formatMoney(data.metrics.revenue)],["Dinheiro",formatMoney(data.methods.CASH.amount)],["Cartão",formatMoney(data.methods.CARD.amount)],["PIX","Não disponível"],["Pagamentos",String(data.metrics.payments)]].map(([label,value])=><Kpi key={label} label={label} value={value}/>) }<Kpi label="Diferença de caixa" value={formatMoney(data.metrics.cashDifference)} warning={data.metrics.cashDifference !== 0}/></div>
