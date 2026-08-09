@@ -19,7 +19,7 @@ export function DashboardShell({ nav, active, role, children, aside }: { nav: Na
   return <div className="min-h-screen bg-[#f7f9fd] pb-20 text-slate-950 lg:pb-0">
     <header className="sticky top-0 z-30 h-[74px] border-b bg-white/95 backdrop-blur">
       <div className="flex h-full items-center justify-between px-4 lg:px-8">
-        <div className="flex items-center gap-7"><Brand href={homeHref} /><span className="hidden items-center gap-2 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 sm:flex"><i className="size-2 rounded-full bg-emerald-500" />{role === "Frentista" ? "Sistema operacional" : "Modo demonstração"}</span></div>
+        <div className="flex items-center gap-7"><Brand href={homeHref} /><span className="hidden items-center gap-2 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 sm:flex"><i className="size-2 rounded-full bg-emerald-500" />Sistema conectado</span></div>
         <div className="flex items-center gap-2 sm:gap-4">
           <Link href={homeHref} aria-label={`Ir para o painel ${role}`} className="flex items-center gap-2 rounded-xl px-2 py-2 text-sm font-semibold hover:bg-slate-50"><span className="grid size-8 place-items-center rounded-full bg-blue-50 text-blue-700">{role[0]}</span><span className="hidden sm:inline">{role}</span></Link>
           {role !== "Frentista" ? <ActionButton aria-label="Ver notificações" feedback="Você não possui novas notificações." className="relative grid size-10 place-items-center rounded-full hover:bg-slate-100"><Bell className="size-5" /><i className="absolute right-1.5 top-1.5 size-2 rounded-full bg-blue-600 ring-2 ring-white" /></ActionButton> : null}
@@ -44,9 +44,6 @@ function Navigation({ nav, active }: { nav: NavItem[]; active: string }) {
   return <nav aria-label="Navegação principal" className="space-y-1">{nav.map(({ label, href, icon: Icon }) => <Link key={label} href={href} aria-current={active === label ? "page" : undefined} className={cn("flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition focus-visible:outline-2 focus-visible:outline-blue-600", active === label ? "bg-blue-50 text-blue-700" : "text-slate-600 hover:bg-slate-50")}><Icon className="size-[18px]" />{label}</Link>)}</nav>;
 }
 
-export function DemoNotice() {
-  return <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-700">Dados demonstrativos</span>;
-}
 
 
 

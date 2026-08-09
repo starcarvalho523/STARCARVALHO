@@ -9,7 +9,7 @@ type ActionButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   feedback?: string;
 };
 
-export function ActionButton({ children, feedback = "Ação concluída no modo demonstração.", className, onClick, ...props }: ActionButtonProps) {
+export function ActionButton({ children, feedback = "Ação concluída.", className, onClick, ...props }: ActionButtonProps) {
   const [message, setMessage] = useState("");
   return <>
     <button {...props} className={cn("transition active:scale-[.98] disabled:cursor-not-allowed disabled:opacity-50", className)} onClick={(event) => {
@@ -22,6 +22,7 @@ export function ActionButton({ children, feedback = "Ação concluída no modo d
     {message ? <div role="status" aria-live="polite" className="fixed bottom-5 left-1/2 z-50 flex -translate-x-1/2 items-center gap-2 rounded-xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white shadow-2xl"><CheckCircle2 className="size-5 text-emerald-400" />{message}</div> : null}
   </>;
 }
+
 
 
 

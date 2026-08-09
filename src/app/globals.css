@@ -142,5 +142,5 @@ body {
 .input:focus { border-color: #3b82f6; outline: 2px solid #dbeafe; }
 
 body { background: #f7f9fd; }
-.qr-demo { background: linear-gradient(90deg,#0f172a 12%,transparent 12% 24%,#0f172a 24% 36%,transparent 36% 48%,#0f172a 48% 60%,transparent 60%),linear-gradient(#0f172a 12%,transparent 12% 24%,#0f172a 24% 36%,transparent 36% 48%,#0f172a 48% 60%,transparent 60%); background-size:23px 23px; }
 .donut { background: conic-gradient(#10b981 0 54%,#2563eb 54% 87%,#f97316 87%); }
+
