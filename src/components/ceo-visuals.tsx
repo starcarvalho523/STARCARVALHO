@@ -1,5 +1,41 @@
-import Link from "next/link";import type{CeoAlert}from"@/lib/ceo-analytics";import{formatMoney,formatDuration}from"@/lib/operator-format";
-export function AnalyticsChart({title,rows,field,empty}:{title:string;rows:Array<{label:string;revenue:number;occupancy:number}>;field:"revenue"|"occupancy";empty:string}){const max=Math.max(0,...rows.map(r=>r[field]));return <section className="rounded-2xl border bg-white p-5"><h2 className="font-bold">{title}</h2>{max===0?<p className="grid h-48 place-items-center text-center text-sm text-slate-500">{empty}</p>:<div className="mt-5 flex h-44 items-end gap-1" aria-label={title}>{rows.map((r,i)=><div key={`${r.label}-${i}`} className="group flex min-w-0 flex-1 flex-col items-center justify-end"><span className="mb-1 hidden text-[9px] group-hover:block">{field==="revenue"?formatMoney(r.revenue):`${r.occupancy.toFixed(0)}%`}</span><i className={`w-full rounded-t ${field==="revenue"?"bg-blue-500":"bg-emerald-500"}`} style={{height:`${Math.max(3,r[field]/max*100)}%`}}/><span className="mt-2 max-w-full truncate text-[9px] text-slate-400">{r.label}</span></div>)}</div>}</section>}
-export function AlertList({alerts,limit}:{alerts:CeoAlert[];limit?:number}){const rows=limit?alerts.slice(0,limit):alerts;if(!rows.length)return <p className="p-8 text-center text-sm text-slate-500">Nenhum alerta ativo.</p>;return <div className="divide-y">{rows.map(a=><article key={a.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center"><span className={`h-fit rounded-full px-2.5 py-1 text-xs font-bold ${a.severity==="Crítico"?"bg-red-50 text-red-700":a.severity==="Atenção"?"bg-amber-50 text-amber-700":"bg-blue-50 text-blue-700"}`}>{a.severity}</span><div className="flex-1"><p className="font-semibold">{a.title}</p><p className="text-xs text-slate-500">{a.unitName} · {a.description}</p></div><Link href={a.href} className="text-sm font-semibold text-blue-600">Ver detalhes</Link></article>)}</div>}
-export function InsightGrid({entries,averageMinutes,occupancy,ticket}:{entries:number;averageMinutes:number;occupancy:number;ticket:number}){const data=[["Entradas no período",entries?String(entries):"Dados insuficientes"],["Permanência média",averageMinutes?formatDuration(Math.round(averageMinutes)):"Dados insuficientes"],["Ocupação atual",`${occupancy.toFixed(1).replace(".",",")}%`],["Receita média por pagamento",ticket?formatMoney(ticket):"Dados insuficientes"]];return <div className="grid gap-2 sm:grid-cols-2">{data.map(([l,v])=><div key={l} className="rounded-xl border p-3"><p className="text-xs text-slate-500">{l}</p><p className="mt-1 font-bold">{v}</p></div>)}</div>}
+import Link from "next/link";
+import type { CeoAlert } from "@/lib/ceo-analytics";
+import { formatMoney, formatDuration } from "@/lib/operator-format";
+
+type ChartRow = { label: string; revenue: number; occupancy: number; payments: number };
+
+export function AnalyticsChart({ title, rows, field, empty }: { title: string; rows: ChartRow[]; field: "revenue" | "occupancy"; empty: string }) {
+  const max = Math.max(0, ...rows.map((row) => row[field]));
+  return <section className="rounded-2xl border bg-white p-5 shadow-sm">
+    <h2 className="font-bold">{title}</h2>
+    {max === 0 ? <p className="grid min-h-24 place-items-center px-4 text-center text-sm text-slate-500">{empty}</p> :
+      <div className="mt-5 flex h-44 items-end gap-1" aria-label={title}>{rows.map((row, index) => {
+        const detail = field === "revenue" ? `${row.label} · ${formatMoney(row.revenue)} · ${row.payments} ${row.payments === 1 ? "pagamento" : "pagamentos"}` : `${row.label} · ${row.occupancy.toFixed(0)}%`;
+        return <div key={`${row.label}-${index}`} title={detail} aria-label={detail} className="group flex min-w-0 flex-1 flex-col items-center justify-end">
+          <span className="pointer-events-none absolute z-10 mb-8 hidden rounded-lg bg-slate-950 px-2 py-1 text-[10px] text-white shadow-lg group-hover:block group-focus-within:block">{detail}</span>
+          <i className={`w-full rounded-t transition-opacity group-hover:opacity-75 ${field === "revenue" ? "bg-blue-500" : "bg-emerald-500"}`} style={{ height: `${Math.max(4, row[field] / max * 100)}%` }} />
+          <span className="mt-2 max-w-full truncate text-[9px] text-slate-400">{row.label}</span>
+        </div>;
+      })}</div>}
+  </section>;
+}
+
+export function AlertList({ alerts, limit }: { alerts: CeoAlert[]; limit?: number }) {
+  const rows = limit ? alerts.slice(0, limit) : alerts;
+  if (!rows.length) return <p className="p-8 text-center text-sm text-slate-500">Nenhum alerta ativo.</p>;
+  return <div className="divide-y">{rows.map((alert) => {
+    const action = alert.title.includes("caixa") ? "Ver caixa" : alert.title.includes("Sessão") || alert.title.includes("Pagamento") ? "Ver sessão" : "Ver unidade";
+    return <article key={alert.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
+      <span className={`h-fit rounded-full px-2.5 py-1 text-xs font-bold ${alert.severity === "Crítico" ? "bg-red-50 text-red-700" : alert.severity === "Atenção" ? "bg-amber-50 text-amber-700" : "bg-blue-50 text-blue-700"}`}>{alert.severity}</span>
+      <div className="flex-1"><p className="font-semibold">{alert.title}</p><p className="text-xs font-medium text-slate-500">{alert.unitName}</p><p className="mt-1 text-xs text-slate-500">{alert.description}</p></div>
+      <Link href={alert.href} className="text-sm font-semibold text-blue-600 hover:text-blue-700">{action}</Link>
+    </article>;
+  })}</div>;
+}
+
+export function InsightGrid({ entries, averageMinutes, occupancy, ticket }: { entries: number; averageMinutes: number; occupancy: number; ticket: number }) {
+  if (!entries && !averageMinutes && !occupancy && !ticket) return <div className="rounded-xl border border-dashed p-5 text-center"><p className="font-semibold">Ainda não há movimentação suficiente para gerar tendências.</p><p className="mt-1 text-xs text-slate-500">Os indicadores serão calculados automaticamente conforme novas operações forem registradas.</p></div>;
+  const data = [["Entradas no período", String(entries)], ["Permanência média", averageMinutes ? formatDuration(Math.round(averageMinutes)) : "Sem base"], ["Ocupação atual", `${occupancy.toFixed(1).replace(".", ",")}%`], ["Receita média por pagamento", ticket ? formatMoney(ticket) : "Sem base"]];
+  return <div className="grid gap-2 sm:grid-cols-2">{data.map(([label, value]) => <div key={label} className="rounded-xl border p-3"><p className="text-xs text-slate-500">{label}</p><p className="mt-1 font-bold">{value}</p></div>)}</div>;
+}
 

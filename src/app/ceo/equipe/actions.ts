@@ -3,7 +3,7 @@ import { revalidatePath } from "next/cache";
 import { canInvite, requireCapability, type EmployeeRole } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 export type TeamState = { error?: string; success?: string };
-const allowed: EmployeeRole[] = ["manager", "operator", "finance", "auditor"];
+const allowed: EmployeeRole[] = ["operator"];
 export async function inviteEmployee(_: TeamState, formData: FormData): Promise<TeamState> {
   const access = await requireCapability("team:invite");
   const email = String(formData.get("email") ?? "").trim().toLowerCase(); const fullName = String(formData.get("fullName") ?? "").trim(); const unitId = String(formData.get("unitId") ?? ""); const role = String(formData.get("role") ?? "") as EmployeeRole;
@@ -24,3 +24,4 @@ export async function disableEmployee(formData: FormData) {
   if (!userId || userId === access.user.id || !access.assignments.some(a => a.unit_id === unitId && ["owner","manager"].includes(String(a.role)))) return;
   try { const admin = createAdminClient(); await admin.from("profiles").update({ is_active: false, updated_at: new Date().toISOString() }).eq("id", userId); await admin.from("audit_logs").insert({ actor_user_id: access.user.id, unit_id: unitId, action: "employee.disabled", target_user_id: userId }); revalidatePath("/ceo/equipe"); } catch { return; }
 }
+
