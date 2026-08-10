@@ -19,6 +19,7 @@ export type AsaasProviderConfig = { apiKey:string; baseUrl:string; environment:"
 export class AsaasProvider implements PaymentProvider {
   readonly name = "ASAAS" as const;
   readonly environment = "SANDBOX" as const;
+  readonly capabilities = [{method:"PIX",channel:"QR"},{method:"CREDIT_CARD",channel:"HOSTED_CHECKOUT"}] as const;
   private readonly fetcher: Fetcher;
   private readonly baseUrl: string;
 
