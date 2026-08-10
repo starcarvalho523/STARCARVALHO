@@ -12,6 +12,7 @@ export type ProviderCharge = {
   providerPaymentId: string;
   providerCustomerId: string;
   providerStatus: string;
+  billingType: string | null;
   amount: number;
   externalReference: string;
   hostedPaymentUrl: string | null;
@@ -19,6 +20,8 @@ export type ProviderCharge = {
   qrCodeImageBase64: string | null;
   expiresAt: string | null;
 };
+
+export type ProviderPixQrCode = Pick<ProviderCharge, "qrCodePayload" | "qrCodeImageBase64" | "expiresAt">;
 
 export type ProviderWebhookEvent = {
   id: string;
@@ -33,7 +36,9 @@ export type ProviderWebhookEvent = {
 export interface PaymentProvider {
   readonly name: "ASAAS";
   readonly environment: "SANDBOX";
-  createPixCharge(input: CreateChargeInput): Promise<ProviderCharge>;
+  createPixPayment(input: CreateChargeInput): Promise<ProviderCharge>;
+  getPixQrCode(providerPaymentId: string): Promise<ProviderPixQrCode>;
+  findPaymentByExternalReference(externalReference: string): Promise<ProviderCharge | null>;
   createCreditCardPayment(input: CreateChargeInput): Promise<ProviderCharge>;
   getPayment(providerPaymentId: string): Promise<ProviderCharge>;
   cancelPayment(providerPaymentId: string): Promise<void>;
@@ -41,4 +46,5 @@ export interface PaymentProvider {
   validateWebhook(receivedToken: string | null, expectedToken: string): boolean;
   parseWebhook(payload: unknown): ProviderWebhookEvent;
 }
+
 
