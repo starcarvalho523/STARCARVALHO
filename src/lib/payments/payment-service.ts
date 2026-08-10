@@ -1,10 +1,12 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { AsaasPublicError } from "./asaas-provider";
 import { getPaymentProvider } from "./provider-factory";
-import type { PaymentProvider, ProviderWebhookEvent } from "./payment-provider";
+import type { PaymentProvider, ProviderCharge, ProviderWebhookEvent } from "./payment-provider";
 
 type Reservation={paymentId:string;transactionId:string;state:string;amount:number;isCreator:boolean;qrCodePayload?:string|null;qrCodeImageBase64?:string|null;expiresAt?:string|null;hostedPaymentUrl?:string|null};
+type RecoveryContext={transactionId:string;state:string;externalReference:string;providerPaymentId:string|null;providerCustomerId:string|null;providerStatus:string|null;providerAmount:number|null;hostedPaymentUrl:string|null;amount:number};
 
 export class PaymentService{
   constructor(private readonly provider?:PaymentProvider,private readonly admin=createAdminClient()){}
@@ -13,18 +15,59 @@ export class PaymentService{
     const{data,error}=await userClient.rpc("reserve_pix_payment",{session_id:sessionId,request_key:crypto.randomUUID()});
     if(error)throw new Error(error.message);
     const reservation=data as Reservation;
-    if(!reservation.isCreator)return reservation;
-    const customerId=process.env.ASAAS_SANDBOX_CUSTOMER_ID;
-    if(!customerId){await this.fail(reservation.transactionId,"ASAAS_SANDBOX_CUSTOMER_NOT_CONFIGURED");throw new Error("ASAAS_SANDBOX_CUSTOMER_NOT_CONFIGURED");}
+    if(!reservation.isCreator)return publicPayment(reservation);
+
+    const context=await this.recoveryContext(reservation.transactionId);
+    const provider=this.provider??getPaymentProvider();
+    let charge:ProviderCharge;
+
+    if(context.providerPaymentId){
+      charge={providerPaymentId:context.providerPaymentId,providerCustomerId:context.providerCustomerId??"",providerStatus:context.providerStatus??"PENDING",billingType:"PIX",amount:Number(context.providerAmount??context.amount),externalReference:context.externalReference,hostedPaymentUrl:context.hostedPaymentUrl,qrCodePayload:null,qrCodeImageBase64:null,expiresAt:null};
+      validateReconciledCharge(charge,context);
+    }else{
+      let reconciled:ProviderCharge|null;
+      try{
+        reconciled=await provider.findPaymentByExternalReference(context.externalReference);
+      }catch(error){
+        if(error instanceof Error&&error.message==="ASAAS_DUPLICATE_EXTERNAL_REFERENCE")await this.markManualReview(context.transactionId);
+        await this.markReconciliationPending(context.transactionId,error);
+        logPaymentError("asaas.reconcile",error);
+        throw error;
+      }
+      if(reconciled){
+        validateReconciledCharge(reconciled,context);
+        charge=reconciled;
+      }else{
+        if(context.state!=="CREATING"){
+          const error=new Error("ASAAS_RECONCILIATION_NOT_FOUND");
+          await this.markReconciliationPending(context.transactionId,error);
+          logPaymentError("asaas.reconcile",error);
+          throw error;
+        }
+        try{
+          charge=await provider.createPixPayment({customerId:requiredCustomerId(),amount:Number(context.amount),dueDate:sandboxDueDate(),description:"Estadia Star Carvalhos",externalReference:context.externalReference});
+        }catch(error){
+          await this.markReconciliationPending(context.transactionId,error);
+          logPaymentError("asaas.create",error);
+          throw error;
+        }
+      }
+      try{await this.persistExternalCharge(context,charge)}catch(error){await this.markReconciliationPending(context.transactionId,error);throw error}
+    }
+
     try{
-      const charge=await (this.provider??getPaymentProvider()).createPixCharge({customerId,amount:Number(reservation.amount),dueDate:sandboxDueDate(),description:"Estadia Star Carvalhos",externalReference:`starcarvalhos:parking:${reservation.paymentId}`});
-      const{error:saveError}=await this.admin.rpc("mark_provider_payment_created",{transaction_id:reservation.transactionId,provider_payment_id:charge.providerPaymentId,provider_customer_id:charge.providerCustomerId,provider_status:charge.providerStatus,hosted_payment_url:charge.hostedPaymentUrl,qr_code_payload:charge.qrCodePayload,qr_code_image_base64:charge.qrCodeImageBase64,expires_at:charge.expiresAt});
-      if(saveError)throw new Error(saveError.message);
-      return{...reservation,state:"PENDING",qrCodePayload:charge.qrCodePayload,qrCodeImageBase64:charge.qrCodeImageBase64,expiresAt:charge.expiresAt,hostedPaymentUrl:charge.hostedPaymentUrl};
-    }catch(error){await this.fail(reservation.transactionId,error instanceof Error?error.message:"ASAAS_CREATE_FAILED");throw error}
+      const qr=await provider.getPixQrCode(charge.providerPaymentId);
+      const{error:qrSaveError}=await this.admin.rpc("mark_provider_pix_qr_ready",{transaction_id:context.transactionId,qr_code_payload:qr.qrCodePayload,qr_code_image_base64:qr.qrCodeImageBase64,expires_at:qr.expiresAt});
+      if(qrSaveError)throw rpcError("mark_provider_pix_qr_ready",qrSaveError.message);
+      return publicPayment({...reservation,state:"PENDING",qrCodePayload:qr.qrCodePayload,qrCodeImageBase64:qr.qrCodeImageBase64,expiresAt:qr.expiresAt,hostedPaymentUrl:charge.hostedPaymentUrl});
+    }catch(error){
+      await this.markQrPending(context.transactionId,error);
+      logPaymentError("asaas.pixQrCode",error);
+      throw error;
+    }
   }
 
-  async getPix(sessionId:string,userClient:SupabaseClient){const{data,error}=await userClient.rpc("get_provider_payment",{session_id:sessionId});if(error)throw new Error(error.message);return data as Reservation|null}
+  async getPix(sessionId:string,userClient:SupabaseClient){const{data,error}=await userClient.rpc("get_provider_payment",{session_id:sessionId});if(error)throw new Error(error.message);return data?publicPayment(data as Reservation):null}
 
   async processWebhook(event:ProviderWebhookEvent){
     const sanitized={event:event.type,paymentId:event.paymentId,status:event.paymentStatus,value:event.amount,billingType:event.billingType,externalReference:event.externalReference};
@@ -32,7 +75,44 @@ export class PaymentService{
     if(error)throw new Error(error.message);return data;
   }
 
-  private async fail(transactionId:string,code:string){await this.admin.rpc("mark_provider_payment_failed",{transaction_id:transactionId,error_code:code.slice(0,100)})}
+  private async recoveryContext(transactionId:string){
+    const{data,error}=await this.admin.rpc("get_provider_recovery_context",{transaction_id:transactionId});
+    if(error)throw rpcError("get_provider_recovery_context",error.message);
+    return data as RecoveryContext;
+  }
+
+  private async persistExternalCharge(context:RecoveryContext,charge:ProviderCharge){
+    const{error}=await this.admin.rpc("mark_provider_external_created",{transaction_id:context.transactionId,provider_payment_id:charge.providerPaymentId,provider_customer_id:charge.providerCustomerId,provider_status:charge.providerStatus,provider_amount:charge.amount,external_reference:charge.externalReference,hosted_payment_url:charge.hostedPaymentUrl});
+    if(error){const wrapped=rpcError("mark_provider_external_created",error.message);logPaymentError("supabase.persistExternal",wrapped);throw wrapped}
+  }
+
+  private async markQrPending(transactionId:string,error:unknown){
+    const detail=errorDetail(error);
+    await this.admin.rpc("mark_provider_pix_qr_pending",{transaction_id:transactionId,error_code:detail.code,error_description:detail.description});
+  }
+
+  private async markReconciliationPending(transactionId:string,error:unknown){
+    const detail=errorDetail(error);
+    await this.admin.rpc("mark_provider_reconciliation_pending",{transaction_id:transactionId,error_code:detail.code,error_description:detail.description});
+  }
+
+  private async markManualReview(transactionId:string){await this.admin.rpc("mark_provider_manual_review",{transaction_id:transactionId,reason_code:"DUPLICATE_EXTERNAL_REFERENCE"})}
 }
 
+function requiredCustomerId(){const value=process.env.ASAAS_SANDBOX_CUSTOMER_ID;if(!value)throw new Error("ASAAS_SANDBOX_CUSTOMER_NOT_CONFIGURED");return value}
 function sandboxDueDate(){return new Intl.DateTimeFormat("en-CA",{timeZone:"America/Bahia",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date())}
+function publicPayment(value:Reservation){return{state:value.state,amount:Number(value.amount),qrCodePayload:value.qrCodePayload??null,qrCodeImageBase64:value.qrCodeImageBase64??null,expiresAt:value.expiresAt??null,hostedPaymentUrl:value.hostedPaymentUrl??null}}
+function validateReconciledCharge(charge:ProviderCharge,context:RecoveryContext){
+  if(charge.billingType!=="PIX"||charge.externalReference!==context.externalReference||Number(charge.amount)!==Number(context.amount))throw new Error("ASAAS_RECONCILIATION_MISMATCH");
+}
+function rpcError(rpc:string,message:string){const error=new Error(`RPC_FAILED_${rpc}`);error.name="SupabaseRpcError";(error as Error&{rpc?:string}).rpc=rpc;(error as Error&{cause?:unknown}).cause=message;return error}
+function errorDetail(error:unknown){
+  if(error instanceof AsaasPublicError)return{code:error.message.slice(0,100),description:error.publicDescription};
+  return{code:error instanceof Error?error.message.slice(0,100):"PAYMENT_PROVIDER_ERROR",description:null};
+}
+function logPaymentError(stage:string,error:unknown){
+  if(error instanceof AsaasPublicError){console.error(JSON.stringify({step:stage,httpStatus:error.status,code:error.publicCode??"UNKNOWN",description:error.publicDescription??""}));return}
+  const detail=errorDetail(error);const rpc=error instanceof Error?(error as Error&{rpc?:string}).rpc:undefined;
+  console.error(JSON.stringify({step:stage,errorName:error instanceof Error?error.name:"UnknownError",code:detail.code,rpc}));
+}
+
