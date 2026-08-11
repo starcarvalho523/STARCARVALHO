@@ -1,3 +1,4 @@
+
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -8,6 +9,7 @@ import type { PaymentProvider, ProviderCharge, ProviderCheckoutWebhookEvent, Pro
 type Reservation={paymentId:string;transactionId:string;state:string;amount:number;isCreator:boolean;qrCodePayload?:string|null;qrCodeImageBase64?:string|null;expiresAt?:string|null;hostedPaymentUrl?:string|null};
 type RecoveryContext={transactionId:string;state:string;externalReference:string;providerPaymentId:string|null;providerCustomerId:string|null;providerStatus:string|null;providerAmount:number|null;hostedPaymentUrl:string|null;amount:number};
 type CheckoutCandidate={transactionId:string;checkoutId:string;externalReference:string;amount:number};
+type StoredCheckoutEvent={id:string;type:string;paymentId:string;paymentStatus:string;amount:number;billingType:string;externalReference:string|null};
 
 export class PaymentService{
   constructor(private readonly provider?:PaymentProvider,private readonly admin=createAdminClient()){}
@@ -82,6 +84,19 @@ export class PaymentService{
   }
 
   async getCreditCheckout(sessionId:string,userClient:SupabaseClient){const{data,error}=await userClient.rpc("get_credit_checkout",{session_id:sessionId});if(error)throw new Error(error.message);return data?publicCheckout(data as Reservation):null}
+
+  async reprocessStoredCheckoutEvents(sessionId:string,eventIds:string[],userClient:SupabaseClient){
+    await this.getCreditCheckout(sessionId,userClient);
+    const{data,error}=await this.admin.rpc("get_checkout_payment_events_for_reprocessing",{session_id:sessionId,event_ids:eventIds});
+    if(error)throw rpcError("get_checkout_payment_events_for_reprocessing",error.message);
+    const events=(Array.isArray(data)?data:[]) as StoredCheckoutEvent[];
+    const results=[];
+    for(const event of events){
+      const result=await this.processWebhook({id:event.id,type:event.type,paymentId:event.paymentId,paymentStatus:event.paymentStatus,amount:Number(event.amount),billingType:event.billingType,externalReference:event.externalReference});
+      results.push({type:event.type,result});
+    }
+    return results;
+  }
 
   async processWebhook(event:ProviderWebhookEvent){
     const sanitized={event:event.type,paymentId:event.paymentId,status:event.paymentStatus,value:event.amount,billingType:event.billingType,externalReference:event.externalReference};
@@ -165,5 +180,3 @@ function logPaymentError(stage:string,error:unknown){
   const detail=errorDetail(error);const rpc=error instanceof Error?(error as Error&{rpc?:string}).rpc:undefined;
   console.error(JSON.stringify({step:stage,errorName:error instanceof Error?error.name:"UnknownError",code:detail.code,rpc}));
 }
-
-
