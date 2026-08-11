@@ -1,3 +1,4 @@
+
 export type ProviderPaymentState = "PENDING" | "PAID" | "EXPIRED" | "CANCELLED" | "REVIEW";
 
 export type CreateChargeInput = {
@@ -77,7 +78,7 @@ export interface PaymentProvider {
   findPaymentByExternalReference(externalReference: string): Promise<ProviderCharge | null>;
   createCreditCardPayment(input: CreateChargeInput): Promise<ProviderCharge>;
   createCreditCardCheckout(input: CreateCheckoutInput): Promise<ProviderCheckout>;
-  resolveCheckoutPayment(checkoutId:string,expectedExternalReference:string,expectedPaymentId:string):Promise<ProviderCheckoutPayment>;
+  resolveCheckoutPayment(checkoutId:string,expectedExternalReference:string,expectedPaymentId:string,expectedAmount:number):Promise<ProviderCheckoutPayment>;
   getPayment(providerPaymentId: string): Promise<ProviderCharge>;
   cancelPayment(providerPaymentId: string): Promise<void>;
   getHostedPaymentUrl(payment: ProviderCharge): string | null;
@@ -85,6 +86,3 @@ export interface PaymentProvider {
   parseWebhook(payload: unknown): ProviderWebhookEvent;
   parseCheckoutWebhook(payload: unknown): ProviderCheckoutWebhookEvent;
 }
-
-
-
