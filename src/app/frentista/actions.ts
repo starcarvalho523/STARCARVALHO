@@ -5,6 +5,7 @@ import { getOperatorContext } from "@/lib/operator-data";
 export type ExitReceipt = { plate:string; amount:number; method:string; exitedAt:string };
 export type OperatorActionState = { error?:string; success?:string; sessionId?:string; receipt?:ExitReceipt; relatedMessage?:string; relatedHref?:string };
 function humanError(message:string):string {
+  if(message.includes("PAYMENT_METHOD_NOT_AVAILABLE"))return "Este meio de pagamento não está habilitado para esta unidade.";
   const errors:Record<string,string>={PARKING_FULL:"O pátio atingiu a capacidade máxima. Não é possível registrar outra entrada.",INVALID_PLATE:"Informe uma placa brasileira válida.",NO_ACTIVE_TARIFF:"Esta unidade não possui uma tarifa ativa configurada para este veículo.",ACTIVE_SESSION_EXISTS:"Este veículo já possui uma estadia ativa.",CASH_SHIFT_REQUIRED:"Abra o caixa do turno antes de registrar pagamentos.",PIX_PROVIDER_NOT_CONFIGURED:"PIX integrado ainda não configurado.",PAYMENT_REQUIRED:"O pagamento precisa estar confirmado antes da saída.",EXIT_NOT_STARTED:"Inicie a saída antes de registrar o pagamento.",INVALID_SESSION_STATE:"Esta operação não é permitida no estado atual.",SHIFT_NOT_OPEN:"Este caixa não está aberto.",INVALID_AMOUNT:"Informe um valor válido.",OPERATOR_FORBIDDEN:"Você não possui permissão operacional nesta unidade.",CLOSING_NOTES_REQUIRED:"Explique a divergência antes de fechar o caixa."};
   return Object.entries(errors).find(([key])=>message.includes(key))?.[1] ?? "Não foi possível concluir a operação. Tente novamente.";
 }

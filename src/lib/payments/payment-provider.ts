@@ -36,6 +36,7 @@ export type ProviderWebhookEvent = {
 export interface PaymentProvider {
   readonly name: "ASAAS";
   readonly environment: "SANDBOX";
+  readonly capabilities: ReadonlyArray<{ method:"PIX"|"CREDIT_CARD"; channel:"QR"|"HOSTED_CHECKOUT" }>;
   createPixPayment(input: CreateChargeInput): Promise<ProviderCharge>;
   getPixQrCode(providerPaymentId: string): Promise<ProviderPixQrCode>;
   findPaymentByExternalReference(externalReference: string): Promise<ProviderCharge | null>;
