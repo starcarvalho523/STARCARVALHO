@@ -3,7 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { AsaasPublicError } from "./asaas-provider";
 import { getPaymentProvider } from "./provider-factory";
-import type { PaymentProvider, ProviderCharge, ProviderWebhookEvent } from "./payment-provider";
+import type { PaymentProvider, ProviderCharge, ProviderCheckoutWebhookEvent, ProviderWebhookEvent } from "./payment-provider";
 
 type Reservation={paymentId:string;transactionId:string;state:string;amount:number;isCreator:boolean;qrCodePayload?:string|null;qrCodeImageBase64?:string|null;expiresAt?:string|null;hostedPaymentUrl?:string|null};
 type RecoveryContext={transactionId:string;state:string;externalReference:string;providerPaymentId:string|null;providerCustomerId:string|null;providerStatus:string|null;providerAmount:number|null;hostedPaymentUrl:string|null;amount:number};
@@ -69,9 +69,28 @@ export class PaymentService{
 
   async getPix(sessionId:string,userClient:SupabaseClient){const{data,error}=await userClient.rpc("get_provider_payment",{session_id:sessionId});if(error)throw new Error(error.message);return data?publicPayment(data as Reservation):null}
 
+  async createCreditCheckout(sessionId:string,userClient:SupabaseClient,origin:string){
+    const{data,error}=await userClient.rpc("reserve_credit_checkout",{session_id:sessionId,request_key:crypto.randomUUID()});if(error)throw new Error(error.message);
+    const reservation=data as Reservation;if(!reservation.isCreator)return publicCheckout(reservation);
+    const context=await this.recoveryContext(reservation.transactionId);const provider=this.provider??getPaymentProvider();
+    try{
+      const checkout=await provider.createCreditCardCheckout({amount:Number(context.amount),description:"Pagamento de estadia",externalReference:context.externalReference,expiresInMinutes:45,callback:{successUrl:`${origin}/pagamento/retorno?status=success`,cancelUrl:`${origin}/pagamento/retorno?status=cancel`,expiredUrl:`${origin}/pagamento/retorno?status=expired`}});
+      const{error:saveError}=await this.admin.rpc("mark_credit_checkout_created",{transaction_id:context.transactionId,checkout_id:checkout.providerCheckoutId,checkout_status:checkout.providerStatus,checkout_link:checkout.link,external_reference:checkout.externalReference,checkout_amount:checkout.amount,expires_at:checkout.expiresAt});if(saveError)throw rpcError("mark_credit_checkout_created",saveError.message);
+      return publicCheckout({...reservation,state:"PENDING",hostedPaymentUrl:checkout.link,expiresAt:checkout.expiresAt});
+    }catch(cause){logPaymentError("asaas.checkout.create",cause);throw cause}
+  }
+
+  async getCreditCheckout(sessionId:string,userClient:SupabaseClient){const{data,error}=await userClient.rpc("get_credit_checkout",{session_id:sessionId});if(error)throw new Error(error.message);return data?publicCheckout(data as Reservation):null}
+
   async processWebhook(event:ProviderWebhookEvent){
     const sanitized={event:event.type,paymentId:event.paymentId,status:event.paymentStatus,value:event.amount,billingType:event.billingType,externalReference:event.externalReference};
     const{data,error}=await this.admin.rpc("process_asaas_webhook",{event_id:event.id,event_type:event.type,provider_payment_id:event.paymentId,provider_status:event.paymentStatus,reported_amount:event.amount,sanitized_payload:sanitized});
+    if(error)throw new Error(error.message);return data;
+  }
+
+  async processCheckoutWebhook(event:ProviderCheckoutWebhookEvent){
+    const sanitized={event:event.type,checkoutId:event.checkoutId,status:event.checkoutStatus,externalReference:event.externalReference};
+    const{data,error}=await this.admin.rpc("process_asaas_checkout_webhook",{event_id:event.id,event_type:event.type,checkout_id:event.checkoutId,checkout_status:event.checkoutStatus,external_reference:event.externalReference,sanitized_payload:sanitized});
     if(error)throw new Error(error.message);return data;
   }
 
@@ -102,6 +121,7 @@ export class PaymentService{
 function requiredCustomerId(){const value=process.env.ASAAS_SANDBOX_CUSTOMER_ID;if(!value)throw new Error("ASAAS_SANDBOX_CUSTOMER_NOT_CONFIGURED");return value}
 function sandboxDueDate(){return new Intl.DateTimeFormat("en-CA",{timeZone:"America/Bahia",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date())}
 function publicPayment(value:Reservation){return{state:value.state,amount:Number(value.amount),qrCodePayload:value.qrCodePayload??null,qrCodeImageBase64:value.qrCodeImageBase64??null,expiresAt:value.expiresAt??null,hostedPaymentUrl:value.hostedPaymentUrl??null}}
+function publicCheckout(value:Reservation){return{state:value.state,amount:Number(value.amount),hostedPaymentUrl:value.hostedPaymentUrl??null,expiresAt:value.expiresAt??null}}
 function validateReconciledCharge(charge:ProviderCharge,context:RecoveryContext){
   if(charge.billingType!=="PIX"||charge.externalReference!==context.externalReference||Number(charge.amount)!==Number(context.amount))throw new Error("ASAAS_RECONCILIATION_MISMATCH");
 }

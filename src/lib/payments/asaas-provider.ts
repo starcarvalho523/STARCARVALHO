@@ -1,11 +1,12 @@
 import { timingSafeEqual } from "node:crypto";
-import type { CreateChargeInput, PaymentProvider, ProviderCharge, ProviderPaymentState, ProviderPixQrCode, ProviderWebhookEvent } from "./payment-provider";
+import type { CreateChargeInput, CreateCheckoutInput, PaymentProvider, ProviderCharge, ProviderCheckout, ProviderCheckoutWebhookEvent, ProviderPaymentState, ProviderPixQrCode, ProviderWebhookEvent } from "./payment-provider";
 
 type Fetcher = typeof fetch;
 type AsaasPayment = { id?:unknown; customer?:unknown; status?:unknown; billingType?:unknown; value?:unknown; externalReference?:unknown; invoiceUrl?:unknown };
 type AsaasQrCode = { payload?:unknown; encodedImage?:unknown; expirationDate?:unknown };
 type AsaasList = { data?:unknown };
 type AsaasErrorBody = { errors?:unknown };
+type AsaasCheckout = { id?:unknown; status?:unknown; link?:unknown; externalReference?:unknown; minutesToExpire?:unknown };
 
 export class AsaasPublicError extends Error {
   constructor(readonly status:number,readonly publicCode:string|null,readonly publicDescription:string|null){
@@ -54,6 +55,16 @@ export class AsaasProvider implements PaymentProvider {
     return this.createCharge("CREDIT_CARD",input);
   }
 
+  async createCreditCardCheckout(input:CreateCheckoutInput):Promise<ProviderCheckout>{
+    const checkout=await this.request<AsaasCheckout>("/checkouts",{method:"POST",body:JSON.stringify({
+      billingTypes:["CREDIT_CARD"],chargeTypes:["DETACHED"],minutesToExpire:input.expiresInMinutes,
+      externalReference:input.externalReference,callback:input.callback,
+      items:[{externalReference:"parking-stay",name:"Estadia Star Carvalhos",description:input.description,quantity:1,value:input.amount}]
+    })});
+    if(typeof checkout.id!=="string"||typeof checkout.status!=="string"||typeof checkout.link!=="string"||checkout.externalReference!==input.externalReference)throw new Error("INVALID_ASAAS_CHECKOUT");
+    return{providerCheckoutId:checkout.id,providerStatus:checkout.status,amount:input.amount,externalReference:input.externalReference,link:checkout.link,expiresAt:new Date(Date.now()+input.expiresInMinutes*60_000).toISOString()};
+  }
+
   async getPayment(providerPaymentId:string):Promise<ProviderCharge>{
     return normalizePayment(await this.request<AsaasPayment>(`/payments/${encodeURIComponent(providerPaymentId)}`));
   }
@@ -72,6 +83,11 @@ export class AsaasProvider implements PaymentProvider {
     if(!isRecord(payload)||typeof payload.id!=="string"||typeof payload.event!=="string"||!isRecord(payload.payment)||typeof payload.payment.id!=="string") throw new Error("INVALID_ASAAS_WEBHOOK");
     const id=payload.id;const type=payload.event;const payment=payload.payment;const paymentId=payment.id as string;
     return{id,type,paymentId,paymentStatus:typeof payment.status==="string"?payment.status:"UNKNOWN",amount:numberOrNull(payment.value),externalReference:stringOrNull(payment.externalReference),billingType:stringOrNull(payment.billingType)};
+  }
+
+  parseCheckoutWebhook(payload:unknown):ProviderCheckoutWebhookEvent{
+    if(!isRecord(payload)||typeof payload.id!=="string"||typeof payload.event!=="string"||!isRecord(payload.checkout)||typeof payload.checkout.id!=="string")throw new Error("INVALID_ASAAS_WEBHOOK");
+    return{id:payload.id,type:payload.event,checkoutId:payload.checkout.id,checkoutStatus:typeof payload.checkout.status==="string"?payload.checkout.status:"UNKNOWN",externalReference:stringOrNull(payload.checkout.externalReference)};
   }
 
   private async createCharge(billingType:"PIX"|"CREDIT_CARD",input:CreateChargeInput){

@@ -21,6 +21,23 @@ export type ProviderCharge = {
   expiresAt: string | null;
 };
 
+export type CreateCheckoutInput = {
+  amount: number;
+  description: string;
+  externalReference: string;
+  expiresInMinutes: number;
+  callback: { successUrl: string; cancelUrl: string; expiredUrl: string };
+};
+
+export type ProviderCheckout = {
+  providerCheckoutId: string;
+  providerStatus: string;
+  amount: number;
+  externalReference: string;
+  link: string;
+  expiresAt: string;
+};
+
 export type ProviderPixQrCode = Pick<ProviderCharge, "qrCodePayload" | "qrCodeImageBase64" | "expiresAt">;
 
 export type ProviderWebhookEvent = {
@@ -33,6 +50,14 @@ export type ProviderWebhookEvent = {
   billingType: string | null;
 };
 
+export type ProviderCheckoutWebhookEvent = {
+  id: string;
+  type: string;
+  checkoutId: string;
+  checkoutStatus: string;
+  externalReference: string | null;
+};
+
 export interface PaymentProvider {
   readonly name: "ASAAS";
   readonly environment: "SANDBOX";
@@ -41,11 +66,13 @@ export interface PaymentProvider {
   getPixQrCode(providerPaymentId: string): Promise<ProviderPixQrCode>;
   findPaymentByExternalReference(externalReference: string): Promise<ProviderCharge | null>;
   createCreditCardPayment(input: CreateChargeInput): Promise<ProviderCharge>;
+  createCreditCardCheckout(input: CreateCheckoutInput): Promise<ProviderCheckout>;
   getPayment(providerPaymentId: string): Promise<ProviderCharge>;
   cancelPayment(providerPaymentId: string): Promise<void>;
   getHostedPaymentUrl(payment: ProviderCharge): string | null;
   validateWebhook(receivedToken: string | null, expectedToken: string): boolean;
   parseWebhook(payload: unknown): ProviderWebhookEvent;
+  parseCheckoutWebhook(payload: unknown): ProviderCheckoutWebhookEvent;
 }
 
 
