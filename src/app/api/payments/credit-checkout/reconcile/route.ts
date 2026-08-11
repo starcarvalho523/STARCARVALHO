@@ -11,6 +11,7 @@ export async function POST(request:Request){
     const sessionId=typeof body?.sessionId==="string"?body.sessionId:"";
     if(sessionId!==SESSION_ID)return Response.json({error:"PAYMENT_NOT_AVAILABLE"},{status:404});
     const results=await new PaymentService().reprocessStoredCheckoutEvents(sessionId,EVENT_IDS,await createClient());
+    if(results.some(item=>typeof item.result==="object"&&item.result!==null&&"result" in item.result&&item.result.result!=="PROCESSED"&&item.result.result!=="DUPLICATE"))throw new Error("CHECKOUT_RECONCILIATION_INCOMPLETE");
     return Response.json({reprocessed:results},{headers:{"cache-control":"no-store"}});
   }catch(error){
     const message=error instanceof Error?error.message:"CHECKOUT_RECONCILIATION_FAILED";
