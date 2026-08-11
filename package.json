@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "test:payments": "node --experimental-strip-types --experimental-transform-types --test src/lib/payments/asaas-provider.test.ts && node --experimental-strip-types --experimental-transform-types --test src/lib/payments/mercado-pago-point-provider.test.ts"
+    "test:payments": "node --experimental-strip-types --experimental-transform-types --test src/lib/payments/asaas-provider.test.ts && node --experimental-strip-types --experimental-transform-types --test src/lib/payments/mercado-pago-point-provider.test.ts",
+    "test:monthly": "node --experimental-strip-types --experimental-transform-types --test src/lib/monthly-domain.test.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",
