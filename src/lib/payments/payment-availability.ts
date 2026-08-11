@@ -2,7 +2,7 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import type { PaymentCapability, PaymentChannel, PaymentMethod, PaymentProviderName } from "./payment-model";
 
-type AvailabilityRow = { payment_method:PaymentMethod; payment_channel:PaymentChannel; payment_provider:PaymentProviderName; enabled:boolean; configuration_state:"READY"|"DISABLED"|"UNCONFIGURED"; legacy:boolean };
+type AvailabilityRow = { payment_method:PaymentMethod; payment_channel:PaymentChannel; payment_provider:PaymentProviderName; enabled:boolean; configuration_state:"READY"|"DISABLED"|"UNCONFIGURED"|"AWAITING_TERMINAL"; legacy:boolean };
 
 export async function getPaymentAvailability(unitId:string):Promise<PaymentCapability[]> {
   const supabase=await createClient();
@@ -13,3 +13,4 @@ export async function getPaymentAvailability(unitId:string):Promise<PaymentCapab
 
 export function canUsePayment(capabilities:PaymentCapability[],method:PaymentMethod,channel:PaymentChannel,provider:PaymentProviderName){return capabilities.some(item=>item.method===method&&item.channel===channel&&item.provider===provider&&item.enabled&&item.configured)}
 function providerConfigured(provider:PaymentProviderName,channel:PaymentChannel){if(provider==="INTERNAL")return channel==="MANUAL";if(provider==="ASAAS"&&(channel==="QR"||channel==="HOSTED_CHECKOUT"))return Boolean(process.env.ASAAS_ENVIRONMENT==="sandbox"&&process.env.ASAAS_API_KEY&&process.env.ASAAS_WEBHOOK_TOKEN&&process.env.ASAAS_SANDBOX_CUSTOMER_ID);return false}
+
