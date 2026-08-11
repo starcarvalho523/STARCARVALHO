@@ -100,6 +100,22 @@ Estados internos de terminal: `NOT_CONFIGURED`, `AWAITING_TERMINAL`, `READY`, `D
 
 `private.payment_provider_transactions` Ã© reutilizada e recebe `provider_order_id` e `provider_terminal_id`. Uma Order externa Ã© Ãºnica por provider. A futura reserva deverÃ¡ usar lock transacional por sessÃ£o, congelar o valor oficial no banco e criar no mÃ¡ximo uma Order ativa por obrigaÃ§Ã£o, com chave de idempotÃªncia do provider. Nenhum identificador externo ou valor decisÃ³rio virÃ¡ do navegador.
 
+### AtribuiÃ§Ã£o operacional por turno
+
+O terminal pertence permanentemente Ã  unidade/POS, nunca ao funcionÃ¡rio. `terminal_assignments` registra somente a associaÃ§Ã£o temporÃ¡ria Terminal â†’ Caixa/turno â†’ Operador. O `cash_shift_id` representa o caixa operacional desta arquitetura. O histÃ³rico Ã© imutÃ¡vel no sentido operacional: atribuiÃ§Ãµes sÃ£o liberadas, nunca apagadas.
+
+- Um terminal possui no mÃ¡ximo uma atribuiÃ§Ã£o `ACTIVE`.
+- Um turno possui no mÃ¡ximo um terminal Point principal `ACTIVE` nesta fase.
+- Terminal e turno devem pertencer Ã  mesma unidade.
+- O turno deve estar aberto; o terminal precisa estar habilitado, `READY` e em `PDV`.
+- `DISABLED`, `ERROR`, `STANDALONE` ou configuraÃ§Ã£o incompleta bloqueiam a atribuiÃ§Ã£o.
+- O fechamento do caixa libera automaticamente a atribuiÃ§Ã£o e preserva o histÃ³rico.
+- Owner e Manager podem atribuir ou liberar. Operator somente assume/libera o terminal do prÃ³prio turno quando `operator_self_assignment_enabled` estiver explicitamente habilitado pelo administrador. Cliente nÃ£o tem acesso.
+- Store ID, POS ID, Terminal ID, provider, modo e credenciais nunca sÃ£o alterÃ¡veis pelo Frentista.
+- Trocar o operador altera apenas a atribuiÃ§Ã£o interna; nÃ£o refaz pareamento no Mercado Pago.
+
+As operaÃ§Ãµes usam funÃ§Ãµes transacionais, locks consultivos por terminal/turno, Ã­ndices parciais de unicidade e auditoria para criaÃ§Ã£o, liberaÃ§Ã£o e liberaÃ§Ã£o automÃ¡tica. NÃ£o existe UI operacional nesta fase.
+
 ### Fluxo futuro, ainda inativo
 
 `PAYMENT_PENDING` â†’ escolha DÃ©bito/CrÃ©dito â†’ terminal `READY`/`PDV` da unidade â†’ reserva atÃ´mica â†’ valor oficial congelado â†’ criaÃ§Ã£o da Order com idempotÃªncia â†’ processamento no Point â†’ webhook assinado/reconciliaÃ§Ã£o â†’ `PAID` â†’ liberaÃ§Ã£o manual â†’ `EXITED`.
