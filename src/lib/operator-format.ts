@@ -1,11 +1,25 @@
-export type ActiveSession = { id:string; plate:string; vehicle_type:"CAR"|"MOTORCYCLE"; status:"OPEN"|"PAYMENT_PENDING"|"PAID"|"MANUAL_REVIEW"; entered_at:string; duration_minutes:number; amount:number|null; payment_status:string; tariff_name:string };
+export type ActiveSession = { id:string; plate:string; vehicle_type:"CAR"|"MOTORCYCLE"; status:"OPEN"|"PAYMENT_PENDING"|"PAID"|"MANUAL_REVIEW"; entered_at:string; duration_minutes:number; amount:number|null; payment_status:string; tariff_name:string; entry_mode?:"CASUAL"|"MONTHLY"|"MONTHLY_GRACE"|"MONTHLY_EXCEPTION"; financial_obligation?:"REQUIRED"|"WAIVED_BY_MONTHLY_COVERAGE"; coverage_reason?:string|null; theoretical_amount?:number|null };
 export type StatusTone = "blue"|"amber"|"green"|"slate"|"red";
+export type EntryMode = "CASUAL"|"MONTHLY"|"MONTHLY_GRACE"|"MONTHLY_EXCEPTION";
+export type FinancialObligation = "REQUIRED"|"WAIVED_BY_MONTHLY_COVERAGE";
 const parkingStatuses:Record<string,{label:string;tone:StatusTone}>={OPEN:{label:"Estacionado",tone:"blue"},PAYMENT_PENDING:{label:"Aguardando pagamento",tone:"amber"},PAID:{label:"Pago — aguardando saída",tone:"green"},EXITED:{label:"Finalizado",tone:"slate"},CANCELLED:{label:"Cancelado",tone:"red"},MANUAL_REVIEW:{label:"Em revisão",tone:"amber"}};
 const paymentStatuses:Record<string,{label:string;tone:StatusTone}>={PENDING:{label:"Pendente",tone:"amber"},PAID:{label:"Pago",tone:"green"},FAILED:{label:"Falhou",tone:"red"},CANCELLED:{label:"Cancelado",tone:"red"},REFUNDED:{label:"Estornado",tone:"slate"}};
 export function parkingStatus(value:string){return parkingStatuses[value]??{label:value,tone:"slate" as const}}
 export function paymentStatus(value:string){return paymentStatuses[value]??{label:value,tone:"slate" as const}}
 export function formatParkingStatus(value:string){return parkingStatus(value).label}
 export function formatPaymentStatus(value:string){return paymentStatus(value).label}
+export function isMonthlyCovered(financialObligation:string|undefined){return financialObligation==="WAIVED_BY_MONTHLY_COVERAGE"}
+export function formatSessionFinancialStatus(entryMode:string|undefined,financialObligation:string|undefined){
+  if(!isMonthlyCovered(financialObligation))return null;
+  if(entryMode==="MONTHLY_GRACE")return "Mensalidade — em carência";
+  if(entryMode==="MONTHLY_EXCEPTION")return "Mensalidade — exceção autorizada";
+  return "Mensalidade — coberto";
+}
+export function sessionParkingStatus(status:string,entryMode?:string,financialObligation?:string){
+  const monthly=formatSessionFinancialStatus(entryMode,financialObligation);
+  if(monthly&&status==="PAID")return{label:`${monthly} — aguardando saída`,tone:"green" as const};
+  return parkingStatus(status);
+}
 export function formatPaymentMethod(value:string,manual=false){if(value==="CASH")return "Dinheiro";if(value==="CARD")return manual?"Cartão — legado manual":"Cartão — legado";if(value==="DEBIT_CARD")return "Cartão de débito";if(value==="CREDIT_CARD")return "Cartão de crédito";if(value==="PIX")return "PIX";return value}
 export function formatPaymentChannel(value:string){return ({MANUAL:"Manual",QR:"QR Code",HOSTED_CHECKOUT:"Checkout online",POINT:"Point",TAP:"Tap"} as Record<string,string>)[value]??value}
 export function formatPaymentProvider(value:string|null|undefined){return ({INTERNAL:"Interno",ASAAS:"Asaas",MERCADO_PAGO:"Mercado Pago"} as Record<string,string>)[value??""]??"Não informado"}
