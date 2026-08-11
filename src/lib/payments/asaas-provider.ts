@@ -1,11 +1,13 @@
+
 import { timingSafeEqual } from "node:crypto";
-import type { CreateChargeInput, PaymentProvider, ProviderCharge, ProviderPaymentState, ProviderPixQrCode, ProviderWebhookEvent } from "./payment-provider";
+import type { CreateChargeInput, CreateCheckoutInput, PaymentProvider, ProviderCharge, ProviderCheckout, ProviderCheckoutPayment, ProviderCheckoutWebhookEvent, ProviderPaymentState, ProviderPixQrCode, ProviderWebhookEvent } from "./payment-provider";
 
 type Fetcher = typeof fetch;
-type AsaasPayment = { id?:unknown; customer?:unknown; status?:unknown; billingType?:unknown; value?:unknown; externalReference?:unknown; invoiceUrl?:unknown };
+type AsaasPayment = { id?:unknown; customer?:unknown; status?:unknown; billingType?:unknown; value?:unknown; externalReference?:unknown; invoiceUrl?:unknown; checkoutSession?:unknown };
 type AsaasQrCode = { payload?:unknown; encodedImage?:unknown; expirationDate?:unknown };
 type AsaasList = { data?:unknown };
 type AsaasErrorBody = { errors?:unknown };
+type AsaasCheckout = { id?:unknown; status?:unknown; link?:unknown; externalReference?:unknown; minutesToExpire?:unknown; billingTypes?:unknown };
 
 export class AsaasPublicError extends Error {
   constructor(readonly status:number,readonly publicCode:string|null,readonly publicDescription:string|null){
@@ -54,6 +56,32 @@ export class AsaasProvider implements PaymentProvider {
     return this.createCharge("CREDIT_CARD",input);
   }
 
+  async createCreditCardCheckout(input:CreateCheckoutInput):Promise<ProviderCheckout>{
+    const checkout=await this.request<AsaasCheckout>("/checkouts",{method:"POST",body:JSON.stringify({
+      billingTypes:["CREDIT_CARD"],chargeTypes:["DETACHED"],minutesToExpire:input.expiresInMinutes,
+      externalReference:input.externalReference,callback:input.callback,
+      items:[{externalReference:"parking-stay",name:"Estadia Star Carvalhos",description:input.description,quantity:1,value:input.amount}]
+    })});
+    if(typeof checkout.id!=="string"||typeof checkout.status!=="string"||typeof checkout.link!=="string"||checkout.externalReference!==input.externalReference)throw new Error("INVALID_ASAAS_CHECKOUT");
+    return{providerCheckoutId:checkout.id,providerStatus:checkout.status,amount:input.amount,externalReference:input.externalReference,link:checkout.link,expiresAt:new Date(Date.now()+input.expiresInMinutes*60_000).toISOString()};
+  }
+
+  async resolveCheckoutPayment(checkoutId:string,expectedExternalReference:string,expectedPaymentId:string,expectedAmount:number):Promise<ProviderCheckoutPayment>{
+    const query=new URLSearchParams({checkoutSession:checkoutId,limit:"2",offset:"0"});
+    const payments=await this.request<AsaasList>(`/payments?${query.toString()}`);
+    if(!Array.isArray(payments.data))throw new Error("INVALID_ASAAS_PAYMENT_LIST");
+    if(payments.data.length===0)throw new Error("ASAAS_CHECKOUT_PAYMENT_NOT_FOUND");
+    if(payments.data.length!==1)throw new Error("ASAAS_CHECKOUT_PAYMENT_AMBIGUOUS");
+    const raw=payments.data[0];
+    if(!isRecord(raw))throw new Error("INVALID_ASAAS_PAYMENT");
+    const payment=normalizePayment(raw);
+    if(payment.providerPaymentId!==expectedPaymentId)throw new Error("ASAAS_CHECKOUT_PAYMENT_ID_MISMATCH");
+    if(payment.billingType!=="CREDIT_CARD")throw new Error("ASAAS_CHECKOUT_PAYMENT_METHOD_MISMATCH");
+    if(Number(payment.amount)!==Number(expectedAmount))throw new Error("ASAAS_CHECKOUT_PAYMENT_AMOUNT_MISMATCH");
+    if(raw.checkoutSession!==undefined&&raw.checkoutSession!==null&&raw.checkoutSession!==checkoutId)throw new Error("ASAAS_CHECKOUT_SESSION_MISMATCH");
+    return{providerCheckoutId:checkoutId,providerCheckoutStatus:"RESOLVED_BY_PAYMENT_LIST",providerPaymentId:payment.providerPaymentId,providerPaymentStatus:payment.providerStatus,amount:payment.amount,billingType:payment.billingType,externalReference:expectedExternalReference};
+  }
+
   async getPayment(providerPaymentId:string):Promise<ProviderCharge>{
     return normalizePayment(await this.request<AsaasPayment>(`/payments/${encodeURIComponent(providerPaymentId)}`));
   }
@@ -72,6 +100,11 @@ export class AsaasProvider implements PaymentProvider {
     if(!isRecord(payload)||typeof payload.id!=="string"||typeof payload.event!=="string"||!isRecord(payload.payment)||typeof payload.payment.id!=="string") throw new Error("INVALID_ASAAS_WEBHOOK");
     const id=payload.id;const type=payload.event;const payment=payload.payment;const paymentId=payment.id as string;
     return{id,type,paymentId,paymentStatus:typeof payment.status==="string"?payment.status:"UNKNOWN",amount:numberOrNull(payment.value),externalReference:stringOrNull(payment.externalReference),billingType:stringOrNull(payment.billingType)};
+  }
+
+  parseCheckoutWebhook(payload:unknown):ProviderCheckoutWebhookEvent{
+    if(!isRecord(payload)||typeof payload.id!=="string"||typeof payload.event!=="string"||!isRecord(payload.checkout)||typeof payload.checkout.id!=="string")throw new Error("INVALID_ASAAS_WEBHOOK");
+    return{id:payload.id,type:payload.event,checkoutId:payload.checkout.id,checkoutStatus:typeof payload.checkout.status==="string"?payload.checkout.status:"UNKNOWN",externalReference:stringOrNull(payload.checkout.externalReference)};
   }
 
   private async createCharge(billingType:"PIX"|"CREDIT_CARD",input:CreateChargeInput){
@@ -122,4 +155,3 @@ function normalizePayment(value:AsaasPayment):ProviderCharge{
 function isRecord(value:unknown):value is Record<string,unknown>{return typeof value==="object"&&value!==null&&!Array.isArray(value)}
 function stringOrNull(value:unknown){return typeof value==="string"?value:null}
 function numberOrNull(value:unknown){const number=typeof value==="number"?value:typeof value==="string"?Number(value):NaN;return Number.isFinite(number)?number:null}
-

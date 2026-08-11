@@ -7,8 +7,11 @@ export async function POST(request:Request){
   try{
     if(!safeTokenEquals(request.headers.get("asaas-access-token"),expected))return Response.json({error:"INVALID_WEBHOOK"},{status:401});
     const provider=getPaymentProvider();
-    const event=provider.parseWebhook(await request.json());
-    await new PaymentService(provider).processWebhook(event);
+    const payload=await request.json();
+    const eventName=payload&&typeof payload==="object"&&"event" in payload?String(payload.event):"";
+    const service=new PaymentService(provider);
+    if(eventName.startsWith("CHECKOUT_"))await service.processCheckoutWebhook(provider.parseCheckoutWebhook(payload));
+    else await service.processWebhook(provider.parseWebhook(payload));
     return Response.json({received:true},{status:200});
   }catch(error){
     const invalid=error instanceof Error&&error.message==="INVALID_ASAAS_WEBHOOK";
