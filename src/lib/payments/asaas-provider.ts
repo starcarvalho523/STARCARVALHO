@@ -1,12 +1,12 @@
 import { timingSafeEqual } from "node:crypto";
-import type { CreateChargeInput, CreateCheckoutInput, PaymentProvider, ProviderCharge, ProviderCheckout, ProviderCheckoutWebhookEvent, ProviderPaymentState, ProviderPixQrCode, ProviderWebhookEvent } from "./payment-provider";
+import type { CreateChargeInput, CreateCheckoutInput, PaymentProvider, ProviderCharge, ProviderCheckout, ProviderCheckoutPayment, ProviderCheckoutWebhookEvent, ProviderPaymentState, ProviderPixQrCode, ProviderWebhookEvent } from "./payment-provider";
 
 type Fetcher = typeof fetch;
 type AsaasPayment = { id?:unknown; customer?:unknown; status?:unknown; billingType?:unknown; value?:unknown; externalReference?:unknown; invoiceUrl?:unknown };
 type AsaasQrCode = { payload?:unknown; encodedImage?:unknown; expirationDate?:unknown };
 type AsaasList = { data?:unknown };
 type AsaasErrorBody = { errors?:unknown };
-type AsaasCheckout = { id?:unknown; status?:unknown; link?:unknown; externalReference?:unknown; minutesToExpire?:unknown };
+type AsaasCheckout = { id?:unknown; status?:unknown; link?:unknown; externalReference?:unknown; minutesToExpire?:unknown; billingTypes?:unknown };
 
 export class AsaasPublicError extends Error {
   constructor(readonly status:number,readonly publicCode:string|null,readonly publicDescription:string|null){
@@ -63,6 +63,21 @@ export class AsaasProvider implements PaymentProvider {
     })});
     if(typeof checkout.id!=="string"||typeof checkout.status!=="string"||typeof checkout.link!=="string"||checkout.externalReference!==input.externalReference)throw new Error("INVALID_ASAAS_CHECKOUT");
     return{providerCheckoutId:checkout.id,providerStatus:checkout.status,amount:input.amount,externalReference:input.externalReference,link:checkout.link,expiresAt:new Date(Date.now()+input.expiresInMinutes*60_000).toISOString()};
+  }
+
+  async resolveCheckoutPayment(checkoutId:string,expectedExternalReference:string,expectedPaymentId:string):Promise<ProviderCheckoutPayment>{
+    const query=new URLSearchParams({checkoutSession:checkoutId,limit:"2",offset:"0"});
+    const [checkout,payments]=await Promise.all([
+      this.request<AsaasCheckout>(`/checkouts/${encodeURIComponent(checkoutId)}`),
+      this.request<AsaasList>(`/payments?${query.toString()}`)
+    ]);
+    if(checkout.id!==checkoutId||checkout.externalReference!==expectedExternalReference||typeof checkout.status!=="string")throw new Error("ASAAS_CHECKOUT_REFERENCE_MISMATCH");
+    if(!Array.isArray(checkout.billingTypes)||!checkout.billingTypes.includes("CREDIT_CARD"))throw new Error("ASAAS_CHECKOUT_METHOD_MISMATCH");
+    if(!Array.isArray(payments.data))throw new Error("INVALID_ASAAS_PAYMENT_LIST");
+    const matches=payments.data.filter((item):item is AsaasPayment=>isRecord(item)&&item.id===expectedPaymentId);
+    if(matches.length!==1||payments.data.length!==1)throw new Error(matches.length===0?"ASAAS_CHECKOUT_PAYMENT_NOT_FOUND":"ASAAS_CHECKOUT_PAYMENT_AMBIGUOUS");
+    const payment=normalizePayment(matches[0]);
+    return{providerCheckoutId:checkoutId,providerCheckoutStatus:checkout.status,providerPaymentId:payment.providerPaymentId,providerPaymentStatus:payment.providerStatus,amount:payment.amount,billingType:payment.billingType,externalReference:expectedExternalReference};
   }
 
   async getPayment(providerPaymentId:string):Promise<ProviderCharge>{
@@ -138,4 +153,5 @@ function normalizePayment(value:AsaasPayment):ProviderCharge{
 function isRecord(value:unknown):value is Record<string,unknown>{return typeof value==="object"&&value!==null&&!Array.isArray(value)}
 function stringOrNull(value:unknown){return typeof value==="string"?value:null}
 function numberOrNull(value:unknown){const number=typeof value==="number"?value:typeof value==="string"?Number(value):NaN;return Number.isFinite(number)?number:null}
+
 
