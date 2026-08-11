@@ -1,0 +1,48 @@
+-- Massa exclusivamente sintética para PostgreSQL descartável local.
+alter table auth.users disable trigger on_auth_user_created;
+insert into auth.users(id,email,aud,role) values
+('61000000-0000-0000-0000-000000000001','phase6-owner@example.invalid','authenticated','authenticated'),
+('61000000-0000-0000-0000-000000000002','phase6-manager@example.invalid','authenticated','authenticated'),
+('61000000-0000-0000-0000-000000000003','phase6-operator@example.invalid','authenticated','authenticated'),
+('61000000-0000-0000-0000-000000000004','phase6-customer@example.invalid','authenticated','authenticated'),
+('61000000-0000-0000-0000-000000000005','phase6-outsider@example.invalid','authenticated','authenticated');
+alter table auth.users enable trigger on_auth_user_created;
+insert into public.profiles(id,full_name) values
+('61000000-0000-0000-0000-000000000001','Phase Six Owner'),
+('61000000-0000-0000-0000-000000000002','Phase Six Manager'),
+('61000000-0000-0000-0000-000000000003','Phase Six Operator'),
+('61000000-0000-0000-0000-000000000005','Phase Six Outsider');
+insert into public.customer_profiles(user_id,full_name) values
+('61000000-0000-0000-0000-000000000004','Phase Six Customer'),
+('61000000-0000-0000-0000-000000000005','Phase Six Outsider');
+insert into public.parking_units(id,name,slug,capacity) values
+('62000000-0000-0000-0000-000000000001','Phase Six Unit A','phase-six-a',100),
+('62000000-0000-0000-0000-000000000002','Phase Six Unit B','phase-six-b',100);
+insert into public.user_unit_roles(user_id,unit_id,role) values
+('61000000-0000-0000-0000-000000000001','62000000-0000-0000-0000-000000000001','owner'),
+('61000000-0000-0000-0000-000000000002','62000000-0000-0000-0000-000000000001','manager'),
+('61000000-0000-0000-0000-000000000003','62000000-0000-0000-0000-000000000001','operator');
+insert into public.tariff_rules(id,unit_id,name,vehicle_type,first_hour_amount,additional_amount,additional_fraction_minutes,grace_minutes,is_active)
+values('63000000-0000-0000-0000-000000000001','62000000-0000-0000-0000-000000000001','Avulso teste','CAR',10,5,60,0,true);
+insert into public.vehicles(id,plate,normalized_plate,vehicle_type,customer_id) values
+('64000000-0000-0000-0000-000000000001','ENT1A11','ENT1A11','CAR',null),
+('64000000-0000-0000-0000-000000000002','AUT1A11','AUT1A11','CAR','61000000-0000-0000-0000-000000000004'),
+('64000000-0000-0000-0000-000000000003','PAG1A11','PAG1A11','CAR','61000000-0000-0000-0000-000000000004'),
+('64000000-0000-0000-0000-000000000004','GRA1A11','GRA1A11','CAR','61000000-0000-0000-0000-000000000004'),
+('64000000-0000-0000-0000-000000000005','SUS1A11','SUS1A11','CAR','61000000-0000-0000-0000-000000000004'),
+('64000000-0000-0000-0000-000000000006','CAN1A11','CAN1A11','CAR','61000000-0000-0000-0000-000000000004'),
+('64000000-0000-0000-0000-000000000007','NOB1A11','NOB1A11','CAR','61000000-0000-0000-0000-000000000004');
+insert into public.monthly_plans(id,unit_id,name,price,due_day_default,grace_days,max_vehicles)
+values('65000000-0000-0000-0000-000000000001','62000000-0000-0000-0000-000000000001','Plano Phase 6',100,10,5,10);
+insert into public.monthly_subscriptions(id,customer_id,unit_id,plan_name,status,plan_id,starts_on,due_day,grace_days,contracted_price) values
+('66000000-0000-0000-0000-000000000001','61000000-0000-0000-0000-000000000004','62000000-0000-0000-0000-000000000001','Plano Phase 6','ACTIVE','65000000-0000-0000-0000-000000000001','2026-08-01',10,5,100),
+('66000000-0000-0000-0000-000000000002','61000000-0000-0000-0000-000000000004','62000000-0000-0000-0000-000000000002','Plano Unit B','ACTIVE',null,null,null,null,null);
+insert into public.monthly_subscription_vehicles(id,subscription_id,vehicle_id,valid_from) values
+('67000000-0000-0000-0000-000000000001','66000000-0000-0000-0000-000000000001','64000000-0000-0000-0000-000000000002','2026-08-01'),
+('67000000-0000-0000-0000-000000000002','66000000-0000-0000-0000-000000000001','64000000-0000-0000-0000-000000000003','2026-08-01'),
+('67000000-0000-0000-0000-000000000003','66000000-0000-0000-0000-000000000001','64000000-0000-0000-0000-000000000004','2026-08-01'),
+('67000000-0000-0000-0000-000000000004','66000000-0000-0000-0000-000000000001','64000000-0000-0000-0000-000000000005','2026-08-01'),
+('67000000-0000-0000-0000-000000000005','66000000-0000-0000-0000-000000000001','64000000-0000-0000-0000-000000000006','2026-08-01'),
+('67000000-0000-0000-0000-000000000006','66000000-0000-0000-0000-000000000001','64000000-0000-0000-0000-000000000007','2026-08-01');
+insert into public.monthly_billing_periods(id,subscription_id,unit_id,reference_year,reference_month,period_start,period_end,due_date,grace_until,amount,status,paid_at) values
+('68000000-0000-0000-0000-000000000001','66000000-0000-0000-0000-000000000001','62000000-0000-0000-0000-000000000001',2026,8,'2026-08-01','2026-08-31','2026-08-10','2026-08-15',100,'PENDING',null);
