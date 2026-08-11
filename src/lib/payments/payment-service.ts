@@ -7,6 +7,7 @@ import type { PaymentProvider, ProviderCharge, ProviderCheckoutWebhookEvent, Pro
 
 type Reservation={paymentId:string;transactionId:string;state:string;amount:number;isCreator:boolean;qrCodePayload?:string|null;qrCodeImageBase64?:string|null;expiresAt?:string|null;hostedPaymentUrl?:string|null};
 type RecoveryContext={transactionId:string;state:string;externalReference:string;providerPaymentId:string|null;providerCustomerId:string|null;providerStatus:string|null;providerAmount:number|null;hostedPaymentUrl:string|null;amount:number};
+type CheckoutCandidate={transactionId:string;checkoutId:string;externalReference:string;amount:number};
 
 export class PaymentService{
   constructor(private readonly provider?:PaymentProvider,private readonly admin=createAdminClient()){}
@@ -84,8 +85,37 @@ export class PaymentService{
 
   async processWebhook(event:ProviderWebhookEvent){
     const sanitized={event:event.type,paymentId:event.paymentId,status:event.paymentStatus,value:event.amount,billingType:event.billingType,externalReference:event.externalReference};
+    if(event.billingType==="CREDIT_CARD"&&(event.type==="PAYMENT_CREATED"||event.type==="PAYMENT_CONFIRMED")){
+      return this.processCheckoutPaymentWebhook(event,sanitized);
+    }
     const{data,error}=await this.admin.rpc("process_asaas_webhook",{event_id:event.id,event_type:event.type,provider_payment_id:event.paymentId,provider_status:event.paymentStatus,reported_amount:event.amount,sanitized_payload:sanitized});
     if(error)throw new Error(error.message);return data;
+  }
+
+  private async processCheckoutPaymentWebhook(event:ProviderWebhookEvent,sanitized:Record<string,unknown>){
+    const{data,error}=await this.admin.rpc("get_credit_checkout_reconciliation_candidates",{reported_amount:event.amount});
+    if(error)throw rpcError("get_credit_checkout_reconciliation_candidates",error.message);
+    const candidates=(Array.isArray(data)?data:[]) as CheckoutCandidate[];
+    const provider=this.provider??getPaymentProvider();
+    const matches=[];
+    for(const candidate of candidates){
+      try{
+        const resolved=await provider.resolveCheckoutPayment(candidate.checkoutId,candidate.externalReference,event.paymentId);
+        if(resolved.amount===Number(candidate.amount)&&resolved.billingType==="CREDIT_CARD")matches.push({candidate,resolved});
+      }catch(cause){
+        if(cause instanceof Error&&cause.message==="ASAAS_CHECKOUT_PAYMENT_NOT_FOUND")continue;
+        logPaymentError("asaas.checkout.reconcile",cause);
+      }
+    }
+    if(matches.length!==1){
+      const{error:unknownError}=await this.admin.rpc("mark_checkout_payment_event_review",{event_id:event.id,event_type:event.type,provider_payment_id:event.paymentId,provider_status:event.paymentStatus,sanitized_payload:sanitized,reason_code:matches.length===0?"CHECKOUT_PAYMENT_UNKNOWN":"CHECKOUT_PAYMENT_AMBIGUOUS"});
+      if(unknownError)throw rpcError("mark_checkout_payment_event_review",unknownError.message);
+      return{result:matches.length===0?"unknown":"review"};
+    }
+    const match=matches[0];
+    const{data:result,error:processError}=await this.admin.rpc("process_asaas_checkout_payment_webhook",{event_id:event.id,event_type:event.type,provider_payment_id:event.paymentId,provider_checkout_id:match.resolved.providerCheckoutId,provider_status:event.paymentStatus,reported_amount:event.amount,billing_type:event.billingType,external_reference:match.resolved.externalReference,sanitized_payload:sanitized});
+    if(processError)throw rpcError("process_asaas_checkout_payment_webhook",processError.message);
+    return result;
   }
 
   async processCheckoutWebhook(event:ProviderCheckoutWebhookEvent){
@@ -135,4 +165,5 @@ function logPaymentError(stage:string,error:unknown){
   const detail=errorDetail(error);const rpc=error instanceof Error?(error as Error&{rpc?:string}).rpc:undefined;
   console.error(JSON.stringify({step:stage,errorName:error instanceof Error?error.name:"UnknownError",code:detail.code,rpc}));
 }
+
 
