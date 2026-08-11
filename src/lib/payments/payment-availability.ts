@@ -12,4 +12,4 @@ export async function getPaymentAvailability(unitId:string):Promise<PaymentCapab
 }
 
 export function canUsePayment(capabilities:PaymentCapability[],method:PaymentMethod,channel:PaymentChannel,provider:PaymentProviderName){return capabilities.some(item=>item.method===method&&item.channel===channel&&item.provider===provider&&item.enabled&&item.configured)}
-function providerConfigured(provider:PaymentProviderName,channel:PaymentChannel){if(provider==="INTERNAL")return channel==="MANUAL";if(provider==="ASAAS"&&channel==="QR")return Boolean(process.env.ASAAS_ENVIRONMENT==="sandbox"&&process.env.ASAAS_API_KEY&&process.env.ASAAS_WEBHOOK_TOKEN&&process.env.ASAAS_SANDBOX_CUSTOMER_ID);return false}
+function providerConfigured(provider:PaymentProviderName,channel:PaymentChannel){if(provider==="INTERNAL")return channel==="MANUAL";if(provider==="ASAAS"&&(channel==="QR"||channel==="HOSTED_CHECKOUT"))return Boolean(process.env.ASAAS_ENVIRONMENT==="sandbox"&&process.env.ASAAS_API_KEY&&process.env.ASAAS_WEBHOOK_TOKEN&&process.env.ASAAS_SANDBOX_CUSTOMER_ID);return false}
