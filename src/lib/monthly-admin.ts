@@ -41,5 +41,5 @@ export async function getSubscriptionOr404(id: string) {
 }
 
 export const money = (value: number | string | null) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(value ?? 0));
-export const dateBR = (value: string | null) => value ? new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC" }).format(new Date(`${value.slice(0, 10)}T12:00:00Z`)) : "â€”";
-export const monthlyStatus: Record<string, string> = { ACTIVE: "Ativa", SUSPENDED: "Suspensa", CANCELED: "Cancelada", ENDED: "Encerrada", PENDING: "Pendente", PAID: "Paga", WAIVED: "Dispensada", MANUAL_REVIEW: "RevisÃ£o manual" };
+export const dateBR = (value: string | null) => value ? new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC" }).format(new Date(`${value.slice(0, 10)}T12:00:00Z`)) : "—";
+export const monthlyStatus: Record<string, string> = { ACTIVE: "Ativa", SUSPENDED: "Suspensa", CANCELED: "Cancelada", ENDED: "Encerrada", PENDING: "Pendente", PAID: "Paga", WAIVED: "Dispensada", MANUAL_REVIEW: "Revisão manual" };
