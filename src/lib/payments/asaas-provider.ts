@@ -1,8 +1,9 @@
+
 import { timingSafeEqual } from "node:crypto";
 import type { CreateChargeInput, CreateCheckoutInput, PaymentProvider, ProviderCharge, ProviderCheckout, ProviderCheckoutPayment, ProviderCheckoutWebhookEvent, ProviderPaymentState, ProviderPixQrCode, ProviderWebhookEvent } from "./payment-provider";
 
 type Fetcher = typeof fetch;
-type AsaasPayment = { id?:unknown; customer?:unknown; status?:unknown; billingType?:unknown; value?:unknown; externalReference?:unknown; invoiceUrl?:unknown };
+type AsaasPayment = { id?:unknown; customer?:unknown; status?:unknown; billingType?:unknown; value?:unknown; externalReference?:unknown; invoiceUrl?:unknown; checkoutSession?:unknown };
 type AsaasQrCode = { payload?:unknown; encodedImage?:unknown; expirationDate?:unknown };
 type AsaasList = { data?:unknown };
 type AsaasErrorBody = { errors?:unknown };
@@ -65,19 +66,20 @@ export class AsaasProvider implements PaymentProvider {
     return{providerCheckoutId:checkout.id,providerStatus:checkout.status,amount:input.amount,externalReference:input.externalReference,link:checkout.link,expiresAt:new Date(Date.now()+input.expiresInMinutes*60_000).toISOString()};
   }
 
-  async resolveCheckoutPayment(checkoutId:string,expectedExternalReference:string,expectedPaymentId:string):Promise<ProviderCheckoutPayment>{
+  async resolveCheckoutPayment(checkoutId:string,expectedExternalReference:string,expectedPaymentId:string,expectedAmount:number):Promise<ProviderCheckoutPayment>{
     const query=new URLSearchParams({checkoutSession:checkoutId,limit:"2",offset:"0"});
-    const [checkout,payments]=await Promise.all([
-      this.request<AsaasCheckout>(`/checkouts/${encodeURIComponent(checkoutId)}`),
-      this.request<AsaasList>(`/payments?${query.toString()}`)
-    ]);
-    if(checkout.id!==checkoutId||checkout.externalReference!==expectedExternalReference||typeof checkout.status!=="string")throw new Error("ASAAS_CHECKOUT_REFERENCE_MISMATCH");
-    if(!Array.isArray(checkout.billingTypes)||!checkout.billingTypes.includes("CREDIT_CARD"))throw new Error("ASAAS_CHECKOUT_METHOD_MISMATCH");
+    const payments=await this.request<AsaasList>(`/payments?${query.toString()}`);
     if(!Array.isArray(payments.data))throw new Error("INVALID_ASAAS_PAYMENT_LIST");
-    const matches=payments.data.filter((item):item is AsaasPayment=>isRecord(item)&&item.id===expectedPaymentId);
-    if(matches.length!==1||payments.data.length!==1)throw new Error(matches.length===0?"ASAAS_CHECKOUT_PAYMENT_NOT_FOUND":"ASAAS_CHECKOUT_PAYMENT_AMBIGUOUS");
-    const payment=normalizePayment(matches[0]);
-    return{providerCheckoutId:checkoutId,providerCheckoutStatus:checkout.status,providerPaymentId:payment.providerPaymentId,providerPaymentStatus:payment.providerStatus,amount:payment.amount,billingType:payment.billingType,externalReference:expectedExternalReference};
+    if(payments.data.length===0)throw new Error("ASAAS_CHECKOUT_PAYMENT_NOT_FOUND");
+    if(payments.data.length!==1)throw new Error("ASAAS_CHECKOUT_PAYMENT_AMBIGUOUS");
+    const raw=payments.data[0];
+    if(!isRecord(raw))throw new Error("INVALID_ASAAS_PAYMENT");
+    const payment=normalizePayment(raw);
+    if(payment.providerPaymentId!==expectedPaymentId)throw new Error("ASAAS_CHECKOUT_PAYMENT_ID_MISMATCH");
+    if(payment.billingType!=="CREDIT_CARD")throw new Error("ASAAS_CHECKOUT_PAYMENT_METHOD_MISMATCH");
+    if(Number(payment.amount)!==Number(expectedAmount))throw new Error("ASAAS_CHECKOUT_PAYMENT_AMOUNT_MISMATCH");
+    if(raw.checkoutSession!==undefined&&raw.checkoutSession!==null&&raw.checkoutSession!==checkoutId)throw new Error("ASAAS_CHECKOUT_SESSION_MISMATCH");
+    return{providerCheckoutId:checkoutId,providerCheckoutStatus:"RESOLVED_BY_PAYMENT_LIST",providerPaymentId:payment.providerPaymentId,providerPaymentStatus:payment.providerStatus,amount:payment.amount,billingType:payment.billingType,externalReference:expectedExternalReference};
   }
 
   async getPayment(providerPaymentId:string):Promise<ProviderCharge>{
@@ -153,5 +155,3 @@ function normalizePayment(value:AsaasPayment):ProviderCharge{
 function isRecord(value:unknown):value is Record<string,unknown>{return typeof value==="object"&&value!==null&&!Array.isArray(value)}
 function stringOrNull(value:unknown){return typeof value==="string"?value:null}
 function numberOrNull(value:unknown){const number=typeof value==="number"?value:typeof value==="string"?Number(value):NaN;return Number.isFinite(number)?number:null}
-
-
