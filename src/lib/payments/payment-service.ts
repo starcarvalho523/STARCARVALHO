@@ -108,24 +108,27 @@ export class PaymentService{
   }
 
   private async processCheckoutPaymentWebhook(event:ProviderWebhookEvent,sanitized:Record<string,unknown>){
-    const{data,error}=await this.admin.rpc("get_credit_checkout_reconciliation_candidates",{reported_amount:event.amount});
+    const{data,error}=await this.admin.rpc("get_credit_checkout_reconciliation_candidates",{reported_amount:null});
     if(error)throw rpcError("get_credit_checkout_reconciliation_candidates",error.message);
     const candidates=(Array.isArray(data)?data:[]) as CheckoutCandidate[];
     const provider=this.provider??getPaymentProvider();
     const matches=[];
+    let requiresReview=false;
     for(const candidate of candidates){
       try{
-        const resolved=await provider.resolveCheckoutPayment(candidate.checkoutId,candidate.externalReference,event.paymentId);
+        const resolved=await provider.resolveCheckoutPayment(candidate.checkoutId,candidate.externalReference,event.paymentId,Number(candidate.amount));
         if(resolved.amount===Number(candidate.amount)&&resolved.billingType==="CREDIT_CARD")matches.push({candidate,resolved});
       }catch(cause){
         if(cause instanceof Error&&cause.message==="ASAAS_CHECKOUT_PAYMENT_NOT_FOUND")continue;
+        if(cause instanceof Error&&/^ASAAS_CHECKOUT_(PAYMENT_AMBIGUOUS|PAYMENT_ID_MISMATCH|PAYMENT_METHOD_MISMATCH|PAYMENT_AMOUNT_MISMATCH|SESSION_MISMATCH)$/.test(cause.message))requiresReview=true;
         logPaymentError("asaas.checkout.reconcile",cause);
       }
     }
     if(matches.length!==1){
-      const{error:unknownError}=await this.admin.rpc("mark_checkout_payment_event_review",{event_id:event.id,event_type:event.type,provider_payment_id:event.paymentId,provider_status:event.paymentStatus,sanitized_payload:sanitized,reason_code:matches.length===0?"CHECKOUT_PAYMENT_UNKNOWN":"CHECKOUT_PAYMENT_AMBIGUOUS"});
+      const review=requiresReview||matches.length>1;
+      const{error:unknownError}=await this.admin.rpc("mark_checkout_payment_event_review",{event_id:event.id,event_type:event.type,provider_payment_id:event.paymentId,provider_status:event.paymentStatus,sanitized_payload:sanitized,reason_code:review?"CHECKOUT_PAYMENT_AMBIGUOUS":"CHECKOUT_PAYMENT_UNKNOWN"});
       if(unknownError)throw rpcError("mark_checkout_payment_event_review",unknownError.message);
-      return{result:matches.length===0?"unknown":"review"};
+      return{result:review?"review":"unknown"};
     }
     const match=matches[0];
     const{data:result,error:processError}=await this.admin.rpc("process_asaas_checkout_payment_webhook",{event_id:event.id,event_type:event.type,provider_payment_id:event.paymentId,provider_checkout_id:match.resolved.providerCheckoutId,provider_status:event.paymentStatus,reported_amount:event.amount,billing_type:event.billingType,external_reference:match.resolved.externalReference,sanitized_payload:sanitized});
