@@ -38,6 +38,16 @@ export type ProviderCheckout = {
   expiresAt: string;
 };
 
+export type ProviderCheckoutPayment = {
+  providerCheckoutId: string;
+  providerCheckoutStatus: string;
+  providerPaymentId: string;
+  providerPaymentStatus: string;
+  amount: number;
+  billingType: string | null;
+  externalReference: string;
+};
+
 export type ProviderPixQrCode = Pick<ProviderCharge, "qrCodePayload" | "qrCodeImageBase64" | "expiresAt">;
 
 export type ProviderWebhookEvent = {
@@ -67,6 +77,7 @@ export interface PaymentProvider {
   findPaymentByExternalReference(externalReference: string): Promise<ProviderCharge | null>;
   createCreditCardPayment(input: CreateChargeInput): Promise<ProviderCharge>;
   createCreditCardCheckout(input: CreateCheckoutInput): Promise<ProviderCheckout>;
+  resolveCheckoutPayment(checkoutId:string,expectedExternalReference:string,expectedPaymentId:string):Promise<ProviderCheckoutPayment>;
   getPayment(providerPaymentId: string): Promise<ProviderCharge>;
   cancelPayment(providerPaymentId: string): Promise<void>;
   getHostedPaymentUrl(payment: ProviderCharge): string | null;
@@ -74,5 +85,6 @@ export interface PaymentProvider {
   parseWebhook(payload: unknown): ProviderWebhookEvent;
   parseCheckoutWebhook(payload: unknown): ProviderCheckoutWebhookEvent;
 }
+
 
 
