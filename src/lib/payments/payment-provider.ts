@@ -1,4 +1,3 @@
-
 export type ProviderPaymentState = "PENDING" | "PAID" | "EXPIRED" | "CANCELLED" | "REVIEW";
 
 export type CreateChargeInput = {
@@ -86,3 +85,22 @@ export interface PaymentProvider {
   parseWebhook(payload: unknown): ProviderWebhookEvent;
   parseCheckoutWebhook(payload: unknown): ProviderCheckoutWebhookEvent;
 }
+
+export type PointTerminalSnapshot = {
+  enabled: boolean;
+  status: "NOT_CONFIGURED" | "AWAITING_TERMINAL" | "READY" | "DISABLED" | "ERROR";
+  operatingMode: "STANDALONE" | "PDV" | null;
+};
+
+export interface PointPaymentProvider {
+  readonly name: "MERCADO_PAGO";
+  readonly capabilities: ReadonlyArray<{ method: "DEBIT_CARD" | "CREDIT_CARD"; channel: "POINT" }>;
+  evaluateReadiness(terminals: readonly PointTerminalSnapshot[], integrationEnabled: boolean): {
+    terminalReady: boolean;
+    operational: boolean;
+    reason: "READY" | "INTEGRATION_DISABLED" | "AWAITING_TERMINAL";
+  };
+}
+
+
+
