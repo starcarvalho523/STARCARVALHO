@@ -1,5 +1,6 @@
 import "server-only";
 import { AsaasProvider } from "./asaas-provider";
+import { MercadoPagoPointProvider } from "./mercado-pago-point-provider";
 
 export function getPaymentProvider(){
   const environment=process.env.ASAAS_ENVIRONMENT;
@@ -8,4 +9,7 @@ export function getPaymentProvider(){
 }
 
 export function isAsaasSandboxConfigured(){return process.env.ASAAS_ENVIRONMENT==="sandbox"&&Boolean(process.env.ASAAS_API_KEY)&&Boolean(process.env.ASAAS_BASE_URL)}
+
+export function getMercadoPagoPointProvider(){return new MercadoPagoPointProvider()}
+
 
