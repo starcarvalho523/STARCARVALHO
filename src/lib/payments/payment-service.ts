@@ -4,18 +4,23 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { AsaasPublicError } from "./asaas-provider";
 import { getPaymentProvider } from "./provider-factory";
+import { checkoutResolutionDisposition, selectCheckoutCandidates, type CheckoutCandidate } from "./checkout-webhook-reconciliation";
 import type { PaymentProvider, ProviderCharge, ProviderCheckoutWebhookEvent, ProviderWebhookEvent } from "./payment-provider";
+import type { PaymentSubject } from "./payment-model";
 
 type Reservation={paymentId:string;transactionId:string;state:string;amount:number;isCreator:boolean;qrCodePayload?:string|null;qrCodeImageBase64?:string|null;expiresAt?:string|null;hostedPaymentUrl?:string|null};
 type RecoveryContext={transactionId:string;state:string;externalReference:string;providerPaymentId:string|null;providerCustomerId:string|null;providerStatus:string|null;providerAmount:number|null;hostedPaymentUrl:string|null;amount:number};
-type CheckoutCandidate={transactionId:string;checkoutId:string;externalReference:string;amount:number};
 type StoredCheckoutEvent={id:string;type:string;paymentId:string;paymentStatus:string;amount:number;billingType:string;externalReference:string|null};
 
 export class PaymentService{
   constructor(private readonly provider?:PaymentProvider,private readonly admin=createAdminClient()){}
 
-  async createPix(sessionId:string,userClient:SupabaseClient){
-    const{data,error}=await userClient.rpc("reserve_pix_payment",{session_id:sessionId,request_key:crypto.randomUUID()});
+  async createPix(sessionId:string,userClient:SupabaseClient){return this.createPixFor({type:"PARKING_SESSION",id:sessionId},userClient)}
+  async createMonthlyPix(billingPeriodId:string,userClient:SupabaseClient){return this.createPixFor({type:"MONTHLY_BILLING_PERIOD",id:billingPeriodId},userClient)}
+  private async createPixFor(subject:PaymentSubject,userClient:SupabaseClient){
+    const rpc=subject.type==="PARKING_SESSION"?"reserve_pix_payment":"reserve_monthly_pix_payment";
+    const args=subject.type==="PARKING_SESSION"?{session_id:subject.id,request_key:crypto.randomUUID()}:{billing_period_id:subject.id,request_key:crypto.randomUUID()};
+    const{data,error}=await userClient.rpc(rpc,args);
     if(error)throw new Error(error.message);
     const reservation=data as Reservation;
     if(!reservation.isCreator)return publicPayment(reservation);
@@ -48,7 +53,7 @@ export class PaymentService{
           throw error;
         }
         try{
-          charge=await provider.createPixPayment({customerId:requiredCustomerId(),amount:Number(context.amount),dueDate:sandboxDueDate(),description:"Estadia Star Carvalhos",externalReference:context.externalReference});
+          charge=await provider.createPixPayment({customerId:requiredCustomerId(),amount:Number(context.amount),dueDate:sandboxDueDate(),description:subject.type==="PARKING_SESSION"?"Estadia Star Carvalhos":"Mensalidade Star Carvalhos",externalReference:context.externalReference});
         }catch(error){
           await this.markReconciliationPending(context.transactionId,error);
           logPaymentError("asaas.create",error);
@@ -71,19 +76,25 @@ export class PaymentService{
   }
 
   async getPix(sessionId:string,userClient:SupabaseClient){const{data,error}=await userClient.rpc("get_provider_payment",{session_id:sessionId});if(error)throw new Error(error.message);return data?publicPayment(data as Reservation):null}
+  async getMonthlyPix(billingPeriodId:string,userClient:SupabaseClient){const{data,error}=await userClient.rpc("get_monthly_provider_payment",{billing_period_id:billingPeriodId,payment_method:"PIX"});if(error)throw new Error(error.message);return data?publicPayment(data as Reservation):null}
 
-  async createCreditCheckout(sessionId:string,userClient:SupabaseClient,origin:string){
-    const{data,error}=await userClient.rpc("reserve_credit_checkout",{session_id:sessionId,request_key:crypto.randomUUID()});if(error)throw new Error(error.message);
+  async createCreditCheckout(sessionId:string,userClient:SupabaseClient,origin:string){return this.createCreditCheckoutFor({type:"PARKING_SESSION",id:sessionId},userClient,origin)}
+  async createMonthlyCreditCheckout(billingPeriodId:string,userClient:SupabaseClient,origin:string){return this.createCreditCheckoutFor({type:"MONTHLY_BILLING_PERIOD",id:billingPeriodId},userClient,origin)}
+  private async createCreditCheckoutFor(subject:PaymentSubject,userClient:SupabaseClient,origin:string){
+    const rpc=subject.type==="PARKING_SESSION"?"reserve_credit_checkout":"reserve_monthly_credit_checkout";
+    const args=subject.type==="PARKING_SESSION"?{session_id:subject.id,request_key:crypto.randomUUID()}:{billing_period_id:subject.id,request_key:crypto.randomUUID()};
+    const{data,error}=await userClient.rpc(rpc,args);if(error)throw new Error(error.message);
     const reservation=data as Reservation;if(!reservation.isCreator)return publicCheckout(reservation);
     const context=await this.recoveryContext(reservation.transactionId);const provider=this.provider??getPaymentProvider();
     try{
-      const checkout=await provider.createCreditCardCheckout({amount:Number(context.amount),description:"Pagamento de estadia",externalReference:context.externalReference,expiresInMinutes:45,callback:{successUrl:`${origin}/pagamento/retorno?status=success`,cancelUrl:`${origin}/pagamento/retorno?status=cancel`,expiredUrl:`${origin}/pagamento/retorno?status=expired`}});
+      const checkout=await provider.createCreditCardCheckout({amount:Number(context.amount),description:subject.type==="PARKING_SESSION"?"Pagamento de estadia":"Pagamento de mensalidade",externalReference:context.externalReference,expiresInMinutes:45,callback:{successUrl:`${origin}/pagamento/retorno?status=success`,cancelUrl:`${origin}/pagamento/retorno?status=cancel`,expiredUrl:`${origin}/pagamento/retorno?status=expired`}});
       const{error:saveError}=await this.admin.rpc("mark_credit_checkout_created",{transaction_id:context.transactionId,checkout_id:checkout.providerCheckoutId,checkout_status:checkout.providerStatus,checkout_link:checkout.link,external_reference:checkout.externalReference,checkout_amount:checkout.amount,expires_at:checkout.expiresAt});if(saveError)throw rpcError("mark_credit_checkout_created",saveError.message);
       return publicCheckout({...reservation,state:"PENDING",hostedPaymentUrl:checkout.link,expiresAt:checkout.expiresAt});
     }catch(cause){logPaymentError("asaas.checkout.create",cause);throw cause}
   }
 
   async getCreditCheckout(sessionId:string,userClient:SupabaseClient){const{data,error}=await userClient.rpc("get_credit_checkout",{session_id:sessionId});if(error)throw new Error(error.message);return data?publicCheckout(data as Reservation):null}
+  async getMonthlyCreditCheckout(billingPeriodId:string,userClient:SupabaseClient){const{data,error}=await userClient.rpc("get_monthly_provider_payment",{billing_period_id:billingPeriodId,payment_method:"CREDIT_CARD"});if(error)throw new Error(error.message);return data?publicCheckout(data as Reservation):null}
 
   async reprocessStoredCheckoutEvents(sessionId:string,eventIds:string[],userClient:SupabaseClient){
     await this.getCreditCheckout(sessionId,userClient);
@@ -92,7 +103,7 @@ export class PaymentService{
     const events=(Array.isArray(data)?data:[]) as StoredCheckoutEvent[];
     const results=[];
     for(const event of events){
-      const result=await this.processWebhook({id:event.id,type:event.type,paymentId:event.paymentId,paymentStatus:event.paymentStatus,amount:Number(event.amount),billingType:event.billingType,externalReference:event.externalReference});
+      const result=await this.processWebhook({id:event.id,type:event.type,paymentId:event.paymentId,paymentStatus:event.paymentStatus,amount:Number(event.amount),billingType:event.billingType,externalReference:event.externalReference,checkoutId:null});
       results.push({type:event.type,result});
     }
     return results;
@@ -108,9 +119,14 @@ export class PaymentService{
   }
 
   private async processCheckoutPaymentWebhook(event:ProviderWebhookEvent,sanitized:Record<string,unknown>){
-    const{data,error}=await this.admin.rpc("get_credit_checkout_reconciliation_candidates",{reported_amount:null});
+    if(event.amount===null){
+      const{error:reviewError}=await this.admin.rpc("mark_checkout_payment_event_review",{event_id:event.id,event_type:event.type,provider_payment_id:event.paymentId,provider_status:event.paymentStatus,sanitized_payload:sanitized,reason_code:"CHECKOUT_PAYMENT_INVALID_AMOUNT"});
+      if(reviewError)throw rpcError("mark_checkout_payment_event_review",reviewError.message);
+      return{result:"review"};
+    }
+    const{data,error}=await this.admin.rpc("get_credit_checkout_reconciliation_candidates",{reported_amount:event.amount});
     if(error)throw rpcError("get_credit_checkout_reconciliation_candidates",error.message);
-    const candidates=(Array.isArray(data)?data:[]) as CheckoutCandidate[];
+    const candidates=selectCheckoutCandidates((Array.isArray(data)?data:[]) as CheckoutCandidate[],event.amount,event.checkoutId);
     const provider=this.provider??getPaymentProvider();
     const matches=[];
     let requiresReview=false;
@@ -119,8 +135,9 @@ export class PaymentService{
         const resolved=await provider.resolveCheckoutPayment(candidate.checkoutId,candidate.externalReference,event.paymentId,Number(candidate.amount));
         if(resolved.amount===Number(candidate.amount)&&resolved.billingType==="CREDIT_CARD")matches.push({candidate,resolved});
       }catch(cause){
-        if(cause instanceof Error&&cause.message==="ASAAS_CHECKOUT_PAYMENT_NOT_FOUND")continue;
-        if(cause instanceof Error&&/^ASAAS_CHECKOUT_(PAYMENT_AMBIGUOUS|PAYMENT_ID_MISMATCH|PAYMENT_METHOD_MISMATCH|PAYMENT_AMOUNT_MISMATCH|SESSION_MISMATCH)$/.test(cause.message))requiresReview=true;
+        const disposition=checkoutResolutionDisposition(cause);
+        if(disposition==="NO_MATCH")continue;
+        if(disposition==="REVIEW")requiresReview=true;
         logPaymentError("asaas.checkout.reconcile",cause);
       }
     }

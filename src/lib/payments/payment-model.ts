@@ -3,6 +3,9 @@ export type PaymentChannel = "MANUAL" | "QR" | "HOSTED_CHECKOUT" | "POINT" | "TA
 export type PaymentProviderName = "INTERNAL" | "ASAAS" | "MERCADO_PAGO";
 export type OperationalPaymentStatus = "PENDING" | "APPROVED" | "FAILED" | "CANCELLED" | "REFUNDED";
 export type SettlementStatus = "PENDING" | "SETTLED" | "FAILED" | "CANCELLED" | "REFUNDED" | "UNKNOWN";
+export type PaymentSubject =
+  | { type: "PARKING_SESSION"; id: string }
+  | { type: "MONTHLY_BILLING_PERIOD"; id: string };
 
 export type PaymentCapability = {
   method: PaymentMethod;
