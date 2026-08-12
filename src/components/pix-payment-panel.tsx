@@ -21,7 +21,7 @@ const errorMessages: Record<string, string> = {
   PAYMENT_REQUEST_FAILED: "Não foi possível solicitar a cobrança PIX. Tente novamente.",
 };
 
-export function PixPaymentPanel({ sessionId }: { sessionId: string }) {
+export function PixPaymentPanel({ sessionId, billingPeriodId }: { sessionId?: string; billingPeriodId?: string }) {
   const router = useRouter();
   const [charge, setCharge] = useState<PixCharge | null>(null);
   const [loading, setLoading] = useState(false);
@@ -47,10 +47,11 @@ export function PixPaymentPanel({ sessionId }: { sessionId: string }) {
     setLoading(true);
     setError(null);
     try {
-      await readResponse(await fetch("/api/payments/pix", {
+      const monthly=Boolean(billingPeriodId);
+      await readResponse(await fetch(monthly?"/api/payments/monthly/pix":"/api/payments/pix", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ sessionId }),
+        body: JSON.stringify(monthly?{billingPeriodId}:{sessionId}),
       }));
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : errorMessages.PAYMENT_REQUEST_FAILED);
@@ -62,13 +63,14 @@ export function PixPaymentPanel({ sessionId }: { sessionId: string }) {
   const refreshCharge = useCallback(async (silent = false) => {
     if (!silent) setRefreshing(true);
     try {
-      await readResponse(await fetch(`/api/payments/pix?sessionId=${encodeURIComponent(sessionId)}`, { cache: "no-store" }));
+      const endpoint=billingPeriodId?`/api/payments/monthly/pix?billingPeriodId=${encodeURIComponent(billingPeriodId)}`:`/api/payments/pix?sessionId=${encodeURIComponent(sessionId??"")}`;
+      await readResponse(await fetch(endpoint, { cache: "no-store" }));
     } catch (cause) {
       if (!silent) setError(cause instanceof Error ? cause.message : errorMessages.PAYMENT_REQUEST_FAILED);
     } finally {
       if (!silent) setRefreshing(false);
     }
-  }, [readResponse, sessionId]);
+  }, [billingPeriodId,readResponse, sessionId]);
 
   useEffect(() => {
     if (charge?.state !== "CREATING" && charge?.state !== "PENDING") return;
@@ -118,8 +120,8 @@ export function PixPaymentPanel({ sessionId }: { sessionId: string }) {
       </div>
       <div className="min-w-0 space-y-3">
         <div>
-          <label htmlFor={`pix-code-${sessionId}`} className="text-xs font-semibold text-slate-600">Código PIX Copia e Cola</label>
-          <textarea id={`pix-code-${sessionId}`} readOnly value={charge.qrCodePayload ?? ""} rows={5} className="mt-1 w-full resize-none rounded-xl border bg-white p-3 text-xs outline-none" />
+          <label htmlFor={`pix-code-${sessionId??billingPeriodId}`} className="text-xs font-semibold text-slate-600">Código PIX Copia e Cola</label>
+          <textarea id={`pix-code-${sessionId??billingPeriodId}`} readOnly value={charge.qrCodePayload ?? ""} rows={5} className="mt-1 w-full resize-none rounded-xl border bg-white p-3 text-xs outline-none" />
         </div>
         <button type="button" onClick={copyPayload} disabled={!charge.qrCodePayload} className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 text-sm font-bold text-white disabled:opacity-50">
           {copied ? <Check className="size-4" /> : <Copy className="size-4" />}{copied ? "Código copiado" : "Copiar código PIX"}
