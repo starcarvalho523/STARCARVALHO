@@ -58,6 +58,8 @@ export type ProviderWebhookEvent = {
   amount: number | null;
   externalReference: string | null;
   billingType: string | null;
+  /** Server-side correlation data supplied by Asaas for Checkout charges. */
+  checkoutId: string | null;
 };
 
 export type ProviderCheckoutWebhookEvent = {

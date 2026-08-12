@@ -99,7 +99,7 @@ export class AsaasProvider implements PaymentProvider {
   parseWebhook(payload:unknown):ProviderWebhookEvent{
     if(!isRecord(payload)||typeof payload.id!=="string"||typeof payload.event!=="string"||!isRecord(payload.payment)||typeof payload.payment.id!=="string") throw new Error("INVALID_ASAAS_WEBHOOK");
     const id=payload.id;const type=payload.event;const payment=payload.payment;const paymentId=payment.id as string;
-    return{id,type,paymentId,paymentStatus:typeof payment.status==="string"?payment.status:"UNKNOWN",amount:numberOrNull(payment.value),externalReference:stringOrNull(payment.externalReference),billingType:stringOrNull(payment.billingType)};
+    return{id,type,paymentId,paymentStatus:typeof payment.status==="string"?payment.status:"UNKNOWN",amount:numberOrNull(payment.value),externalReference:stringOrNull(payment.externalReference),billingType:stringOrNull(payment.billingType),checkoutId:stringOrNull(payment.checkoutSession)};
   }
 
   parseCheckoutWebhook(payload:unknown):ProviderCheckoutWebhookEvent{

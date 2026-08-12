@@ -24,3 +24,9 @@ test("monthly settlement does not create a parking session",()=>{
  assert.match(monthlyInsert,/null/);
  assert.doesNotMatch(migration,/insert into public\.parking_sessions/);
 });
+test("checkout PAYMENT_CREATED only links while PAYMENT_CONFIRMED settles once",()=>{
+ const checkoutWebhook=migration.match(/create or replace function private\.process_asaas_checkout_payment_webhook\([\s\S]*?return 'PROCESSED';\nend \$\$;/)?.[0]??"";
+ assert.match(checkoutWebhook,/if target_event_type='PAYMENT_CONFIRMED' then[\s\S]*?mark_payment_subject_paid\(p\.id,false\)/);
+ assert.doesNotMatch(checkoutWebhook,/if target_event_type='PAYMENT_CREATED' then[\s\S]*?mark_payment_subject_paid/);
+ assert.match(checkoutWebhook,/if event_state='PROCESSED' then return 'DUPLICATE'; end if/);
+});
