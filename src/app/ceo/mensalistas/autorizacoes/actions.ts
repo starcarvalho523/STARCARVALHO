@@ -1,4 +1,0 @@
-"use server";
-import{revalidatePath}from"next/cache";import{redirect}from"next/navigation";
-import{requireMonthlyUnit}from"@/lib/monthly-admin";import{createClient}from"@/lib/supabase/server";
-export async function decideMonthlyEntryAuthorization(form:FormData){const path="/ceo/mensalistas/autorizacoes";const unitId=String(form.get("unitId")??"");await requireMonthlyUnit(unitId,true);const supabase=await createClient();const{error}=await supabase.rpc("decide_monthly_entry_authorization",{authorization_id:String(form.get("authorizationId")??""),approve:String(form.get("decision"))==="APPROVE",reason_text:String(form.get("reason")??"").trim()});if(error)redirect(`${path}?erro=${encodeURIComponent("Não foi possível concluir a decisão com segurança.")}`);revalidatePath(path);redirect(`${path}?sucesso=Solicitação atualizada`);}

@@ -4,7 +4,7 @@ import { requireArea } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 
 export type CustomerPayment = { id:string; amount:number; method:string; status:string; paid_at:string|null; created_at:string };
-export type CustomerSession = { id:string; vehicle_id:string; plate_snapshot:string; vehicle_type:string; status:string; payment_status:string; entry_mode:string; financial_obligation:string; entered_at:string; exited_at:string|null; final_amount:number|null; calculated_amount:number|null; tariff_snapshot:Record<string,unknown>; parking_units:{name:string;timezone:string}|null; payments:CustomerPayment[] };
+export type CustomerSession = { id:string; vehicle_id:string; plate_snapshot:string; vehicle_type:string; status:string; payment_status:string; entered_at:string; exited_at:string|null; final_amount:number|null; calculated_amount:number|null; tariff_snapshot:Record<string,unknown>; parking_units:{name:string;timezone:string}|null; payments:CustomerPayment[] };
 export type CustomerVehicle = { id:string; plate:string; vehicle_type:string; created_at:string };
 export type CustomerCharge = { entered_at:string; reference_time:string; duration_minutes:number; tariff_name:string; total:number };
 
@@ -20,7 +20,7 @@ export const getCustomerData = cache(async () => {
   let sessions: CustomerSession[] = [];
   if (vehicleIds.length) {
     const since = new Date(); since.setFullYear(since.getFullYear() - 1);
-    const { data, error } = await supabase.from("parking_sessions").select("id,vehicle_id,plate_snapshot,vehicle_type,status,payment_status,entry_mode,financial_obligation,entered_at,exited_at,final_amount,calculated_amount,tariff_snapshot,parking_units(name,timezone),payments(id,amount,method,status,paid_at,created_at)").in("vehicle_id", vehicleIds).gte("entered_at", since.toISOString()).order("entered_at", { ascending:false }).limit(250);
+    const { data, error } = await supabase.from("parking_sessions").select("id,vehicle_id,plate_snapshot,vehicle_type,status,payment_status,entered_at,exited_at,final_amount,calculated_amount,tariff_snapshot,parking_units(name,timezone),payments(id,amount,method,status,paid_at,created_at)").in("vehicle_id", vehicleIds).gte("entered_at", since.toISOString()).order("entered_at", { ascending:false }).limit(250);
     if (error) throw new Error("CUSTOMER_SESSIONS_UNAVAILABLE");
     sessions = (data ?? []) as unknown as CustomerSession[];
   }
