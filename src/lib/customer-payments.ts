@@ -26,6 +26,7 @@ export type CustomerMonthlyPayment = {
   period: {
     reference_year: number;
     reference_month: number;
+    parking_units: { name: string; timezone: string } | null;
     monthly_subscriptions: {
       plan_name: string;
       parking_units: { name: string; timezone: string } | null;
