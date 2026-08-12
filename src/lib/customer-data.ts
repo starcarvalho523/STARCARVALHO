@@ -7,7 +7,7 @@ export type CustomerPayment = { id:string; amount:number; method:string; status:
 export type CustomerSession = { id:string; vehicle_id:string; plate_snapshot:string; vehicle_type:string; status:string; payment_status:string; entry_mode:string; financial_obligation:string; entered_at:string; exited_at:string|null; final_amount:number|null; calculated_amount:number|null; tariff_snapshot:Record<string,unknown>; parking_units:{name:string;timezone:string}|null; payments:CustomerPayment[] };
 export type CustomerVehicle = { id:string; plate:string; vehicle_type:string; created_at:string };
 export type CustomerCharge = { entered_at:string; reference_time:string; duration_minutes:number; tariff_name:string; total:number };
-export type CustomerMonthlyPeriod={id:string;reference_year:number;reference_month:number;due_date:string;amount:number;status:string;monthly_subscriptions:{plan_name:string;unit_id:string;parking_units:{name:string;timezone:string}|null}|null;payments:CustomerPayment[]};
+export type CustomerMonthlyPeriod={id:string;reference_year:number;reference_month:number;due_date:string;amount:number;status:string;parking_units:{name:string;timezone:string}|null;monthly_subscriptions:{plan_name:string;unit_id:string;parking_units:{name:string;timezone:string}|null}|null;payments:CustomerPayment[]};
 
 export const getCustomerData = cache(async () => {
   const access = await requireArea("cliente");
@@ -31,7 +31,7 @@ export const getCustomerData = cache(async () => {
     const { data, error } = await supabase.rpc("customer_parking_charge", { session_id:active.id }).maybeSingle();
     if (!error && data) activeCharge = data as CustomerCharge;
   }
-  const{data:monthlyRows,error:monthlyError}=await supabase.from("monthly_billing_periods").select("id,reference_year,reference_month,due_date,amount,status,monthly_subscriptions!inner(plan_name,unit_id,parking_units(name,timezone)),payments(id,amount,method,status,provider,paid_at,created_at)").order("reference_year",{ascending:false}).order("reference_month",{ascending:false}).limit(24);
+  const{data:monthlyRows,error:monthlyError}=await supabase.from("monthly_billing_periods").select("id,reference_year,reference_month,due_date,amount,status,parking_units(name,timezone),monthly_subscriptions!inner(plan_name,unit_id,parking_units(name,timezone)),payments(id,amount,method,status,provider,paid_at,created_at)").order("reference_year",{ascending:false}).order("reference_month",{ascending:false}).limit(24);
   if(monthlyError)throw new Error("CUSTOMER_MONTHLY_PERIODS_UNAVAILABLE");
   const monthlyPeriods=(monthlyRows??[]) as unknown as CustomerMonthlyPeriod[];
   return { access, profile, vehicles, sessions, active, activeCharge, monthlyPeriods, email:access.user.email ?? "" };
