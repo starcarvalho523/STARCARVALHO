@@ -1,0 +1,2 @@
+create index if not exists monthly_billing_generation_runs_created_by_idx
+on public.monthly_billing_generation_runs(created_by);
