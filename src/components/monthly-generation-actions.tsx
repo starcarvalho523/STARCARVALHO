@@ -51,7 +51,7 @@ export function MonthlyGenerationActions({ unitId }: { unitId: string }) {
           {busy === "run" ? "Executando..." : "Gerar agora"}
         </button>
       </div>
-      {result ? <p className="mt-3 text-sm">Processadas: {result.processed} · Criadas: {result.created} · Existentes: {result.existing} · Ignoradas: {result.skipped} · Erros: {result.failed} · Valor previsto: {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(result.contractedAmount)}</p> : null}
+      {result ? <p className="mt-3 text-sm">Processadas: {result.processed} · Criadas: {result.created} · Existentes: {result.existing} · Ignoradas: {result.skipped} · Erros: {result.failed} · Valor contratado previsto: {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(result.contractedAmount)}</p> : null}
       {error ? <p className="mt-3 text-sm text-red-600">{error}</p> : null}
     </section>
   );
