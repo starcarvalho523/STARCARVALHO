@@ -12,7 +12,9 @@
     "test:monthly": "node --experimental-strip-types --experimental-transform-types --test --experimental-test-isolation=none src/lib/monthly-domain.test.ts",
     "test:monthly-coverage": "node --experimental-strip-types --experimental-transform-types --test --experimental-test-isolation=none src/lib/operator-monthly-coverage.test.ts",
     "test:monthly-billing": "node --experimental-strip-types --experimental-transform-types --test --experimental-test-isolation=none src/lib/payments/monthly-billing-payments.test.ts",
-    "test:customer-payments": "node --experimental-strip-types --experimental-transform-types --test --experimental-test-isolation=none src/lib/customer-payments.test.ts"
+    "test:customer-payments": "node --experimental-strip-types --experimental-transform-types --test --experimental-test-isolation=none src/lib/customer-payments.test.ts",
+    "test:monthly-automation": "node --experimental-strip-types --experimental-transform-types --test --experimental-test-isolation=none src/lib/monthly-automation.test.ts",
+    "test:financial-environment": "node --experimental-strip-types --experimental-transform-types --test --experimental-test-isolation=none src/lib/financial-environment.test.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",
@@ -41,4 +43,3 @@
     "typescript": "^5"
   }
 }
-

@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches-ignore:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CI: "true"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Build
+        run: npm run build
+      - name: Payment tests
+        run: npm run test:payments
+      - name: Monthly domain tests
+        run: npm run test:monthly
+      - name: Monthly coverage tests
+        run: npm run test:monthly-coverage
+      - name: Monthly billing tests
+        run: npm run test:monthly-billing
+      - name: Customer payment tests
+        run: npm run test:customer-payments
+      - name: Monthly automation tests
+        run: npm run test:monthly-automation
+      - name: Financial environment tests
+        run: npm run test:financial-environment
