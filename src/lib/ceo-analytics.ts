@@ -3,7 +3,7 @@ import { getCeoAnalytics as getRawCeoAnalytics, normalizeCeoFilters, type CeoFil
 import { isOperationalFinancialPayment } from "@/lib/financial-environment";
 
 export { normalizeCeoFilters };
-export type { CeoFilters, CeoPayment, CeoPeriod, CeoSession } from "@/lib/ceo-analytics-raw";
+export type { CeoAlert, CeoFilters, CeoPayment, CeoPeriod, CeoSession, CeoShift, CeoUnit } from "@/lib/ceo-analytics-raw";
 
 export async function getCeoAnalytics(filters: CeoFilters) {
   const data = await getRawCeoAnalytics(filters);
