@@ -43,3 +43,5 @@ jobs:
         run: npm run test:customer-payments
       - name: Monthly automation tests
         run: npm run test:monthly-automation
+      - name: Financial environment tests
+        run: npm run test:financial-environment
