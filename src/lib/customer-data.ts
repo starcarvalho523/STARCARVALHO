@@ -10,11 +10,12 @@ export type CustomerVehicle = { id:string; plate:string; vehicle_type:string; cr
 export type CustomerCharge = { entered_at:string; reference_time:string; duration_minutes:number; tariff_name:string; total:number };
 export type CustomerMonthlyPeriod={id:string;reference_year:number;reference_month:number;due_date:string;amount:number;status:string;parking_units:{name:string;timezone:string}|null;monthly_subscriptions:{plan_name:string;unit_id:string;parking_units:{name:string;timezone:string}|null}|null;payments:CustomerPayment[]};
 export type CustomerNotification={id:string;type:string;title:string;message:string;created_at:string;read_at:string|null;internal_link:string|null};
+export type CustomerProfile={full_name:string;created_at:string;updated_at:string;tariff_alert_minutes:number};
 
 export const getCustomerData = cache(async () => {
   const access = await requireArea("cliente");
   const supabase = await createClient();
-  const { data: profile, error: profileError } = await supabase.from("customer_profiles").select("full_name,created_at,updated_at").eq("user_id", access.user.id).single();
+  const { data: profile, error: profileError } = await supabase.from("customer_profiles").select("full_name,created_at,updated_at,tariff_alert_minutes").eq("user_id", access.user.id).single();
   if (profileError) throw new Error("CUSTOMER_PROFILE_UNAVAILABLE");
   const { data: vehicleRows, error: vehicleError } = await supabase.from("vehicles").select("id,plate,vehicle_type,created_at").eq("customer_id", access.user.id).order("plate");
   if (vehicleError) throw new Error("CUSTOMER_VEHICLES_UNAVAILABLE");
@@ -43,8 +44,7 @@ export const getCustomerData = cache(async () => {
   if(notificationError)throw new Error("CUSTOMER_NOTIFICATIONS_UNAVAILABLE");
   const notifications=(notificationRows??[]) as CustomerNotification[];
   const unreadNotifications=notifications.filter(item=>!item.read_at).length;
-  return { access, profile, vehicles, sessions, active, activeCharge, activePaymentOptions, monthlyPeriods, notifications, unreadNotifications, email:access.user.email ?? "" };
+  return { access, profile:profile as CustomerProfile, vehicles, sessions, active, activeCharge, activePaymentOptions, monthlyPeriods, notifications, unreadNotifications, email:access.user.email ?? "" };
 });
 
 export function findOwnedSession(sessions:CustomerSession[], id?:string) { return id ? sessions.find((session) => session.id === id) ?? null : null; }
-
