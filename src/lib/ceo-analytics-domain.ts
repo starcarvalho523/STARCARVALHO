@@ -6,8 +6,9 @@ export type GenerationRunRow = { id:string; unit_id:string; failed_count:number;
 export function previousRevenueTotal<T extends {amount:number|string}>(rows:T[],isOperational:(row:T)=>boolean){return rows.filter(isOperational).reduce((sum,row)=>sum+Number(row.amount),0)}
 
 export function contractedMrr(rows:ContractRow[]){
-  const included=rows.filter(row=>row.status==="ACTIVE"||row.status==="SUSPENDED");
-  return{amount:included.reduce((sum,row)=>sum+Number(row.contracted_price??0),0),activeAmount:included.filter(row=>row.status==="ACTIVE").reduce((sum,row)=>sum+Number(row.contracted_price??0),0),suspendedAmount:included.filter(row=>row.status==="SUSPENDED").reduce((sum,row)=>sum+Number(row.contracted_price??0),0),contracts:included.length};
+  const active=rows.filter(row=>row.status==="ACTIVE"),suspended=rows.filter(row=>row.status==="SUSPENDED");
+  const activeAmount=active.reduce((sum,row)=>sum+Number(row.contracted_price??0),0);
+  return{amount:activeAmount,activeAmount,suspendedAmount:suspended.reduce((sum,row)=>sum+Number(row.contracted_price??0),0),contracts:active.length,suspendedContracts:suspended.length};
 }
 
 export function coverageAnalytics(rows:CoverageSession[]){
