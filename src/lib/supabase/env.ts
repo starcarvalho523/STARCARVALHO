@@ -1,11 +1,37 @@
+const PRODUCTION_VERCEL_HOST = "starcarvalho.vercel.app";
+const QA_SUPABASE_URL = "https://hqdaqijgloeiqrljulqx.supabase.co";
+// Supabase publishable keys are intentionally public client credentials; RLS remains the security boundary.
+const QA_SUPABASE_PUBLISHABLE_KEY = "sb_publishable_VjQXDvN3oA0F1PHQKmzLkA_8GFzFT45";
+
 function required(name: string, value: string | undefined): string {
   if (!value) throw new Error("Variável de ambiente obrigatória ausente: " + name);
   return value;
 }
-export function getSupabaseEnvironment() {
-  return {
-    url: required("NEXT_PUBLIC_SUPABASE_URL", process.env.NEXT_PUBLIC_SUPABASE_URL),
-    publishableKey: required("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY", process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY),
-  };
+
+function normalizeHostname(hostname?: string | null) {
+  return (hostname ?? "").trim().toLowerCase().split(":")[0];
 }
 
+export function isVercelPreviewHost(hostname?: string | null) {
+  const host = normalizeHostname(hostname);
+  return host.endsWith(".vercel.app") && host !== PRODUCTION_VERCEL_HOST;
+}
+
+export function getSupabaseEnvironment(hostname?: string | null) {
+  if (isVercelPreviewHost(hostname)) {
+    return {
+      url: QA_SUPABASE_URL,
+      publishableKey: QA_SUPABASE_PUBLISHABLE_KEY,
+      environment: "qa" as const,
+    };
+  }
+
+  return {
+    url: required("NEXT_PUBLIC_SUPABASE_URL", process.env.NEXT_PUBLIC_SUPABASE_URL),
+    publishableKey: required(
+      "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+    ),
+    environment: "configured" as const,
+  };
+}
