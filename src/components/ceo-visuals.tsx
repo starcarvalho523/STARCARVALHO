@@ -27,7 +27,7 @@ export function AlertList({ alerts, limit }: { alerts: CeoAlert[]; limit?: numbe
   const rows = limit ? alerts.slice(0, limit) : alerts;
   if (!rows.length) return <p className="p-8 text-center text-sm text-slate-500">Nenhum alerta ativo.</p>;
   return <div className="divide-y">{rows.map((alert) => {
-    const action = alert.title.includes("caixa") ? "Ver caixa" : alert.title.includes("Sessão") || alert.title.includes("Pagamento") ? "Ver sessão" : "Ver unidade";
+    const action = alert.href.startsWith("/ceo/mensalistas") ? "Ver mensalistas" : alert.title.includes("caixa") ? "Ver caixa" : alert.title.includes("Sessão") || alert.title.includes("Pagamento") ? "Ver sessão" : "Ver unidade";
     return <article key={alert.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
       <span className={`h-fit rounded-full px-2.5 py-1 text-xs font-bold ${alert.severity === "Crítico" ? "bg-red-50 text-red-700" : alert.severity === "Atenção" ? "bg-amber-50 text-amber-700" : "bg-blue-50 text-blue-700"}`}>{alert.severity}</span>
       <div className="flex-1"><p className="font-semibold">{alert.title}</p><p className="text-xs font-medium text-slate-500">{alert.unitName}</p><p className="mt-1 text-xs text-slate-500">{alert.description}</p></div>
