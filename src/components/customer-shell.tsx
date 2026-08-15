@@ -1,8 +1,98 @@
 import Link from "next/link";
-import { CalendarDays, CarFront, CreditCard, House, LogOut, UserRound, WalletCards } from "lucide-react";
+import {
+  CalendarDays,
+  Bell,
+  CarFront,
+  CreditCard,
+  House,
+  LogOut,
+  UserRound,
+  WalletCards,
+} from "lucide-react";
 import { logout } from "@/app/login/actions";
 import { Brand } from "@/components/dashboard-shell";
 
-const nav=[{label:"Início",href:"/cliente",icon:House},{label:"Mensalidade",href:"/cliente/mensalidade",icon:CalendarDays},{label:"Estadias",href:"/cliente/estadias",icon:CarFront},{label:"Veículos",href:"/cliente/veiculos",icon:WalletCards},{label:"Pagamentos",href:"/cliente/pagamentos",icon:CreditCard},{label:"Minha conta",href:"/cliente/conta",icon:UserRound}];
-export function CustomerShell({name,active,children}:{name:string;active:string;children:React.ReactNode}){const initial=(name.trim()[0]??"C").toUpperCase();return <main className="min-h-screen bg-slate-100 pb-20 text-slate-950 md:pb-8"><header className="sticky top-0 z-30 border-b bg-white/95 backdrop-blur"><div className="mx-auto flex h-[72px] max-w-[1120px] items-center justify-between px-4"><Brand href="/cliente"/><div className="flex items-center gap-2"><Link href="/cliente/conta" className="flex items-center gap-2 rounded-xl px-2 py-2 text-sm font-semibold hover:bg-slate-50"><span className="grid size-9 place-items-center rounded-full bg-blue-50 text-blue-700">{initial}</span><span className="hidden sm:inline">{name||"Cliente"}</span></Link><form action={logout}><button aria-label="Sair da conta" title="Sair" className="grid size-10 place-items-center rounded-full text-slate-500 hover:bg-red-50 hover:text-red-600"><LogOut className="size-5"/></button></form></div></div><nav aria-label="Navegação do cliente" className="mx-auto hidden max-w-[1120px] gap-1 px-4 pb-3 md:flex">{nav.map(({label,href,icon:Icon})=><Link key={href} href={href} aria-current={active===label?"page":undefined} className={`flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold ${active===label?"bg-blue-50 text-blue-700":"text-slate-600 hover:bg-slate-50"}`}><Icon className="size-4"/>{label}</Link>)}</nav></header><div className="mx-auto max-w-[1120px] px-4 py-6 sm:py-8">{children}</div><nav aria-label="Navegação móvel do cliente" className="fixed inset-x-0 bottom-0 z-40 flex h-16 border-t bg-white px-1 shadow-[0_-8px_24px_rgba(15,23,42,.08)] md:hidden">{nav.map(({label,href,icon:Icon})=><Link key={href} href={href} aria-current={active===label?"page":undefined} className={`flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-xl text-[10px] font-semibold ${active===label?"text-blue-700":"text-slate-500"}`}><Icon className="size-5"/><span className="max-w-full truncate">{label}</span></Link>)}</nav></main>}
-
+const nav = [
+  { label: "Início", href: "/cliente", icon: House },
+  { label: "Mensalidade", href: "/cliente/mensalidade", icon: CalendarDays },
+  { label: "Estadias", href: "/cliente/estadias", icon: CarFront },
+  { label: "Veículos", href: "/cliente/veiculos", icon: WalletCards },
+  { label: "Pagamentos", href: "/cliente/pagamentos", icon: CreditCard },
+  { label: "Minha conta", href: "/cliente/conta", icon: UserRound },
+];
+export function CustomerShell({
+  name,
+  active,
+  children,
+  unreadNotifications=0,
+}: {
+  name: string;
+  active: string;
+  children: React.ReactNode;
+  unreadNotifications?: number;
+}) {
+  const initial = (name.trim()[0] ?? "C").toUpperCase();
+  return (
+    <main className="min-h-dvh bg-slate-100 pb-[calc(4rem+env(safe-area-inset-bottom))] text-slate-950 md:pb-8">
+      <header className="sticky top-0 z-30 border-b bg-white/95 backdrop-blur">
+        <div className="mx-auto flex h-[72px] max-w-[1120px] items-center justify-between px-4">
+          <Brand href="/cliente" />
+          <div className="flex items-center gap-2">
+            <Link href="/cliente/notificacoes" aria-label={`Notificações${unreadNotifications?` (${unreadNotifications} não lidas)`:""}`} className="relative grid size-10 place-items-center rounded-full text-slate-600 hover:bg-blue-50 hover:text-blue-700"><Bell className="size-5"/>{unreadNotifications?<span className="absolute right-0 top-0 grid min-w-5 place-items-center rounded-full bg-red-600 px-1 text-[10px] font-bold text-white">{Math.min(unreadNotifications,99)}</span>:null}</Link>
+            <Link
+              href="/cliente/conta"
+              className="flex items-center gap-2 rounded-xl px-2 py-2 text-sm font-semibold hover:bg-slate-50"
+            >
+              <span className="grid size-9 place-items-center rounded-full bg-blue-50 text-blue-700">
+                {initial}
+              </span>
+              <span className="hidden sm:inline">{name || "Cliente"}</span>
+            </Link>
+            <form action={logout}>
+              <button
+                aria-label="Sair da conta"
+                title="Sair"
+                className="grid size-10 place-items-center rounded-full text-slate-500 hover:bg-red-50 hover:text-red-600"
+              >
+                <LogOut className="size-5" />
+              </button>
+            </form>
+          </div>
+        </div>
+        <nav
+          aria-label="Navegação do cliente"
+          className="mx-auto hidden max-w-[1120px] gap-1 px-4 pb-3 md:flex"
+        >
+          {nav.map(({ label, href, icon: Icon }) => (
+            <Link
+              key={href}
+              href={href}
+              aria-current={active === label ? "page" : undefined}
+              className={`flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold ${active === label ? "bg-blue-50 text-blue-700" : "text-slate-600 hover:bg-slate-50"}`}
+            >
+              <Icon className="size-4" />
+              {label}
+            </Link>
+          ))}
+        </nav>
+      </header>
+      <div className="mx-auto max-w-[1120px] px-4 py-6 sm:py-8">{children}</div>
+      <nav
+        aria-label="Navegação móvel do cliente"
+        className="fixed inset-x-0 bottom-0 z-40 flex h-[calc(4rem+env(safe-area-inset-bottom))] border-t bg-white px-1 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_24px_rgba(15,23,42,.08)] md:hidden"
+      >
+        {nav.map(({ label, href, icon: Icon }) => (
+          <Link
+            key={href}
+            href={href}
+            aria-current={active === label ? "page" : undefined}
+            className={`flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-xl text-[10px] font-semibold ${active === label ? "text-blue-700" : "text-slate-500"}`}
+          >
+            <Icon className="size-5" />
+            <span className="max-w-full truncate">{label}</span>
+          </Link>
+        ))}
+      </nav>
+    </main>
+  );
+}
