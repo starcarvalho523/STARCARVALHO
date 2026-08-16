@@ -1,7 +1,6 @@
 import Link from "next/link";
 import {
   CalendarDays,
-  Bell,
   CarFront,
   CreditCard,
   House,
@@ -11,6 +10,7 @@ import {
 } from "lucide-react";
 import { logout } from "@/app/login/actions";
 import { Brand } from "@/components/dashboard-shell";
+import { CustomerNotificationBell } from "@/components/customer-notification-bell";
 
 const nav = [
   { label: "Início", href: "/cliente", icon: House },
@@ -38,7 +38,7 @@ export function CustomerShell({
         <div className="mx-auto flex h-[72px] max-w-[1120px] items-center justify-between px-4">
           <Brand href="/cliente" />
           <div className="flex items-center gap-2">
-            <Link href="/cliente/notificacoes" aria-label={`Notificações${unreadNotifications?` (${unreadNotifications} não lidas)`:""}`} className="relative grid size-10 place-items-center rounded-full text-slate-600 hover:bg-blue-50 hover:text-blue-700"><Bell className="size-5"/>{unreadNotifications?<span className="absolute right-0 top-0 grid min-w-5 place-items-center rounded-full bg-red-600 px-1 text-[10px] font-bold text-white">{Math.min(unreadNotifications,99)}</span>:null}</Link>
+            <CustomerNotificationBell unread={unreadNotifications} />
             <Link
               href="/cliente/conta"
               className="flex items-center gap-2 rounded-xl px-2 py-2 text-sm font-semibold hover:bg-slate-50"
