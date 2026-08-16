@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { CarFront, CircleDollarSign, Clock3, Info, Search, Tag, Zap } from "lucide-react";
+import { CarFront, CircleDollarSign, Clock3, Info, Tag, Zap } from "lucide-react";
 import { DashboardShell } from "@/components/dashboard-shell";
+import { LivePlateSearch } from "@/components/live-plate-search";
 import { OperationBadge } from "@/components/operation-badge";
 import { PixPaymentPanel } from "@/components/pix-payment-panel";
 import { CreditCheckoutPanel } from "@/components/credit-checkout-panel";
@@ -43,14 +44,7 @@ export default async function ExitsPage({ searchParams }: { searchParams: Promis
             <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-bold text-blue-700">{data.active_sessions.length}</span>
           </div>
 
-          <form className="mt-3 flex gap-2" method="get">
-            <label className="flex h-10 min-w-0 flex-1 items-center gap-2 rounded-xl border border-slate-200 px-3.5 transition focus-within:border-blue-400 focus-within:ring-4 focus-within:ring-blue-50">
-              <Search className="size-4 shrink-0 text-slate-400"/>
-              <input name="q" defaultValue={query} placeholder="Buscar por placa" aria-label="Buscar veículo por placa" autoComplete="off" className="min-w-0 flex-1 bg-transparent text-sm uppercase outline-none placeholder:normal-case"/>
-            </label>
-            <button type="submit" className="h-10 shrink-0 rounded-xl bg-blue-600 px-4 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-100">Buscar</button>
-          </form>
-          {query?<div className="mt-2 flex items-center justify-between text-xs text-slate-500"><span>Filtro ativo: <b className="text-slate-700">{query}</b></span><Link href="/frentista/saidas" className="font-semibold text-blue-600 hover:text-blue-700">Limpar busca</Link></div>:null}
+          <LivePlateSearch initialQuery={query} />
 
           <div className="mt-3 space-y-2.5">
             {visibleSessions.map((item) => {
@@ -74,7 +68,7 @@ export default async function ExitsPage({ searchParams }: { searchParams: Promis
 
           <div className="mt-3 flex items-center justify-between border-t pt-3 text-xs text-slate-500">
             <span>{visibleSessions.length} {visibleSessions.length===1?"veículo exibido":"veículos exibidos"}</span>
-            <span>{query?"Resultado da busca":"Seleção por placa"}</span>
+            <span>{query?"Filtro em tempo real":"Seleção por placa"}</span>
           </div>
         </section>
 
