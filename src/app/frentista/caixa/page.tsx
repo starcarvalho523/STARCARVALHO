@@ -17,18 +17,23 @@ export default async function CashPage({searchParams}:CashPageProps){
 }
 
 function OpeningShiftGreeting({greeting}:{greeting:string}){
- return <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm">
-  <div className="grid items-center gap-2 px-5 py-6 sm:px-8 sm:py-8 lg:grid-cols-[300px_1fr] lg:gap-7">
-   <div className="flex items-center justify-center self-stretch">
-    <Image src="/frentista-aprovado.webp" alt="Frentista da Star Carvalhos dando boas-vindas ao turno" width={285} height={320} priority className="h-auto w-[240px] sm:w-[270px] lg:w-[285px]"/>
+ return <section className="overflow-visible rounded-[28px] border border-slate-200 bg-white shadow-sm">
+  <div className="grid items-center gap-2 px-5 py-6 sm:px-8 sm:py-8 lg:grid-cols-[360px_1fr] lg:gap-8">
+   <div className="relative flex min-h-[390px] items-center justify-center lg:-my-10 lg:-ml-8">
+    <div className="absolute inset-x-8 bottom-7 h-24 rounded-full bg-blue-200/40 blur-2xl"/>
+    <Image src="/frentista-aprovado.webp" alt="Frentista da Star Carvalhos dando boas-vindas ao turno" width={420} height={460} priority className="relative z-10 h-auto w-[310px] origin-bottom drop-shadow-[0_24px_22px_rgba(15,23,42,0.28)] [transform:perspective(900px)_rotateY(-4deg)_rotateX(1deg)_scale(1.08)] sm:w-[350px] lg:w-[390px] lg:translate-y-3"/>
    </div>
-   <div className="mx-auto w-full max-w-[540px]">
+   <div className="mx-auto w-full max-w-[560px]">
     <div className="text-center lg:text-left">
-     <h2 className="text-3xl font-extrabold tracking-tight text-slate-950 sm:text-[38px] sm:leading-[1.08]">{greeting}, Frentista! ☀️</h2>
-     <p className="mt-3 text-base leading-7 text-slate-700 sm:text-lg">Mais um dia, novas oportunidades e ótimos atendimentos pela frente.</p>
-     <p className="mt-1 text-lg font-extrabold text-emerald-600 sm:text-xl">Vamos juntos fazer a diferença! 💪</p>
+     <h2 className="text-3xl font-extrabold tracking-tight text-slate-950 sm:text-[40px] sm:leading-[1.06]">{greeting}, Frentista! ☀️</h2>
+     <div className="mt-4 text-base leading-7 text-slate-700 sm:text-lg">
+      <span className="block">Mais um dia, novas oportunidades</span>
+      <span className="block">e ótimos atendimentos pela frente.</span>
+      <span className="block">Foco, atenção e disposição para fazer a diferença.</span>
+     </div>
+     <p className="mt-2 text-lg font-extrabold text-emerald-600 sm:text-xl">Vamos juntos fazer a diferença! 💪</p>
     </div>
-    <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_8px_24px_rgba(15,23,42,0.06)] sm:p-6">
+    <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_12px_30px_rgba(15,23,42,0.08)] sm:p-6">
      <h3 className="text-xl font-extrabold text-slate-950">Abrir caixa</h3>
      <p className="mb-5 mt-1 text-sm text-slate-500">Informe apenas o saldo inicial em dinheiro físico.</p>
      <OpenShiftForm/>
