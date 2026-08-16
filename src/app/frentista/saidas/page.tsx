@@ -31,50 +31,43 @@ export default async function ExitsPage({ searchParams }: { searchParams: Promis
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <section className="self-start rounded-2xl border bg-white p-5 shadow-sm">
+        <section className="self-start rounded-2xl border bg-white p-4 shadow-sm">
           <div className="flex items-center justify-between gap-3">
             <div>
               <h2 className="font-bold text-slate-950">Veículos ativos</h2>
-              <p className="mt-1 text-xs text-slate-500">Escolha a placa para continuar o atendimento de saída.</p>
+              <p className="mt-0.5 text-xs text-slate-500">Escolha a placa para continuar o atendimento de saída.</p>
             </div>
-            <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">{data.active_sessions.length}</span>
+            <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-bold text-blue-700">{data.active_sessions.length}</span>
           </div>
 
-          <form className="mt-4" method="get">
-            <label className="flex h-12 items-center gap-2 rounded-xl border border-slate-200 px-4 transition focus-within:border-blue-400 focus-within:ring-4 focus-within:ring-blue-50">
+          <form className="mt-3" method="get">
+            <label className="flex h-10 items-center gap-2 rounded-xl border border-slate-200 px-3.5 transition focus-within:border-blue-400 focus-within:ring-4 focus-within:ring-blue-50">
               <Search className="size-4 text-slate-400"/>
               <input name="q" defaultValue={query} placeholder="Buscar por placa" aria-label="Buscar veículo por placa" className="min-w-0 flex-1 bg-transparent text-sm uppercase outline-none placeholder:normal-case"/>
             </label>
           </form>
 
-          <div className="mt-4 space-y-3">
+          <div className="mt-3 space-y-2.5">
             {visibleSessions.map((item) => {
               const active=selected?.id===item.id;
-              return <Link key={item.id} href={{pathname:"/frentista/saidas",query:{session:item.id,...(query?{q:query}:{})}}} className={`block rounded-2xl border p-4 transition ${active?"border-blue-500 bg-blue-50 shadow-[0_0_0_1px_rgba(37,99,235,.12)]":"border-slate-200 hover:border-blue-200 hover:bg-slate-50"}`}>
-                <div className="flex items-start justify-between gap-4">
+              return <Link key={item.id} href={{pathname:"/frentista/saidas",query:{session:item.id,...(query?{q:query}:{})}}} className={`block rounded-xl border p-3.5 transition ${active?"border-blue-500 bg-blue-50 shadow-[0_0_0_1px_rgba(37,99,235,.12)]":"border-slate-200 hover:border-blue-200 hover:bg-slate-50"}`}>
+                <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="text-lg font-extrabold tracking-tight text-slate-950">{item.plate}</p>
-                    <p className="mt-1 text-[11px] font-medium uppercase tracking-wide text-slate-400">Sessão ativa</p>
+                    <p className="text-base font-extrabold tracking-tight text-slate-950">{item.plate}</p>
+                    <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500">
+                      <span className="flex items-center gap-1.5"><CarFront className="size-3.5 text-slate-400"/>{formatVehicleType(item.vehicle_type)}</span>
+                      <span className="text-slate-300">•</span>
+                      <span className="flex items-center gap-1.5 font-semibold text-slate-700"><Clock3 className="size-3.5 text-blue-500"/>{formatDuration(item.duration_minutes)}</span>
+                    </div>
                   </div>
                   <OperationBadge {...sessionParkingStatus(item.status,item.entry_mode,item.financial_obligation)}/>
                 </div>
-
-                <div className="mt-4 grid grid-cols-2 gap-3 border-t border-slate-200/80 pt-3">
-                  <div className="rounded-xl bg-white/70 px-3 py-2.5">
-                    <p className="text-[10px] font-medium uppercase tracking-wide text-slate-400">Tipo</p>
-                    <p className="mt-1 flex items-center gap-1.5 text-sm font-semibold text-slate-700"><CarFront className="size-3.5 text-slate-400"/>{formatVehicleType(item.vehicle_type)}</p>
-                  </div>
-                  <div className="rounded-xl bg-white/70 px-3 py-2.5">
-                    <p className="text-[10px] font-medium uppercase tracking-wide text-slate-400">Permanência</p>
-                    <p className="mt-1 flex items-center gap-1.5 text-sm font-bold text-slate-800"><Clock3 className="size-3.5 text-blue-500"/>{formatDuration(item.duration_minutes)}</p>
-                  </div>
-                </div>
               </Link>;
             })}
-            {visibleSessions.length===0?<div className="rounded-xl border border-dashed border-slate-200 px-4 py-10 text-center text-sm text-slate-500">Nenhum veículo encontrado para esta placa.</div>:null}
+            {visibleSessions.length===0?<div className="rounded-xl border border-dashed border-slate-200 px-4 py-8 text-center text-sm text-slate-500">Nenhum veículo encontrado para esta placa.</div>:null}
           </div>
 
-          <div className="mt-5 flex items-center justify-between border-t pt-4 text-xs text-slate-500">
+          <div className="mt-3 flex items-center justify-between border-t pt-3 text-xs text-slate-500">
             <span>{data.active_sessions.length} {data.active_sessions.length===1?"veículo ativo":"veículos ativos"}</span>
             <span>Seleção por placa</span>
           </div>
