@@ -8,7 +8,7 @@ export type CustomerPayment = { id:string; amount:number; method:string; status:
 export type CustomerSession = { id:string; unit_id:string; vehicle_id:string; plate_snapshot:string; vehicle_type:string; status:string; payment_status:string; entry_mode:string; financial_obligation:string; entered_at:string; exited_at:string|null; final_amount:number|null; calculated_amount:number|null; tariff_snapshot:Record<string,unknown>; parking_units:{name:string;timezone:string}|null; payments:CustomerPayment[] };
 export type CustomerVehicle = { id:string; plate:string; vehicle_type:string; created_at:string };
 export type CustomerCharge = { entered_at:string; reference_time:string; duration_minutes:number; tariff_name:string; total:number };
-export type CustomerMonthlyPeriod={id:string;reference_year:number;reference_month:number;due_date:string;amount:number;status:string;parking_units:{name:string;timezone:string}|null;monthly_subscriptions:{plan_name:string;unit_id:string;parking_units:{name:string;timezone:string}|null}|null;payments:CustomerPayment[]};
+export type CustomerMonthlyPeriod={id:string;reference_year:number;reference_month:number;due_date:string;amount:number;status:string;parking_units:{name:string;timezone:string}|null;monthly_subscriptions:{plan_name:string;unit_id:string;status:string;parking_units:{name:string;timezone:string}|null;monthly_subscription_vehicles:Array<{vehicle_id:string;vehicles:{plate:string}|null}>}|null;payments:CustomerPayment[]};
 export type CustomerNotification={id:string;type:string;title:string;message:string;created_at:string;read_at:string|null;internal_link:string|null};
 export type CustomerProfile={full_name:string;created_at:string;updated_at:string;tariff_alert_minutes:number};
 
@@ -36,7 +36,7 @@ export const getCustomerData = cache(async () => {
   }
   const capabilities=active?await getPaymentAvailability(active.unit_id):[];
   const activePaymentOptions={pix:canUsePayment(capabilities,"PIX","QR","ASAAS"),credit:canUsePayment(capabilities,"CREDIT_CARD","HOSTED_CHECKOUT","ASAAS")};
-  const{data:monthlyRows,error:monthlyError}=await supabase.from("monthly_billing_periods").select("id,reference_year,reference_month,due_date,amount,status,parking_units(name,timezone),monthly_subscriptions!inner(plan_name,unit_id,parking_units(name,timezone)),payments(id,amount,method,status,provider,paid_at,created_at)").order("reference_year",{ascending:false}).order("reference_month",{ascending:false}).limit(24);
+  const{data:monthlyRows,error:monthlyError}=await supabase.from("monthly_billing_periods").select("id,reference_year,reference_month,due_date,amount,status,parking_units(name,timezone),monthly_subscriptions!inner(plan_name,unit_id,status,parking_units(name,timezone),monthly_subscription_vehicles(vehicle_id,vehicles(plate))),payments(id,amount,method,status,provider,paid_at,created_at)").order("reference_year",{ascending:false}).order("reference_month",{ascending:false}).limit(24);
   if(monthlyError)throw new Error("CUSTOMER_MONTHLY_PERIODS_UNAVAILABLE");
   const monthlyPeriods=(monthlyRows??[]) as unknown as CustomerMonthlyPeriod[];
   await supabase.rpc("refresh_customer_notifications");
