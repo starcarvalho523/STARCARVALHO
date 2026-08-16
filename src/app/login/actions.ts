@@ -17,7 +17,7 @@ export async function login(_: LoginState, formData: FormData): Promise<LoginSta
 
   const { data: internalRoles, error: rolesError } = await supabase
     .from("user_unit_roles")
-    .select("role")
+    .select("role,unit_id")
     .eq("user_id", data.user.id);
   if (rolesError) {
     await supabase.auth.signOut();
@@ -45,7 +45,36 @@ export async function login(_: LoginState, formData: FormData): Promise<LoginSta
     await supabase.auth.signOut();
     return { error: "Sua conta ainda não possui um perfil de acesso. Solicite a liberação ao administrador." };
   }
+
+  if (access.area === "frentista") {
+    const assignment = access.assignments.find((item) => item.role === "operator");
+    if (assignment?.unit_id) {
+      const [{ data: unit }, { data: lastShift }] = await Promise.all([
+        supabase.from("parking_units").select("timezone").eq("id", assignment.unit_id).maybeSingle(),
+        supabase.from("cash_shifts").select("opened_at,status").eq("unit_id", assignment.unit_id).eq("operator_id", data.user.id).order("opened_at", { ascending: false }).limit(1).maybeSingle(),
+      ]);
+      if (unit?.timezone && lastShift?.status !== "OPEN") {
+        const today = localDateKey(new Date(), unit.timezone);
+        const lastOpenedDay = lastShift?.opened_at ? localDateKey(new Date(lastShift.opened_at), unit.timezone) : null;
+        if (lastOpenedDay !== today) redirect("/frentista/caixa?welcome=1");
+      }
+    }
+  }
+
   redirect(`/${access.area}`);
+}
+
+function localDateKey(date: Date, timezone: string) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const year = parts.find((part) => part.type === "year")?.value ?? "0000";
+  const month = parts.find((part) => part.type === "month")?.value ?? "00";
+  const day = parts.find((part) => part.type === "day")?.value ?? "00";
+  return `${year}-${month}-${day}`;
 }
 
 export async function logout() {
