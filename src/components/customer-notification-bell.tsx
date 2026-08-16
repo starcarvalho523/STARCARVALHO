@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Bell, LoaderCircle, X } from "lucide-react";
+import { Bell, Check, LoaderCircle, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 type NotificationItem = {
@@ -16,8 +16,10 @@ type NotificationItem = {
 export function CustomerNotificationBell({ unread = 0 }: { unread?: number }) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [markingId, setMarkingId] = useState<string | null>(null);
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [localUnread, setLocalUnread] = useState(unread);
   const root = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -46,19 +48,39 @@ export function CustomerNotificationBell({ unread = 0 }: { unread?: number }) {
     }
   };
 
+  const markRead = async (notificationId: string) => {
+    if (markingId) return;
+    setMarkingId(notificationId);
+    setError(null);
+    try {
+      const response = await fetch("/api/customer/notifications", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ notificationId }),
+      });
+      if (!response.ok) throw new Error("Não foi possível marcar a notificação como lida.");
+      setItems((current) => current.map((item) => item.id === notificationId ? { ...item, read_at: item.read_at ?? new Date().toISOString() } : item));
+      setLocalUnread((current) => Math.max(0, current - 1));
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Não foi possível marcar a notificação como lida.");
+    } finally {
+      setMarkingId(null);
+    }
+  };
+
   return (
     <div ref={root} className="relative">
       <button
         type="button"
         onClick={() => void toggle()}
-        aria-label={`Notificações${unread ? ` (${unread} não lidas)` : ""}`}
+        aria-label={`Notificações${localUnread ? ` (${localUnread} não lidas)` : ""}`}
         aria-expanded={open}
         className="relative grid size-10 place-items-center rounded-full text-slate-600 hover:bg-blue-50 hover:text-blue-700"
       >
         <Bell className="size-5" />
-        {unread ? (
+        {localUnread ? (
           <span className="absolute right-0 top-0 grid min-w-5 place-items-center rounded-full bg-red-600 px-1 text-[10px] font-bold text-white">
-            {Math.min(unread, 99)}
+            {Math.min(localUnread, 99)}
           </span>
         ) : null}
       </button>
@@ -68,7 +90,7 @@ export function CustomerNotificationBell({ unread = 0 }: { unread?: number }) {
           <div className="flex items-center justify-between border-b px-4 py-3">
             <div>
               <h2 className="font-bold">Notificações</h2>
-              <p className="text-xs text-slate-500">Veja seus alertas sem sair da tela atual.</p>
+              <p className="text-xs text-slate-500">Veja e organize seus alertas sem sair da tela atual.</p>
             </div>
             <button type="button" onClick={() => setOpen(false)} aria-label="Fechar notificações" className="grid size-9 place-items-center rounded-full hover:bg-slate-100">
               <X className="size-4" />
@@ -89,9 +111,17 @@ export function CustomerNotificationBell({ unread = 0 }: { unread?: number }) {
                       {!item.read_at ? <span className="mt-1 size-2 shrink-0 rounded-full bg-blue-600" aria-label="Não lida" /> : null}
                     </div>
                     <p className="mt-1 text-sm text-slate-600">{item.message}</p>
-                    <div className="mt-2 flex items-center justify-between gap-3">
+                    <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
                       <time className="text-[11px] text-slate-400">{new Date(item.created_at).toLocaleString("pt-BR")}</time>
-                      {item.internal_link ? <Link href={item.internal_link} onClick={() => setOpen(false)} className="text-xs font-bold text-blue-600">Abrir</Link> : null}
+                      <div className="flex items-center gap-3">
+                        {!item.read_at ? (
+                          <button type="button" disabled={markingId === item.id} onClick={() => void markRead(item.id)} className="flex items-center gap-1 text-xs font-semibold text-slate-600 disabled:opacity-50">
+                            {markingId === item.id ? <LoaderCircle className="size-3 animate-spin" /> : <Check className="size-3" />}
+                            Marcar como lida
+                          </button>
+                        ) : null}
+                        {item.internal_link ? <Link href={item.internal_link} onClick={() => setOpen(false)} className="text-xs font-bold text-blue-600">Abrir</Link> : null}
+                      </div>
                     </div>
                   </article>
                 ))}
