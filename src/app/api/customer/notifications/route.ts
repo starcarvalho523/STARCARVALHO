@@ -17,3 +17,19 @@ export async function GET() {
     { headers: { "cache-control": "no-store" } },
   );
 }
+
+export async function PATCH(request: Request) {
+  const body = await request.json().catch(() => ({}));
+  const notificationId = typeof body?.notificationId === "string" ? body.notificationId : "";
+  if (!notificationId) {
+    return Response.json({ error: "NOTIFICATION_ID_REQUIRED" }, { status: 400 });
+  }
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("mark_customer_notification_read", {
+    notification_id: notificationId,
+  });
+  if (error) {
+    return Response.json({ error: "NOTIFICATION_NOT_AVAILABLE" }, { status: 404 });
+  }
+  return Response.json({ ok: true }, { headers: { "cache-control": "no-store" } });
+}
