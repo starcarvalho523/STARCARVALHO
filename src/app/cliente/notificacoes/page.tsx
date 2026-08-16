@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { Bell, Clock3 } from "lucide-react";
 import { CustomerShell } from "@/components/customer-shell";
+import { TariffAlertPreferenceForm } from "@/components/tariff-alert-preference-form";
 import { getCustomerData } from "@/lib/customer-data";
 import { formatDateTime } from "@/lib/operator-format";
-import { markAllNotificationsRead, markNotificationRead, saveTariffAlertPreference } from "./actions";
+import { markAllNotificationsRead, markNotificationRead } from "./actions";
 export const dynamic = "force-dynamic";
 export default async function Page() {
   const data = await getCustomerData();
@@ -28,16 +29,8 @@ export default async function Page() {
             <div className="min-w-0 flex-1">
               <h2 className="font-bold">Avisar antes do aumento da tarifa</h2>
               <p className="mt-1 text-sm text-slate-500">Escolha com quanto tempo de antecedência você quer receber o alerta interno da próxima mudança de valor.</p>
-              <form action={saveTariffAlertPreference} className="mt-4 flex flex-wrap gap-2">
-                {[5,10,15].map((minutes)=>(
-                  <label key={minutes} className="cursor-pointer">
-                    <input type="radio" name="tariffAlertMinutes" value={minutes} defaultChecked={data.profile.tariff_alert_minutes===minutes} className="peer sr-only" />
-                    <span className="block rounded-xl border bg-white px-4 py-3 text-sm font-bold text-slate-700 transition peer-checked:border-blue-500 peer-checked:bg-blue-50 peer-checked:text-blue-700 peer-focus-visible:ring-2 peer-focus-visible:ring-blue-500 peer-focus-visible:ring-offset-2">{minutes} minutos antes</span>
-                  </label>
-                ))}
-                <button className="min-h-11 rounded-xl bg-blue-600 px-4 text-sm font-bold text-white">Salvar preferência</button>
-              </form>
-              <p className="mt-2 text-xs text-slate-500">A opção selecionada fica destacada antes mesmo de salvar; ao salvar, ela passa a valer para os próximos alertas internos.</p>
+              <TariffAlertPreferenceForm initialMinutes={data.profile.tariff_alert_minutes}/>
+              <p className="mt-2 text-xs text-slate-500">A opção selecionada fica destacada imediatamente e, depois de salvar, passa a valer nos próximos alertas internos.</p>
             </div>
           </div>
         </section>
