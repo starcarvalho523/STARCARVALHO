@@ -30,7 +30,7 @@ export default async function ExitsPage({ searchParams }: { searchParams: Promis
         <p className="text-sm text-slate-500">Selecione uma placa ativa e siga o fluxo de cobrança.</p>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(440px,1.08fr)_minmax(0,1.42fr)] xl:grid-cols-[minmax(500px,1.12fr)_minmax(0,1.38fr)]">
+      <div className="grid gap-4 lg:grid-cols-2">
         <section className="self-start rounded-2xl border bg-white p-5 shadow-sm">
           <div className="flex items-center justify-between gap-3">
             <div>
