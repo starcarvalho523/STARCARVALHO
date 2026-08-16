@@ -18,9 +18,9 @@ export default async function CashPage({searchParams}:CashPageProps){
 
 function OpeningShiftGreeting({greeting}:{greeting:string}){
  return <section className="overflow-visible rounded-[28px] border border-slate-200 bg-white shadow-sm">
-  <div className="grid items-center gap-2 px-5 py-6 sm:px-8 sm:py-8 lg:grid-cols-[300px_1fr] lg:gap-6">
-   <div className="relative flex min-h-[310px] items-center justify-center lg:-my-4 lg:-ml-2">
-    <Image src="/frentista-recortado.webp" alt="Frentista da Star Carvalhos dando boas-vindas ao turno" width={300} height={438} priority className="relative z-10 h-auto w-[210px] origin-bottom drop-shadow-[0_18px_16px_rgba(15,23,42,0.22)] [transform:perspective(900px)_rotateY(-3deg)_rotateX(1deg)_scale(1.02)] sm:w-[225px] lg:w-[240px] lg:translate-y-2"/>
+  <div className="grid items-center gap-2 px-5 py-6 sm:px-8 sm:py-8 lg:grid-cols-[312px_1fr] lg:gap-6">
+   <div className="relative flex min-h-[320px] items-center justify-center lg:-my-4 lg:-ml-2">
+    <Image src="/frentista-recortado.webp" alt="Frentista da Star Carvalhos dando boas-vindas ao turno" width={300} height={438} priority className="relative z-10 h-auto w-[220px] origin-bottom drop-shadow-[0_20px_18px_rgba(15,23,42,0.22)] [transform:perspective(900px)_rotateY(-3deg)_rotateX(1deg)_scale(1.03)] sm:w-[236px] lg:w-[252px] lg:translate-y-2"/>
    </div>
    <div className="mx-auto w-full max-w-[560px]">
     <div className="text-center lg:text-left">
