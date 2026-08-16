@@ -40,8 +40,8 @@ export function OperatorSessionSearch({sessions,timezone,capacity}:{sessions:Act
       <SummaryCard icon={CheckCircle2} tone="green" label="Prontos para saída" value={String(ready)} detail="Disponíveis para liberar"/>
     </div>
 
-    <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
-      <section className="overflow-hidden rounded-2xl border bg-white shadow-sm">
+    <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_390px]">
+      <section className="self-start overflow-hidden rounded-2xl border bg-white shadow-sm">
         <div className="border-b p-3 sm:p-4">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
             <label className="flex h-11 min-w-0 flex-1 items-center gap-2 rounded-xl border border-slate-200 px-3.5 transition focus-within:border-blue-400 focus-within:ring-4 focus-within:ring-blue-50">
@@ -55,7 +55,7 @@ export function OperatorSessionSearch({sessions,timezone,capacity}:{sessions:Act
         </div>
 
         {rows.length===0?<div className="flex min-h-56 items-center justify-center gap-3 p-8 text-sm text-slate-500"><CarFront className="size-6 text-slate-300"/>Nenhum veículo encontrado para este filtro.</div>:<div className="overflow-x-auto"><table className="w-full min-w-[760px] table-fixed text-left text-xs"><colgroup><col className="w-[14%]"/><col className="w-[12%]"/><col className="w-[18%]"/><col className="w-[13%]"/><col className="w-[13%]"/><col className="w-[15%]"/><col className="w-[15%]"/></colgroup><thead className="bg-slate-50 text-slate-500"><tr>{["Placa","Tipo","Entrada","Permanência","Valor atual","Situação","Ação"].map(h=><th key={h} className="px-3 py-3 font-semibold">{h}</th>)}</tr></thead><tbody>{rows.map(session=>{const action=actionFor(session);const selectedRow=selected?.id===session.id;return <tr key={session.id} onClick={()=>setSelectedId(session.id)} className={`cursor-pointer border-t transition ${selectedRow?"bg-blue-50/80 shadow-[inset_3px_0_0_#2563eb]":"hover:bg-slate-50"}`}><td className="px-3 py-3 font-bold text-blue-600">{session.plate}</td><td className="px-3 py-3">{formatVehicleType(session.vehicle_type)}</td><td className="px-3 py-3">{formatDateTime(session.entered_at,timezone)}</td><td className="px-3 py-3 font-medium">{formatDuration(session.duration_minutes)}</td><td className="px-3 py-3 font-semibold">{formatMoney(session.amount)}</td><td className="px-3 py-3"><OperationBadge {...sessionParkingStatus(session.status,session.entry_mode,session.financial_obligation)}/></td><td className="px-3 py-3"><Link onClick={(event)=>event.stopPropagation()} href={`/frentista/saidas?session=${session.id}`} className={`inline-flex min-h-9 items-center justify-center rounded-lg px-3 text-center text-[11px] font-bold transition ${action.className}`}>{action.label}</Link></td></tr>})}</tbody></table></div>}
-        <div className="flex items-center justify-between border-t px-4 py-3 text-xs text-slate-500"><span>{rows.length} de {sessions.length} veículos exibidos</span><span>Dados atuais da unidade</span></div>
+        <div className="border-t px-4 py-3 text-xs text-slate-500"><span>{rows.length} de {sessions.length} veículos exibidos</span></div>
       </section>
 
       <aside className="rounded-2xl border bg-white p-4 shadow-sm xl:sticky xl:top-4 xl:self-start">
