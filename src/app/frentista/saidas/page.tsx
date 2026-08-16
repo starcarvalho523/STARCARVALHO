@@ -21,7 +21,10 @@ export default async function ExitsPage({ searchParams }: { searchParams: Promis
   const creditEnabled = isAsaasSandboxConfigured()&&canUsePayment(availability,"CREDIT_CARD","HOSTED_CHECKOUT","ASAAS");
   const query=(params.q??"").toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,7);
   const visibleSessions=data.active_sessions.filter(item=>!query||item.plate.includes(query));
-  const selected = data.active_sessions.find((item) => item.id === params.session) ?? visibleSessions[0] ?? data.active_sessions[0];
+  const selectedByParam=data.active_sessions.find((item)=>item.id===params.session);
+  const selected=query
+    ? (selectedByParam&&visibleSessions.some((item)=>item.id===selectedByParam.id)?selectedByParam:visibleSessions[0])
+    : (selectedByParam??data.active_sessions[0]);
 
   return <DashboardShell nav={operatorNav} active="Saídas" role="Frentista">
     <div className="mx-auto max-w-[1320px] space-y-5">
@@ -40,12 +43,14 @@ export default async function ExitsPage({ searchParams }: { searchParams: Promis
             <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-bold text-blue-700">{data.active_sessions.length}</span>
           </div>
 
-          <form className="mt-3" method="get">
-            <label className="flex h-10 items-center gap-2 rounded-xl border border-slate-200 px-3.5 transition focus-within:border-blue-400 focus-within:ring-4 focus-within:ring-blue-50">
-              <Search className="size-4 text-slate-400"/>
-              <input name="q" defaultValue={query} placeholder="Buscar por placa" aria-label="Buscar veículo por placa" className="min-w-0 flex-1 bg-transparent text-sm uppercase outline-none placeholder:normal-case"/>
+          <form className="mt-3 flex gap-2" method="get">
+            <label className="flex h-10 min-w-0 flex-1 items-center gap-2 rounded-xl border border-slate-200 px-3.5 transition focus-within:border-blue-400 focus-within:ring-4 focus-within:ring-blue-50">
+              <Search className="size-4 shrink-0 text-slate-400"/>
+              <input name="q" defaultValue={query} placeholder="Buscar por placa" aria-label="Buscar veículo por placa" autoComplete="off" className="min-w-0 flex-1 bg-transparent text-sm uppercase outline-none placeholder:normal-case"/>
             </label>
+            <button type="submit" className="h-10 shrink-0 rounded-xl bg-blue-600 px-4 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-100">Buscar</button>
           </form>
+          {query?<div className="mt-2 flex items-center justify-between text-xs text-slate-500"><span>Filtro ativo: <b className="text-slate-700">{query}</b></span><Link href="/frentista/saidas" className="font-semibold text-blue-600 hover:text-blue-700">Limpar busca</Link></div>:null}
 
           <div className="mt-3 space-y-2.5">
             {visibleSessions.map((item) => {
@@ -68,8 +73,8 @@ export default async function ExitsPage({ searchParams }: { searchParams: Promis
           </div>
 
           <div className="mt-3 flex items-center justify-between border-t pt-3 text-xs text-slate-500">
-            <span>{data.active_sessions.length} {data.active_sessions.length===1?"veículo ativo":"veículos ativos"}</span>
-            <span>Seleção por placa</span>
+            <span>{visibleSessions.length} {visibleSessions.length===1?"veículo exibido":"veículos exibidos"}</span>
+            <span>{query?"Resultado da busca":"Seleção por placa"}</span>
           </div>
         </section>
 
@@ -79,7 +84,7 @@ export default async function ExitsPage({ searchParams }: { searchParams: Promis
           cashEnabled={cashEnabled}
           pixEnabled={pixEnabled}
           creditEnabled={creditEnabled}
-        /> : <section className="grid min-h-72 place-items-center rounded-2xl border bg-white p-6 text-center text-slate-500 shadow-sm">Selecione um veículo.</section>}
+        /> : <section className="grid min-h-72 place-items-center rounded-2xl border bg-white p-6 text-center text-slate-500 shadow-sm">{query?"Nenhum veículo corresponde à busca.":"Selecione um veículo."}</section>}
       </div>
     </div>
   </DashboardShell>;
