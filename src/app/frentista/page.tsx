@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Banknote,CarFront,CreditCard,Gauge,LogIn,LogOut,Users } from "lucide-react";
 import { DashboardShell } from "@/components/dashboard-shell";
 import { EntryForm } from "@/components/entry-form";
@@ -7,7 +8,7 @@ import { OperatorSessionTable } from "@/components/operator-session-table";
 import { getOperatorDashboard,formatMoney } from "@/lib/operator-data";
 import { operatorNav } from "@/lib/operator-nav";
 export const dynamic="force-dynamic";
-export default async function OperatorPage(){const data=await getOperatorDashboard();const shift=data.open_shift;return <DashboardShell nav={operatorNav} active="Painel" role="Frentista" aside={<div className="rounded-2xl border bg-white p-4 shadow-sm"><p className="text-sm font-bold">Caixa do turno</p>{shift?<><p className="mt-3 text-xs text-slate-500">Dinheiro esperado</p><p className="text-xl font-bold text-emerald-600">{formatMoney(Number(shift.opening_amount)+Number(shift.cash_total))}</p><p className="mt-2 text-xs text-slate-500">{shift.payment_count} pagamentos</p></>:<p className="mt-3 text-sm text-amber-700">Caixa não aberto.</p>}<Link href="/frentista/caixa" className="mt-4 block rounded-lg border py-2 text-center text-xs font-semibold text-blue-600">Ver caixa</Link></div>}><div className="mx-auto max-w-[1400px] space-y-5">
+export default async function OperatorPage(){const data=await getOperatorDashboard();const shift=data.open_shift;if(!shift)redirect("/frentista/caixa?welcome=1");return <DashboardShell nav={operatorNav} active="Painel" role="Frentista" aside={<div className="rounded-2xl border bg-white p-4 shadow-sm"><p className="text-sm font-bold">Caixa do turno</p><><p className="mt-3 text-xs text-slate-500">Dinheiro esperado</p><p className="text-xl font-bold text-emerald-600">{formatMoney(Number(shift.opening_amount)+Number(shift.cash_total))}</p><p className="mt-2 text-xs text-slate-500">{shift.payment_count} pagamentos</p></><Link href="/frentista/caixa" className="mt-4 block rounded-lg border py-2 text-center text-xs font-semibold text-blue-600">Ver caixa</Link></div>}><div className="mx-auto max-w-[1400px] space-y-5">
   <div><h1 className="text-3xl font-bold">Painel do Frentista</h1><p className="mt-1 text-sm text-slate-500">Operação em tempo real — {data.unit.name}</p></div>
   <EntryForm carEnabled={data.has_active_car_tariff} motorcycleEnabled={data.has_active_motorcycle_tariff}/>
   <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5"><Quick href="/frentista/saidas" icon={LogOut} label="Saída"/><Quick href="/frentista/veiculos" icon={CarFront} label="Veículos no pátio"/><Quick href="/frentista/caixa" icon={Banknote} label="Caixa"/><Quick href="/frentista/mensalistas" icon={Users} label="Mensalistas"/><Quick href="/frentista/pagamentos" icon={CreditCard} label="Pagamentos"/></div>
