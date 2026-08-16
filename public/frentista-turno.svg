@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 420" role="img" aria-label="Frentista Star Carvalhos">
+<defs><linearGradient id="shirt" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#1677ff"/><stop offset="1" stop-color="#0754c9"/></linearGradient><linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#eef6ff"/><stop offset="1" stop-color="#dcecff"/></linearGradient></defs>
+<circle cx="180" cy="240" r="145" fill="url(#bg)"/><circle cx="58" cy="128" r="6" fill="#cfe5ff"/><path d="M304 120l7 15 15 7-15 7-7 15-7-15-15-7 15-7z" fill="#ffd966"/>
+<path d="M96 400c5-90 36-130 84-130s79 40 84 130" fill="url(#shirt)"/><path d="M180 270v130" stroke="#0b4fa8" stroke-width="4"/><path d="M139 281l41 29 41-29" fill="none" stroke="#e8f2ff" stroke-width="8" stroke-linejoin="round"/>
+<rect x="221" y="319" width="27" height="21" rx="4" fill="#e9f3ff" stroke="#0b4fa8" stroke-width="3"/>
+<ellipse cx="180" cy="197" rx="68" ry="77" fill="#f2a66f"/><path d="M119 181c3-52 25-80 62-80 39 0 61 28 63 80-18-20-37-30-64-30-25 0-44 10-61 30z" fill="#2b1c18"/>
+<path d="M130 188c12-10 25-13 39-7M191 181c15-6 28-3 39 7" fill="none" stroke="#3b251f" stroke-width="5" stroke-linecap="round"/><ellipse cx="151" cy="199" rx="6" ry="8" fill="#1f2937"/><ellipse cx="209" cy="199" rx="6" ry="8" fill="#1f2937"/><path d="M151 231c18 17 41 17 59 0" fill="#fff" stroke="#b96e50" stroke-width="3" stroke-linecap="round"/>
+<path d="M112 135c8-48 36-72 70-72 35 0 64 23 71 72-45-16-96-16-141 0z" fill="#0754c9"/><path d="M107 135c42-13 88-13 139 0" fill="none" stroke="#123b7a" stroke-width="9" stroke-linecap="round"/><rect x="166" y="80" width="34" height="31" rx="7" fill="#fff"/><path d="M176 102V88h9c8 0 12 3 12 7s-4 7-12 7h-9zm7-5h3c3 0 4-1 4-2s-1-2-4-2h-3z" fill="#1677ff"/>
+<path d="M105 321c-23 10-31 34-22 53 9 18 28 19 45 4l30-28-26-35z" fill="#f2a66f"/><path d="M82 350c-14-16-13-34-2-41 8-5 16 0 22 10l7-29c2-9 14-8 14 2l-2 34 13-15c6-7 16 1 10 9l-22 31c-13 18-27 18-40-1z" fill="#f2a66f"/>
+</svg>
