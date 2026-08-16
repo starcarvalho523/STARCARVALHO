@@ -24,34 +24,49 @@ export default async function ExitsPage({ searchParams }: { searchParams: Promis
   const selected = data.active_sessions.find((item) => item.id === params.session) ?? visibleSessions[0] ?? data.active_sessions[0];
 
   return <DashboardShell nav={operatorNav} active="Saídas" role="Frentista">
-    <div className="mx-auto max-w-[1280px] space-y-5">
+    <div className="mx-auto max-w-[1320px] space-y-5">
       <div>
         <h1 className="text-3xl font-bold">Saída de veículo</h1>
         <p className="text-sm text-slate-500">Selecione uma placa ativa e siga o fluxo de cobrança.</p>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(380px,0.95fr)_minmax(0,1.55fr)] xl:grid-cols-[minmax(420px,1fr)_minmax(0,1.6fr)]">
-        <section className="self-start rounded-2xl border bg-white p-4 shadow-sm">
-          <h2 className="font-bold text-slate-950">Veículos ativos</h2>
-          <form className="mt-3" method="get">
-            <label className="flex h-11 items-center gap-2 rounded-xl border border-slate-200 px-3.5 transition focus-within:border-blue-400 focus-within:ring-4 focus-within:ring-blue-50">
+      <div className="grid gap-4 lg:grid-cols-[minmax(440px,1.08fr)_minmax(0,1.42fr)] xl:grid-cols-[minmax(500px,1.12fr)_minmax(0,1.38fr)]">
+        <section className="self-start rounded-2xl border bg-white p-5 shadow-sm">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h2 className="font-bold text-slate-950">Veículos ativos</h2>
+              <p className="mt-1 text-xs text-slate-500">Escolha a placa para continuar o atendimento de saída.</p>
+            </div>
+            <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">{data.active_sessions.length}</span>
+          </div>
+
+          <form className="mt-4" method="get">
+            <label className="flex h-12 items-center gap-2 rounded-xl border border-slate-200 px-4 transition focus-within:border-blue-400 focus-within:ring-4 focus-within:ring-blue-50">
               <Search className="size-4 text-slate-400"/>
               <input name="q" defaultValue={query} placeholder="Buscar por placa" aria-label="Buscar veículo por placa" className="min-w-0 flex-1 bg-transparent text-sm uppercase outline-none placeholder:normal-case"/>
             </label>
           </form>
 
-          <div className="mt-4 space-y-2.5">
+          <div className="mt-4 space-y-3">
             {visibleSessions.map((item) => {
               const active=selected?.id===item.id;
-              return <Link key={item.id} href={{pathname:"/frentista/saidas",query:{session:item.id,...(query?{q:query}:{})}}} className={`block rounded-xl border p-3.5 transition ${active?"border-blue-500 bg-blue-50 shadow-[0_0_0_1px_rgba(37,99,235,.12)]":"border-slate-200 hover:border-blue-200 hover:bg-slate-50"}`}>
-                <div className="flex items-start justify-between gap-3">
+              return <Link key={item.id} href={{pathname:"/frentista/saidas",query:{session:item.id,...(query?{q:query}:{})}}} className={`block rounded-2xl border p-4 transition ${active?"border-blue-500 bg-blue-50 shadow-[0_0_0_1px_rgba(37,99,235,.12)]":"border-slate-200 hover:border-blue-200 hover:bg-slate-50"}`}>
+                <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0">
-                    <p className="font-extrabold tracking-tight text-slate-950">{item.plate}</p>
-                    <p className="mt-1 flex items-center gap-1.5 text-xs text-slate-500"><CarFront className="size-3.5"/>{formatVehicleType(item.vehicle_type)}</p>
+                    <p className="text-lg font-extrabold tracking-tight text-slate-950">{item.plate}</p>
+                    <p className="mt-1 text-[11px] font-medium uppercase tracking-wide text-slate-400">Sessão ativa</p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="whitespace-nowrap text-xs font-medium text-slate-500">{formatDuration(item.duration_minutes)}</span>
-                    <OperationBadge {...sessionParkingStatus(item.status,item.entry_mode,item.financial_obligation)}/>
+                  <OperationBadge {...sessionParkingStatus(item.status,item.entry_mode,item.financial_obligation)}/>
+                </div>
+
+                <div className="mt-4 grid grid-cols-2 gap-3 border-t border-slate-200/80 pt-3">
+                  <div className="rounded-xl bg-white/70 px-3 py-2.5">
+                    <p className="text-[10px] font-medium uppercase tracking-wide text-slate-400">Tipo</p>
+                    <p className="mt-1 flex items-center gap-1.5 text-sm font-semibold text-slate-700"><CarFront className="size-3.5 text-slate-400"/>{formatVehicleType(item.vehicle_type)}</p>
+                  </div>
+                  <div className="rounded-xl bg-white/70 px-3 py-2.5">
+                    <p className="text-[10px] font-medium uppercase tracking-wide text-slate-400">Permanência</p>
+                    <p className="mt-1 flex items-center gap-1.5 text-sm font-bold text-slate-800"><Clock3 className="size-3.5 text-blue-500"/>{formatDuration(item.duration_minutes)}</p>
                   </div>
                 </div>
               </Link>;
@@ -59,7 +74,10 @@ export default async function ExitsPage({ searchParams }: { searchParams: Promis
             {visibleSessions.length===0?<div className="rounded-xl border border-dashed border-slate-200 px-4 py-10 text-center text-sm text-slate-500">Nenhum veículo encontrado para esta placa.</div>:null}
           </div>
 
-          <div className="mt-6 border-t pt-4 text-xs text-slate-500">{data.active_sessions.length} {data.active_sessions.length===1?"veículo ativo":"veículos ativos"}</div>
+          <div className="mt-5 flex items-center justify-between border-t pt-4 text-xs text-slate-500">
+            <span>{data.active_sessions.length} {data.active_sessions.length===1?"veículo ativo":"veículos ativos"}</span>
+            <span>Seleção por placa</span>
+          </div>
         </section>
 
         {selected ? <ExitDetail
