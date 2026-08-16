@@ -73,11 +73,6 @@ export function PixPaymentPanel({ sessionId, billingPeriodId, resumeExisting=fal
   }, [billingPeriodId,readResponse, sessionId]);
 
   useEffect(() => {
-    if (!resumeExisting || charge) return;
-    void refreshCharge();
-  }, [charge, refreshCharge, resumeExisting]);
-
-  useEffect(() => {
     if (charge?.state !== "CREATING" && charge?.state !== "PENDING") return;
     const timer = window.setInterval(() => void refreshCharge(true), 5000);
     return () => window.clearInterval(timer);
