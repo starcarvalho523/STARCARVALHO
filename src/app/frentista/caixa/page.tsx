@@ -20,8 +20,7 @@ function OpeningShiftGreeting({greeting}:{greeting:string}){
  return <section className="overflow-visible rounded-[28px] border border-slate-200 bg-white shadow-sm">
   <div className="grid items-center gap-2 px-5 py-6 sm:px-8 sm:py-8 lg:grid-cols-[360px_1fr] lg:gap-8">
    <div className="relative flex min-h-[390px] items-center justify-center lg:-my-10 lg:-ml-8">
-    <div className="absolute inset-x-8 bottom-7 h-24 rounded-full bg-blue-200/40 blur-2xl"/>
-    <Image src="/frentista-aprovado.webp" alt="Frentista da Star Carvalhos dando boas-vindas ao turno" width={420} height={460} priority className="relative z-10 h-auto w-[310px] origin-bottom drop-shadow-[0_24px_22px_rgba(15,23,42,0.28)] [transform:perspective(900px)_rotateY(-4deg)_rotateX(1deg)_scale(1.08)] sm:w-[350px] lg:w-[390px] lg:translate-y-3"/>
+    <Image src="/frentista-recortado.svg" alt="Frentista da Star Carvalhos dando boas-vindas ao turno" width={505} height={559} priority className="relative z-10 h-auto w-[310px] origin-bottom drop-shadow-[0_24px_22px_rgba(15,23,42,0.28)] [transform:perspective(900px)_rotateY(-4deg)_rotateX(1deg)_scale(1.08)] sm:w-[350px] lg:w-[390px] lg:translate-y-3"/>
    </div>
    <div className="mx-auto w-full max-w-[560px]">
     <div className="text-center lg:text-left">
