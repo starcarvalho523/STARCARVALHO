@@ -11,6 +11,7 @@ function message(error:string){
   if(error.includes("MONTHLY_VEHICLE_FORBIDDEN"))return"Selecione um veículo da sua conta.";
   if(error.includes("MONTHLY_PLAN_UNAVAILABLE"))return"Este plano não está disponível para adesão.";
   if(error.includes("MONTHLY_VEHICLE_ALREADY_ATTACHED"))return"Este veículo já está vinculado a uma mensalidade.";
+  if(error.includes("MONTHLY_ENROLLMENT_EXISTS"))return"Você já possui uma mensalidade ativa ou aguardando ativação nesta unidade.";
   return"Não foi possível concluir a operação com segurança.";
 }
 
@@ -18,7 +19,17 @@ export async function claimVehicle(_:CustomerActionState,formData:FormData):Prom
   const plate=String(formData.get("plate")??"");
   const vehicleType=String(formData.get("vehicleType")??"");
   if(!["CAR","MOTORCYCLE"].includes(vehicleType))return{error:"Selecione o tipo do veículo."};
+  const normalized=plate.toUpperCase().replace(/[^A-Z0-9]/g,"");
+  if(!/^[A-Z]{3}[0-9][A-Z0-9][0-9]{2}$/.test(normalized))return{error:"Informe uma placa brasileira válida."};
   const supabase=await createClient();
+
+  const {data:owned,error:ownedError}=await supabase
+    .from("vehicles")
+    .select("id")
+    .eq("normalized_plate",normalized)
+    .limit(1);
+  if(!ownedError&&owned?.length)return{error:"Este veículo já está vinculado à sua conta."};
+
   const{error}=await supabase.rpc("claim_customer_vehicle",{raw_plate:plate,target_vehicle_type:vehicleType});
   if(error)return{error:message(error.message)};
   revalidatePath("/cliente/veiculos");revalidatePath("/cliente/mensalidade");
