@@ -80,7 +80,7 @@ export default async function OverduePage() {
             tone="red"
           />
           <Metric
-            label="Competências vencidas"
+            label="Mensalidades vencidas"
             value={String(periods.length)}
             icon={<FileSearch className="size-5" />}
             tone="amber"
@@ -114,13 +114,13 @@ export default async function OverduePage() {
               </div>
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[820px] text-left text-sm">
+              <table className="w-full min-w-[860px] text-left text-sm">
                 <thead className="bg-white/70 text-xs font-semibold uppercase tracking-wide text-slate-500">
                   <tr>
                     <th className="px-5 py-3">Cliente</th>
                     <th className="px-4 py-3">Plano</th>
-                    <th className="px-4 py-3">Competência</th>
-                    <th className="px-4 py-3">Fim da tolerância</th>
+                    <th className="px-4 py-3">Mês</th>
+                    <th className="px-4 py-3">Prazo para primeiro pagamento</th>
                     <th className="px-4 py-3">Valor</th>
                     <th className="px-5 py-3 text-right">Ação</th>
                   </tr>
@@ -156,9 +156,9 @@ export default async function OverduePage() {
 
         <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
           <div className="border-b border-slate-100 px-5 py-4">
-            <h2 className="font-bold text-slate-950">Competências em atraso</h2>
+            <h2 className="font-bold text-slate-950">Mensalidades em atraso</h2>
             <p className="mt-1 text-xs text-slate-500">
-              Exibe somente competências pendentes fora da tolerância de assinaturas ativas ou suspensas.
+              Exibe somente cobranças mensais pendentes fora da tolerância de assinaturas ativas ou suspensas.
             </p>
           </div>
           <div className="overflow-x-auto">
@@ -167,7 +167,7 @@ export default async function OverduePage() {
                 <tr>
                   <th className="px-5 py-3">Cliente</th>
                   <th className="px-4 py-3">Plano</th>
-                  <th className="px-4 py-3">Competência</th>
+                  <th className="px-4 py-3">Mês</th>
                   <th className="px-4 py-3">Fim da tolerância</th>
                   <th className="px-4 py-3">Dias em atraso</th>
                   <th className="px-4 py-3">Valor</th>
@@ -217,7 +217,7 @@ export default async function OverduePage() {
                     <td colSpan={8} className="px-5 py-12 text-center">
                       <p className="font-semibold text-emerald-700">Nenhuma inadimplência recorrente</p>
                       <p className="mt-1 text-sm text-slate-500">
-                        Não há competências vencidas de assinaturas ativas ou suspensas.
+                        Não há mensalidades vencidas de assinaturas ativas ou suspensas.
                       </p>
                     </td>
                   </tr>
