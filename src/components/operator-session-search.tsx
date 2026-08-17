@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import type { ComponentType } from "react";
 import { useMemo, useState } from "react";
-import { ArrowRight, CarFront, CheckCircle2, CircleDollarSign, Clock3, Gauge, Search, WalletCards } from "lucide-react";
+import { ArrowRight, CheckCircle2, CircleDollarSign, Clock3, Gauge, Search, WalletCards } from "lucide-react";
 import { OperationBadge } from "@/components/operation-badge";
-import { VehicleTypeIcon } from "@/components/vehicle-type-icon";
+import { VehicleGroupIcon, VehicleTypeIcon } from "@/components/vehicle-type-icon";
 import { formatDateTime, formatDuration, formatMoney, formatPaymentStatus, formatSessionFinancialStatus, formatVehicleType, sessionParkingStatus, type ActiveSession } from "@/lib/operator-format";
 
 const filters=[
@@ -35,7 +36,7 @@ export function OperatorSessionSearch({sessions,timezone,capacity}:{sessions:Act
 
   return <div className="space-y-4">
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-      <SummaryCard icon={CarFront} tone="blue" label="No pátio" value={String(sessions.length)} detail={`de ${capacity} vagas ocupadas`}/>
+      <SummaryCard icon={VehicleGroupIcon} tone="blue" label="No pátio" value={String(sessions.length)} detail={`de ${capacity} vagas ocupadas`}/>
       <SummaryCard icon={Gauge} tone="green" label="Ocupação" value={`${occupancy}%`} detail={`${sessions.length} de ${capacity} vagas`}/>
       <SummaryCard icon={WalletCards} tone="amber" label="Aguardando pagamento" value={String(awaiting.length)} detail={formatMoney(awaitingAmount)}/>
       <SummaryCard icon={CheckCircle2} tone="green" label="Prontos para saída" value={String(ready)} detail="Disponíveis para liberar"/>
@@ -55,7 +56,7 @@ export function OperatorSessionSearch({sessions,timezone,capacity}:{sessions:Act
           </div>
         </div>
 
-        {rows.length===0?<div className="flex min-h-44 items-center justify-center gap-3 p-6 text-center text-sm text-slate-500 sm:min-h-56 sm:p-8"><CarFront className="size-6 shrink-0 text-slate-300"/>Nenhum veículo encontrado para este filtro.</div>:<div className="overflow-x-auto"><table className="w-full min-w-[760px] table-fixed text-left text-xs"><colgroup><col className="w-[14%]"/><col className="w-[12%]"/><col className="w-[18%]"/><col className="w-[13%]"/><col className="w-[13%]"/><col className="w-[15%]"/><col className="w-[15%]"/></colgroup><thead className="bg-slate-50 text-slate-500"><tr>{["Placa","Tipo","Entrada","Permanência","Valor atual","Situação","Ação"].map(h=><th key={h} className="px-3 py-3 font-semibold">{h}</th>)}</tr></thead><tbody>{rows.map(session=>{const action=actionFor(session);const selectedRow=selected?.id===session.id;return <tr key={session.id} onClick={()=>setSelectedId(session.id)} className={`cursor-pointer border-t transition ${selectedRow?"bg-blue-50/80 shadow-[inset_3px_0_0_#2563eb]":"hover:bg-slate-50"}`}><td className="px-3 py-3 font-bold text-blue-600"><span className="inline-flex items-center gap-2"><VehicleTypeIcon vehicleType={session.vehicle_type} className="size-4 shrink-0 text-slate-500"/>{session.plate}</span></td><td className="px-3 py-3">{formatVehicleType(session.vehicle_type)}</td><td className="px-3 py-3">{formatDateTime(session.entered_at,timezone)}</td><td className="px-3 py-3 font-medium">{formatDuration(session.duration_minutes)}</td><td className="px-3 py-3 font-semibold">{formatMoney(session.amount)}</td><td className="px-3 py-3"><OperationBadge {...sessionParkingStatus(session.status,session.entry_mode,session.financial_obligation)}/></td><td className="px-3 py-3"><Link onClick={(event)=>event.stopPropagation()} href={`/frentista/saidas?session=${session.id}`} className={`inline-flex min-h-9 items-center justify-center rounded-lg px-3 text-center text-[11px] font-bold transition ${action.className}`}>{action.label}</Link></td></tr>})}</tbody></table></div>}
+        {rows.length===0?<div className="flex min-h-44 items-center justify-center gap-3 p-6 text-center text-sm text-slate-500 sm:min-h-56 sm:p-8"><VehicleGroupIcon className="size-7 shrink-0 text-slate-300"/>Nenhum veículo encontrado para este filtro.</div>:<div className="overflow-x-auto"><table className="w-full min-w-[760px] table-fixed text-left text-xs"><colgroup><col className="w-[14%]"/><col className="w-[12%]"/><col className="w-[18%]"/><col className="w-[13%]"/><col className="w-[13%]"/><col className="w-[15%]"/><col className="w-[15%]"/></colgroup><thead className="bg-slate-50 text-slate-500"><tr>{["Placa","Tipo","Entrada","Permanência","Valor atual","Situação","Ação"].map(h=><th key={h} className="px-3 py-3 font-semibold">{h}</th>)}</tr></thead><tbody>{rows.map(session=>{const action=actionFor(session);const selectedRow=selected?.id===session.id;return <tr key={session.id} onClick={()=>setSelectedId(session.id)} className={`cursor-pointer border-t transition ${selectedRow?"bg-blue-50/80 shadow-[inset_3px_0_0_#2563eb]":"hover:bg-slate-50"}`}><td className="px-3 py-3 font-bold text-blue-600"><span className="inline-flex items-center gap-2"><VehicleTypeIcon vehicleType={session.vehicle_type} className="size-4 shrink-0 text-slate-500"/>{session.plate}</span></td><td className="px-3 py-3">{formatVehicleType(session.vehicle_type)}</td><td className="px-3 py-3">{formatDateTime(session.entered_at,timezone)}</td><td className="px-3 py-3 font-medium">{formatDuration(session.duration_minutes)}</td><td className="px-3 py-3 font-semibold">{formatMoney(session.amount)}</td><td className="px-3 py-3"><OperationBadge {...sessionParkingStatus(session.status,session.entry_mode,session.financial_obligation)}/></td><td className="px-3 py-3"><Link onClick={(event)=>event.stopPropagation()} href={`/frentista/saidas?session=${session.id}`} className={`inline-flex min-h-9 items-center justify-center rounded-lg px-3 text-center text-[11px] font-bold transition ${action.className}`}>{action.label}</Link></td></tr>})}</tbody></table></div>}
         <div className="border-t px-4 py-3 text-xs text-slate-500"><span>{rows.length} de {sessions.length} veículos exibidos</span></div>
       </section>
 
@@ -64,7 +65,7 @@ export function OperatorSessionSearch({sessions,timezone,capacity}:{sessions:Act
   </div>;
 }
 
-function SummaryCard({icon:Icon,tone,label,value,detail}:{icon:typeof CarFront;tone:"blue"|"green"|"amber";label:string;value:string;detail:string}){
+function SummaryCard({icon:Icon,tone,label,value,detail}:{icon:ComponentType<{className?:string}>;tone:"blue"|"green"|"amber";label:string;value:string;detail:string}){
   const palette=tone==="green"?"bg-emerald-50 text-emerald-600":tone==="amber"?"bg-amber-50 text-amber-600":"bg-blue-50 text-blue-600";
   return <div className="flex min-w-0 items-center gap-4 rounded-2xl border bg-white p-4 shadow-sm"><span className={`grid size-12 shrink-0 place-items-center rounded-2xl ${palette}`}><Icon className="size-6"/></span><div className="min-w-0"><p className="text-xs font-semibold text-slate-500">{label}</p><p className={`mt-0.5 text-2xl font-extrabold ${tone==="green"?"text-emerald-600":tone==="amber"?"text-amber-600":"text-blue-600"}`}>{value}</p><p className="truncate text-xs text-slate-500">{detail}</p></div></div>
 }
