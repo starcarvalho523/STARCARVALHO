@@ -49,8 +49,8 @@ export default async function TerminalsPage() {
         />
 
         <section className="overflow-hidden rounded-[22px] border border-slate-200 bg-white shadow-sm">
-          <div className="grid lg:grid-cols-[190px_minmax(0,1fr)_360px]">
-            <div className="flex items-center justify-center border-b border-slate-100 bg-blue-50/70 p-5 lg:border-b-0 lg:border-r">
+          <div className="grid lg:grid-cols-[380px_minmax(0,1fr)_360px]">
+            <div className="flex items-center justify-center border-b border-slate-100 bg-blue-50/70 p-4 sm:p-5 lg:border-b-0 lg:border-r lg:p-3">
               <TerminalIllustration />
             </div>
 
@@ -189,7 +189,7 @@ function TerminalIllustration() {
     <img
       src="/mercado-pago-terminal.svg"
       alt="Terminal Mercado Pago Point"
-      className="h-44 w-44 rounded-[28px] object-cover shadow-sm"
+      className="h-[352px] w-[352px] max-w-full rounded-[32px] object-cover shadow-sm"
     />
   );
 }
