@@ -171,6 +171,21 @@ body { background: #f7f9fd; }
   main h1 {
     overflow-wrap: anywhere;
   }
+  main label:has(input[placeholder="Buscar por placa"]),
+  main label:has(input[aria-label="Buscar veículo por placa"]) {
+    min-height: 3.5rem;
+    padding-inline: 1rem;
+  }
+  main label:has(input[placeholder="Buscar por placa"]) input,
+  main label:has(input[aria-label="Buscar veículo por placa"]) input {
+    font-size: 1rem;
+    line-height: 1.5rem;
+  }
+  main label:has(input[placeholder="Buscar por placa"]) svg,
+  main label:has(input[aria-label="Buscar veículo por placa"]) svg {
+    width: 1.25rem;
+    height: 1.25rem;
+  }
 }
 
 .donut { background: conic-gradient(#10b981 0 54%,#2563eb 54% 87%,#f97316 87%); }
