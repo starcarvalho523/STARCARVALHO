@@ -52,7 +52,7 @@ export default async function PlansPage({
           {(plans ?? []).map((plan) => (
             <article
               key={plan.id}
-              className="flex w-full max-w-[520px] flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+              className="flex w-full max-w-[660px] flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
