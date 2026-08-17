@@ -54,18 +54,13 @@ export default async function NewSubscriptionPage({
           <EmptyState
             title="Nenhum plano ativo disponível"
             description="Crie e ative um plano antes de cadastrar uma assinatura. Contratos não podem existir sem uma oferta válida."
-            primaryHref="/ceo/mensalistas/planos#novo-plano"
+            primaryHref="/ceo/mensalistas/planos?novo=1"
             primaryLabel="Criar plano"
-          />
-        ) : !customers.length ? (
-          <EmptyState
-            title="Nenhum cliente elegível encontrado"
-            description="A elegibilidade continua restrita aos clientes já relacionados à operação desta unidade. Isso evita criar um cadastro administrativo paralelo e preserva a origem dos vínculos."
-            primaryHref="/ceo/clientes"
-            primaryLabel="Ir para Clientes"
             secondaryHref="/ceo/mensalistas"
             secondaryLabel="Voltar para Assinaturas"
           />
+        ) : !customers.length ? (
+          <EligibilityEmptyState />
         ) : (
           <form action={createSubscription} className="space-y-4">
             <Step
@@ -216,6 +211,44 @@ function Label({ text, children }: { text: string; children: React.ReactNode }) 
       <span>{text}</span>
       {children}
     </label>
+  );
+}
+
+function EligibilityEmptyState() {
+  return (
+    <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+      <div className="max-w-3xl">
+        <span className="grid size-12 place-items-center rounded-2xl bg-amber-50 text-amber-600">
+          <UserRound className="size-5" />
+        </span>
+        <h2 className="mt-5 text-xl font-bold text-slate-950">Nenhum cliente elegível encontrado</h2>
+        <p className="mt-2 text-sm leading-6 text-slate-600">
+          Para uma nova assinatura administrativa, o cliente precisa estar ativo, possuir um veículo vinculado e esse veículo já ter relação operacional com a unidade. Esse vínculo nasce do fluxo real do cliente e do estacionamento; não é criado artificialmente nesta tela.
+        </p>
+        <div className="mt-5 grid gap-3 sm:grid-cols-3">
+          <Criterion n="1" text="Cliente ativo no sistema" />
+          <Criterion n="2" text="Veículo vinculado ao cliente" />
+          <Criterion n="3" text="Histórico operacional na unidade" />
+        </div>
+        <p className="mt-4 text-xs leading-5 text-slate-500">
+          A área administrativa de Clientes ainda não cria esse vínculo de elegibilidade; por isso não mostramos um atalho que não resolveria o bloqueio.
+        </p>
+        <div className="mt-5 flex flex-wrap gap-3">
+          <Link href="/ceo/mensalistas" className={primary}>
+            Voltar para Assinaturas
+          </Link>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function Criterion({ n, text }: { n: string; text: string }) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+      <span className="grid size-7 place-items-center rounded-full bg-blue-600 text-xs font-bold text-white">{n}</span>
+      <p className="mt-3 text-sm font-semibold leading-5 text-slate-700">{text}</p>
+    </div>
   );
 }
 

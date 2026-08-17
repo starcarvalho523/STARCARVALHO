@@ -110,11 +110,11 @@ export default async function MonthlySubscribersPage({
 
         <MonthlyTabs active="list" />
 
-        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+        <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
           <MetricCard
             label="Receita mensal ativa"
             value={money(activeMrr)}
-            detail="Somente contratos ACTIVE"
+            detail="Somente assinaturas ativas"
             icon={<CircleDollarSign className="size-5" />}
             tone="emerald"
           />
@@ -128,7 +128,7 @@ export default async function MonthlySubscribersPage({
           <MetricCard
             label="Aguardando ativação"
             value={String(pendingActivation)}
-            detail="Dependem da primeira ativação"
+            detail="Dependem do primeiro pagamento"
             icon={<FileSearch className="size-5" />}
             tone="blue"
           />
@@ -276,7 +276,7 @@ function MetricCard({
   }[tone];
 
   return (
-    <article className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+    <article className="rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm sm:p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</p>

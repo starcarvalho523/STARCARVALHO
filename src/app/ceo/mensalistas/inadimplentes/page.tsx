@@ -14,7 +14,7 @@ export default async function OverduePage() {
   const { unitIds } = await getMonthlyAccess();
   const supabase = await createClient();
   const today = new Date().toISOString().slice(0, 10);
-  const { data: periods } = await supabase
+  const { data: allPeriods } = await supabase
     .from("monthly_billing_periods")
     .select(
       "id,subscription_id,unit_id,reference_year,reference_month,amount,due_date,grace_until,status,monthly_subscriptions(customer_id,plan_name,status)",
@@ -24,25 +24,41 @@ export default async function OverduePage() {
     .lt("grace_until", today)
     .order("grace_until");
 
-  const customerIds = [
+  const activationPeriods = (allPeriods ?? []).filter(
+    (period: any) => period.monthly_subscriptions?.status === "PENDING_ACTIVATION",
+  );
+  const periods = (allPeriods ?? []).filter((period: any) =>
+    ["ACTIVE", "SUSPENDED"].includes(period.monthly_subscriptions?.status),
+  );
+
+  const allCustomerIds = [
     ...new Set(
-      (periods ?? [])
+      (allPeriods ?? [])
         .map((period: any) => period.monthly_subscriptions?.customer_id)
         .filter(Boolean),
     ),
   ] as string[];
+  const overdueCustomerIds = [
+    ...new Set(
+      periods
+        .map((period: any) => period.monthly_subscriptions?.customer_id)
+        .filter(Boolean),
+    ),
+  ] as string[];
+
   const admin = createAdminClient();
-  const { data: customers } = customerIds.length
+  const { data: customers } = allCustomerIds.length
     ? await admin
         .from("customer_profiles")
         .select("user_id,full_name")
-        .in("user_id", customerIds)
+        .in("user_id", allCustomerIds)
     : { data: [] };
   const names = new Map((customers ?? []).map((customer) => [customer.user_id, customer.full_name]));
 
-  const total = (periods ?? []).reduce((sum, period) => sum + Number(period.amount), 0);
+  const total = periods.reduce((sum, period) => sum + Number(period.amount), 0);
+  const activationTotal = activationPeriods.reduce((sum, period) => sum + Number(period.amount), 0);
   const suspendedSubscriptions = new Set(
-    (periods ?? [])
+    periods
       .filter((period: any) => period.monthly_subscriptions?.status === "SUSPENDED")
       .map((period) => period.subscription_id),
   ).size;
@@ -65,13 +81,13 @@ export default async function OverduePage() {
           />
           <Metric
             label="Competências vencidas"
-            value={String(periods?.length ?? 0)}
+            value={String(periods.length)}
             icon={<FileSearch className="size-5" />}
             tone="amber"
           />
           <Metric
             label="Clientes em atraso"
-            value={String(customerIds.length)}
+            value={String(overdueCustomerIds.length)}
             icon={<UserRound className="size-5" />}
             tone="blue"
           />
@@ -83,11 +99,66 @@ export default async function OverduePage() {
           />
         </section>
 
+        {activationPeriods.length ? (
+          <section className="overflow-hidden rounded-2xl border border-blue-200 bg-blue-50/40 shadow-sm">
+            <div className="flex flex-col gap-2 border-b border-blue-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="font-bold text-slate-950">Ativações aguardando primeiro pagamento</h2>
+                <p className="mt-1 text-xs leading-5 text-slate-600">
+                  Essas adesões ainda não viraram contratos ativos e, por isso, não entram nos indicadores de inadimplência recorrente.
+                </p>
+              </div>
+              <div className="shrink-0 text-left sm:text-right">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Valor pendente de ativação</p>
+                <p className="mt-1 text-xl font-extrabold text-blue-700">{money(activationTotal)}</p>
+              </div>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[820px] text-left text-sm">
+                <thead className="bg-white/70 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  <tr>
+                    <th className="px-5 py-3">Cliente</th>
+                    <th className="px-4 py-3">Plano</th>
+                    <th className="px-4 py-3">Competência</th>
+                    <th className="px-4 py-3">Fim da tolerância</th>
+                    <th className="px-4 py-3">Valor</th>
+                    <th className="px-5 py-3 text-right">Ação</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {activationPeriods.map((period: any) => (
+                    <tr key={period.id} className="border-t border-blue-100 bg-white/60">
+                      <td className="px-5 py-4 font-semibold text-slate-950">
+                        {names.get(period.monthly_subscriptions?.customer_id) ?? "Cliente"}
+                      </td>
+                      <td className="px-4 py-4 text-slate-600">{period.monthly_subscriptions?.plan_name ?? "—"}</td>
+                      <td className="px-4 py-4 text-slate-600">
+                        {String(period.reference_month).padStart(2, "0")}/{period.reference_year}
+                      </td>
+                      <td className="px-4 py-4 text-slate-600">{dateBR(period.grace_until)}</td>
+                      <td className="px-4 py-4 font-bold text-slate-950">{money(period.amount)}</td>
+                      <td className="px-5 py-4 text-right">
+                        <Link
+                          href={`/ceo/mensalistas/${period.subscription_id}`}
+                          className="inline-flex items-center gap-1 font-semibold text-blue-600 hover:text-blue-700"
+                        >
+                          Abrir assinatura
+                          <ArrowUpRight className="size-4" />
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        ) : null}
+
         <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
           <div className="border-b border-slate-100 px-5 py-4">
             <h2 className="font-bold text-slate-950">Competências em atraso</h2>
             <p className="mt-1 text-xs text-slate-500">
-              Situação derivada automaticamente: somente competências PENDING após o fim da tolerância.
+              Exibe somente competências pendentes fora da tolerância de assinaturas ativas ou suspensas.
             </p>
           </div>
           <div className="overflow-x-auto">
@@ -105,7 +176,7 @@ export default async function OverduePage() {
                 </tr>
               </thead>
               <tbody>
-                {(periods ?? []).map((period: any) => {
+                {periods.map((period: any) => {
                   const contractStatus = period.monthly_subscriptions?.status ?? "ACTIVE";
                   return (
                     <tr key={period.id} className="border-t border-slate-100 hover:bg-slate-50/70">
@@ -141,12 +212,12 @@ export default async function OverduePage() {
                     </tr>
                   );
                 })}
-                {!periods?.length ? (
+                {!periods.length ? (
                   <tr>
                     <td colSpan={8} className="px-5 py-12 text-center">
-                      <p className="font-semibold text-emerald-700">Nenhuma competência inadimplente</p>
+                      <p className="font-semibold text-emerald-700">Nenhuma inadimplência recorrente</p>
                       <p className="mt-1 text-sm text-slate-500">
-                        Não há competências pendentes fora do prazo de tolerância.
+                        Não há competências vencidas de assinaturas ativas ou suspensas.
                       </p>
                     </td>
                   </tr>
