@@ -2,15 +2,12 @@
 
 import {
   Building2,
-  CalendarClock,
-  CarFront,
   Clock3,
   Coins,
   Play,
   RotateCcw,
   Save,
   ShieldCheck,
-  Timer,
 } from "lucide-react";
 import { useActionState, useState } from "react";
 import {
@@ -103,10 +100,10 @@ export function TariffForm({ units }: { units: Array<{ id: string; name: string 
           </FormGroup>
         </div>
 
-        <div className="rounded-2xl border border-blue-100 bg-blue-50/45 p-4 sm:p-5">
+        <div className="rounded-2xl border border-blue-200 bg-blue-50/65 p-4 shadow-sm sm:p-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h3 className="font-extrabold text-blue-950">Pré-visualização oficial</h3>
+              <h3 className="text-lg font-extrabold text-blue-950">Pré-visualização oficial</h3>
               <p className="mt-1 text-xs text-slate-500">
                 Os exemplos são calculados no servidor pelo mesmo motor da operação.
               </p>
@@ -114,7 +111,7 @@ export function TariffForm({ units }: { units: Array<{ id: string; name: string 
             <button
               formAction={previewAction}
               disabled={previewPending || createPending}
-              className="inline-flex h-10 items-center gap-2 rounded-xl border border-blue-200 bg-white px-4 text-sm font-bold text-blue-600 disabled:opacity-50"
+              className="inline-flex h-10 items-center gap-2 rounded-xl border border-blue-200 bg-white px-4 text-sm font-bold text-blue-600 shadow-sm disabled:opacity-50"
             >
               <Play className="size-4" />
               {previewPending ? "Calculando..." : "Simular tarifa"}
@@ -124,12 +121,15 @@ export function TariffForm({ units }: { units: Array<{ id: string; name: string 
           {preview.preview && (
             <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
               {preview.preview.slice(0, 5).map((item) => (
-                <div key={item.minutes} className="rounded-xl border border-blue-100 bg-white p-3.5">
+                <div
+                  key={item.minutes}
+                  className="rounded-xl border border-blue-100 bg-white p-4 shadow-sm"
+                >
                   <div className="flex items-center gap-2 text-xs font-semibold text-blue-600">
                     <Clock3 className="size-3.5" />
                     {duration(item.minutes)}
                   </div>
-                  <p className="mt-2 text-lg font-extrabold text-blue-950">
+                  <p className="mt-2 text-xl font-extrabold tracking-tight text-blue-950 sm:text-2xl">
                     {money.format(Number(item.total))}
                   </p>
                 </div>
