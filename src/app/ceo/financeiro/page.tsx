@@ -24,12 +24,11 @@ export const dynamic = "force-dynamic";
 
 type Tone = "green" | "blue" | "violet" | "cyan" | "orange" | "slate";
 
-export default async function Page({ searchParams }: { searchParams: Promise<{ period?: string; unit?: string; method?: string; status?: string; shift?: string }> }) {
+export default async function Page({ searchParams }: { searchParams: Promise<{ period?: string; unit?: string; method?: string; status?: string }> }) {
   const query = await searchParams;
   const data = await getCeoAnalytics(normalizeCeoFilters(query));
   const unitNames = new Map(data.units.map((unit) => [unit.id, unit.name]));
   const payments = data.payments.filter((payment) => (!query.method || query.method === "all" || payment.method === query.method) && (!query.status || query.status === "all" || payment.status === query.status));
-  const selectedShift = data.shifts.find((shift) => shift.id === query.shift);
   const cashReceived = (shiftId: string) => data.paid.filter((payment) => payment.cash_shift_id === shiftId && payment.method === "CASH").reduce((sum, payment) => sum + Number(payment.amount), 0);
   const expectedCash = (shift: (typeof data.shifts)[number]) => shift.status === "OPEN" ? Number(shift.opening_amount) + cashReceived(shift.id) : shift.expected_cash_amount;
   for (const shift of data.shifts) if (shift.status === "OPEN") shift.expected_cash_amount = expectedCash(shift);
@@ -44,13 +43,18 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ p
         <section className="grid gap-3 lg:grid-cols-[1.25fr_1fr_1fr]">
           <article className="relative overflow-hidden rounded-2xl border border-emerald-200 bg-white p-5 shadow-sm">
             <span className="absolute inset-y-0 left-0 w-1 bg-emerald-500" />
-            <div className="flex items-center gap-4">
-              <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-emerald-50 text-emerald-600">
-                <Landmark className="size-5" />
-              </span>
-              <div className="min-w-0">
-                <p className="text-sm text-slate-500">Receita confirmada</p>
-                <p className="mt-1 text-3xl font-extrabold tracking-tight text-slate-950">{formatMoney(data.metrics.revenue)}</p>
+            <div className="flex min-h-[72px] items-center justify-between gap-4">
+              <div className="flex min-w-0 items-center gap-4">
+                <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-emerald-50 text-emerald-600">
+                  <Landmark className="size-5" />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-sm text-slate-500">Receita confirmada</p>
+                  <p className="mt-1 text-3xl font-extrabold tracking-tight text-slate-950">{formatMoney(data.metrics.revenue)}</p>
+                </div>
+              </div>
+              <div className="hidden items-end gap-1 sm:flex" aria-hidden="true">
+                {[18, 28, 22, 40, 34, 50].map((height, index) => <span key={index} className="w-1.5 rounded-full bg-emerald-200" style={{ height }} />)}
               </div>
             </div>
           </article>
@@ -91,7 +95,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ p
               </table>
             </div>
           ) : (
-            <div className="grid min-h-32 place-items-center px-6 py-8 text-center">
+            <div className="grid min-h-28 place-items-center px-6 py-7 text-center">
               <div>
                 <span className="mx-auto grid size-12 place-items-center rounded-2xl bg-blue-50 text-blue-500"><FileSearch className="size-5" /></span>
                 <p className="mt-3 text-sm text-slate-500">Nenhum pagamento encontrado neste período.</p>
@@ -106,6 +110,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ p
             <div className="grid gap-3 p-4 lg:grid-cols-2">
               {data.shifts.map((shift) => {
                 const difference = Number(shift.difference_amount);
+                const detailHref = `/ceo/financeiro/caixas/${shift.id}?period=${data.filters.period}&unit=${encodeURIComponent(data.filters.unitId)}`;
                 return (
                   <article key={shift.id} className={`rounded-2xl border p-4 ${difference !== 0 ? "border-amber-200 bg-amber-50/30" : "border-slate-200 bg-white"}`}>
                     <div className="flex items-center justify-between gap-3">
@@ -121,7 +126,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ p
                     </div>
                     <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-4">
                       <b className={difference !== 0 ? "text-amber-700" : "text-slate-950"}>Diferença: {formatMoney(shift.difference_amount)}</b>
-                      <Link className="inline-flex items-center gap-1 text-sm font-bold text-blue-600" href={`?period=${data.filters.period}&unit=${data.filters.unitId}&shift=${shift.id}`}>Ver detalhe <span aria-hidden>›</span></Link>
+                      <Link className="inline-flex items-center gap-1 text-sm font-bold text-blue-600 hover:text-blue-700" href={detailHref}>Ver detalhe <span aria-hidden>›</span></Link>
                     </div>
                   </article>
                 );
@@ -129,21 +134,13 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ p
             </div>
           ) : <Empty text="Nenhum caixa encontrado neste período." />}
         </section>
-
-        {selectedShift ? (
-          <section className="rounded-2xl border border-blue-100 bg-white p-5 shadow-sm">
-            <div className="flex justify-between"><h2 className="font-bold">Detalhe do caixa</h2><Link href={`?period=${data.filters.period}&unit=${data.filters.unitId}`} className="text-sm text-blue-600">Fechar</Link></div>
-            <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4"><Cell label="Operador" value={data.names[selectedShift.operator_id] ?? "Operador não identificado"}/><Cell label="Unidade" value={unitNames.get(selectedShift.unit_id) ?? "—"}/><Cell label="Abertura" value={formatDateTime(selectedShift.opened_at)}/><Cell label="Fechamento" value={selectedShift.closed_at ? formatDateTime(selectedShift.closed_at) : "Em aberto"}/><Cell label="Saldo inicial" value={formatMoney(selectedShift.opening_amount)}/><Cell label="Pagamentos em dinheiro" value={formatMoney(cashReceived(selectedShift.id))}/><Cell label="Esperado" value={formatMoney(selectedShift.expected_cash_amount)}/><Cell label="Declarado" value={selectedShift.declared_cash_amount == null ? "—" : formatMoney(selectedShift.declared_cash_amount)}/><Cell label="Diferença" value={formatMoney(selectedShift.difference_amount)}/></div>
-            {selectedShift.notes ? <p className="mt-4 rounded-xl bg-slate-50 p-3 text-sm"><b>Observação:</b> {selectedShift.notes}</p> : null}
-          </section>
-        ) : null}
       </div>
     </DashboardShell>
   );
 }
 
 function RevenueCard({ label, value, icon: Icon, tone }: { label: string; value: string; icon: ComponentType<{ className?: string }>; tone: Tone }) {
-  return <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><div className="flex items-center gap-4"><IconBadge icon={Icon} tone={tone}/><div><p className="text-sm text-slate-500">{label}</p><p className="mt-1 text-2xl font-extrabold text-slate-950">{value}</p></div></div></article>;
+  return <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><div className="flex min-h-[72px] items-center gap-4"><IconBadge icon={Icon} tone={tone}/><div><p className="text-sm text-slate-500">{label}</p><p className="mt-1 text-2xl font-extrabold text-slate-950">{value}</p></div></div></article>;
 }
 
 function MethodCard({ label, value, icon: Icon, tone, warning = false }: { label: string; value: string; icon: ComponentType<{ className?: string }>; tone: Tone; warning?: boolean }) {
