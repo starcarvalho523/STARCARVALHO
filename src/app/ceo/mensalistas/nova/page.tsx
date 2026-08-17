@@ -40,7 +40,7 @@ export default async function NewSubscriptionPage({
       <div className="mx-auto max-w-5xl space-y-4">
         <CeoPageHeader
           title="Nova assinatura"
-          description="O plano é a fonte de verdade da unidade, preço e regras. O servidor congela essas condições no contrato."
+          description="O plano define unidade, preço e regras. O servidor congela essas condições no contrato."
         >
           <Link href="/ceo/mensalistas" className={secondary}>
             <ArrowLeft className="mr-2 size-4" />
@@ -66,7 +66,7 @@ export default async function NewSubscriptionPage({
             <Step
               n="1"
               title="Escolha o plano"
-              description="A unidade é derivada no servidor a partir do plano ativo selecionado."
+              description="A unidade é definida automaticamente no servidor a partir do plano selecionado."
               icon={<CreditCard className="size-5" />}
             >
               <div className="grid gap-3 md:grid-cols-2">
@@ -105,7 +105,7 @@ export default async function NewSubscriptionPage({
             <Step
               n="2"
               title="Cliente e veículo"
-              description="O backend confirma que o veículo pertence ao cliente antes de criar o vínculo."
+              description="O sistema confirma que o veículo pertence ao cliente antes de criar o vínculo."
               icon={<UserRound className="size-5" />}
             >
               <div className="grid gap-4 md:grid-cols-2">
@@ -139,7 +139,7 @@ export default async function NewSubscriptionPage({
             <Step
               n="3"
               title="Início do contrato"
-              description="A data civil define quando a assinatura passa a existir contratualmente."
+              description="Escolha a data em que a assinatura começa a valer contratualmente."
               icon={<CarFront className="size-5" />}
             >
               <Label text="Data de início">
@@ -159,9 +159,9 @@ export default async function NewSubscriptionPage({
                   <ShieldCheck className="size-5" />
                 </span>
                 <div>
-                  <p className="font-bold text-emerald-950">Criação protegida pelo backend</p>
+                  <p className="font-bold text-emerald-950">Criação protegida pelo servidor</p>
                   <p className="mt-1 text-sm leading-5 text-emerald-800">
-                    Preço, vencimento e tolerância são copiados do plano. O navegador não define a unidade do contrato.
+                    Preço, vencimento e tolerância são copiados do plano. A unidade não pode ser alterada pelo navegador.
                   </p>
                 </div>
               </div>
@@ -223,12 +223,12 @@ function EligibilityEmptyState() {
         </span>
         <h2 className="mt-5 text-xl font-bold text-slate-950">Nenhum cliente elegível encontrado</h2>
         <p className="mt-2 text-sm leading-6 text-slate-600">
-          Para uma nova assinatura administrativa, o cliente precisa estar ativo, possuir um veículo vinculado e esse veículo já ter relação operacional com a unidade. Esse vínculo nasce do fluxo real do cliente e do estacionamento; não é criado artificialmente nesta tela.
+          Para criar uma assinatura, o cliente precisa estar ativo, ter um veículo vinculado e esse veículo já precisa ter pelo menos uma passagem registrada nesta unidade.
         </p>
         <div className="mt-5 grid gap-3 sm:grid-cols-3">
           <Criterion n="1" text="Cliente ativo no sistema" />
           <Criterion n="2" text="Veículo vinculado ao cliente" />
-          <Criterion n="3" text="Histórico operacional na unidade" />
+          <Criterion n="3" text="Passagem registrada na unidade" />
         </div>
         <p className="mt-4 text-xs leading-5 text-slate-500">
           A área administrativa de Clientes ainda não cria esse vínculo de elegibilidade; por isso não mostramos um atalho que não resolveria o bloqueio.
