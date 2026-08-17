@@ -105,26 +105,26 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ p
         </section>
 
         <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <h2 className="px-5 pt-5 font-bold text-slate-950">Caixas</h2>
+          <h2 className="px-5 pt-4 font-bold text-slate-950">Caixas</h2>
           {data.shifts.length ? (
-            <div className="grid gap-3 p-4 lg:grid-cols-2">
+            <div className="grid gap-3 p-4 pt-3 lg:grid-cols-2">
               {data.shifts.map((shift) => {
                 const difference = Number(shift.difference_amount);
                 const detailHref = `/ceo/financeiro/caixas/${shift.id}?period=${data.filters.period}&unit=${encodeURIComponent(data.filters.unitId)}`;
                 return (
-                  <article key={shift.id} className={`rounded-2xl border p-4 ${difference !== 0 ? "border-amber-200 bg-amber-50/30" : "border-slate-200 bg-white"}`}>
+                  <article key={shift.id} className={`rounded-2xl border p-3.5 ${difference !== 0 ? "border-amber-200 bg-amber-50/30" : "border-slate-200 bg-white"}`}>
                     <div className="flex items-center justify-between gap-3">
                       <Operator name={data.names[shift.operator_id] ?? "Operador não identificado"} />
                       <span className={`rounded-full px-3 py-1 text-xs font-bold ${shift.status === "OPEN" ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600"}`}>{shift.status === "OPEN" ? "Aberto" : "Fechado"}</span>
                     </div>
                     <p className="mt-1 text-xs text-slate-500">{unitNames.get(shift.unit_id)} · abertura {formatDateTime(shift.opened_at)}</p>
-                    <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4 text-sm">
+                    <div className="mt-3 grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
                       <Cell label="Saldo inicial" value={formatMoney(shift.opening_amount)} />
                       <Cell label="Dinheiro recebido" value={formatMoney(cashReceived(shift.id))} />
                       <Cell label="Esperado" value={formatMoney(shift.expected_cash_amount)} />
                       <Cell label="Declarado" value={shift.declared_cash_amount == null ? "—" : formatMoney(shift.declared_cash_amount)} />
                     </div>
-                    <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-4">
+                    <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-3">
                       <b className={difference !== 0 ? "text-amber-700" : "text-slate-950"}>Diferença: {formatMoney(shift.difference_amount)}</b>
                       <Link className="inline-flex items-center gap-1 text-sm font-bold text-blue-600 hover:text-blue-700" href={detailHref}>Ver detalhe <span aria-hidden>›</span></Link>
                     </div>
