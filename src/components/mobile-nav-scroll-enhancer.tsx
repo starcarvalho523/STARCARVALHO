@@ -53,8 +53,8 @@ export function MobileNavScrollEnhancer({
         const nav = document.getElementById(navId);
         nav?.scrollBy({ left: 180, behavior: "smooth" });
       }}
-      className={`fixed right-2 z-50 grid size-9 -translate-y-1/2 place-items-center rounded-full border border-white/70 bg-slate-900/45 text-white shadow-lg backdrop-blur-md animate-[pulse_2.2s_ease-in-out_infinite] ${
-        hideAt === "lg" ? "bottom-[calc(2.25rem+env(safe-area-inset-bottom)/2)] lg:hidden" : "bottom-[calc(2.25rem+env(safe-area-inset-bottom)/2)] md:hidden"
+      className={`fixed bottom-[calc(1.125rem+env(safe-area-inset-bottom)/2)] right-2 z-50 grid size-9 place-items-center rounded-full border border-white/70 bg-slate-900/40 text-white shadow-lg backdrop-blur-md animate-[pulse_2.2s_ease-in-out_infinite] ${
+        hideAt === "lg" ? "lg:hidden" : "md:hidden"
       }`}
     >
       <ChevronRight className="size-5" strokeWidth={2.5} />
