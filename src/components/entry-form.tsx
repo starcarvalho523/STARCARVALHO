@@ -7,7 +7,7 @@ const initial:OperatorActionState={};
 
 type VehicleType="CAR"|"MOTORCYCLE";
 
-export function EntryForm({carEnabled,motorcycleEnabled}:{carEnabled:boolean;motorcycleEnabled:boolean}){
+export function EntryForm({carEnabled,motorcycleEnabled,compact=false}:{carEnabled:boolean;motorcycleEnabled:boolean;compact?:boolean}){
   const[plate,setPlate]=useState("");
   const[vehicleType,setVehicleType]=useState<VehicleType>(carEnabled?"CAR":"MOTORCYCLE");
   const input=useRef<HTMLInputElement>(null);
@@ -19,51 +19,55 @@ export function EntryForm({carEnabled,motorcycleEnabled}:{carEnabled:boolean;mot
   const noTariffAvailable=!carEnabled&&!motorcycleEnabled;
   const selectedTypeLabel=vehicleType==="CAR"?"Carro":"Moto";
 
-  return <div className="space-y-4">
-    <form action={action} className="grid items-end gap-4 lg:grid-cols-[minmax(0,1fr)_260px_280px]">
+  return <div className={compact?"space-y-3":"space-y-4"}>
+    <form action={action} className={`grid items-end ${compact?"gap-3 lg:grid-cols-[minmax(0,1fr)_280px_280px]":"gap-4 lg:grid-cols-[minmax(0,1fr)_260px_280px]"}`}>
       <input type="hidden" name="entryDecision" value="REQUIRE_DECISION"/>
 
-      <div className="space-y-2">
-        <label htmlFor="entryPlate" className="text-sm font-semibold text-slate-700">Placa do veículo</label>
-        <label className="flex h-16 items-center rounded-xl border-2 border-blue-500 bg-white px-4 shadow-sm transition focus-within:ring-4 focus-within:ring-blue-100">
+      <div className={compact?"space-y-0":"space-y-2"}>
+        {!compact?<label htmlFor="entryPlate" className="text-sm font-semibold text-slate-700">Placa do veículo</label>:null}
+        <label className={`flex items-center rounded-xl border-2 border-blue-500 bg-white shadow-sm transition focus-within:ring-4 focus-within:ring-blue-100 ${compact?"h-14 px-4":"h-16 px-4"}`}>
           <CarFront className="size-5 shrink-0 text-blue-600"/>
           <span className="sr-only">Placa do veículo</span>
-          <input id="entryPlate" ref={input} autoFocus name="plate" value={normalized} onChange={event=>setPlate(event.target.value)} aria-invalid={normalized.length>0&&!valid} className="h-full min-w-0 flex-1 bg-transparent px-3 text-xl font-bold uppercase outline-none placeholder:text-base placeholder:font-medium placeholder:normal-case placeholder:text-slate-400" placeholder="Digite a placa do veículo" autoComplete="off"/>
+          <input id="entryPlate" ref={input} autoFocus name="plate" value={normalized} onChange={event=>setPlate(event.target.value)} aria-invalid={normalized.length>0&&!valid} className={`h-full min-w-0 flex-1 bg-transparent px-3 font-bold uppercase outline-none placeholder:font-medium placeholder:normal-case placeholder:text-slate-400 ${compact?"text-lg placeholder:text-sm":"text-xl placeholder:text-base"}`} placeholder="Digite a placa do veículo" autoComplete="off"/>
         </label>
-        <p className="text-xs text-slate-500">Digite apenas letras e números, sem espaços ou traços.</p>
+        {!compact?<p className="text-xs text-slate-500">Digite apenas letras e números, sem espaços ou traços.</p>:null}
       </div>
 
-      <div className="space-y-2">
-        <label className="text-sm font-semibold text-slate-700" htmlFor="vehicleType">Tipo de veículo</label>
+      <div className={compact?"space-y-0":"space-y-2"}>
+        {!compact?<label className="text-sm font-semibold text-slate-700" htmlFor="vehicleType">Tipo de veículo</label>:null}
         <div className="relative">
           <CarFront className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-slate-500"/>
-          <select id="vehicleType" name="vehicleType" value={vehicleType} onChange={event=>setVehicleType(event.target.value as VehicleType)} className="h-16 w-full rounded-xl border border-slate-200 bg-white pl-11 pr-4 font-semibold text-slate-900 shadow-sm outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-50">
+          <select id="vehicleType" name="vehicleType" value={vehicleType} onChange={event=>setVehicleType(event.target.value as VehicleType)} className={`w-full rounded-xl border border-slate-200 bg-white pl-11 pr-4 font-semibold text-slate-900 shadow-sm outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-50 ${compact?"h-14":"h-16"}`}>
             <option value="CAR" disabled={!carEnabled}>Carro{!carEnabled?" — sem tarifa":""}</option>
             <option value="MOTORCYCLE" disabled={!motorcycleEnabled}>Moto{!motorcycleEnabled?" — sem tarifa":""}</option>
           </select>
         </div>
-        <p className="text-xs text-slate-500">Somente tipos com tarifa ativa podem entrar.</p>
+        {!compact?<p className="text-xs text-slate-500">Somente tipos com tarifa ativa podem entrar.</p>:null}
       </div>
 
-      <div className="space-y-2">
-        <button disabled={pending||!valid||!selectedTypeEnabled} className="flex h-16 w-full items-center justify-center gap-3 rounded-xl bg-blue-600 px-5 font-bold text-white shadow-lg shadow-blue-600/15 transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-400 disabled:text-white/95 disabled:opacity-100 disabled:shadow-none">
+      <div className={compact?"space-y-0":"space-y-2"}>
+        <button disabled={pending||!valid||!selectedTypeEnabled} className={`flex w-full items-center justify-center gap-3 rounded-xl bg-blue-600 px-5 font-bold text-white shadow-lg shadow-blue-600/15 transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-400 disabled:text-white/95 disabled:opacity-100 ${compact?"h-14":"h-16"}`}>
           {pending?<LoaderCircle className="size-5 animate-spin"/>:<LogIn className="size-5"/>}
           {pending?"Verificando...":"Registrar entrada"}
         </button>
-        <p className="flex items-center justify-center gap-1.5 text-xs text-slate-500"><ShieldCheck className="size-3.5 text-slate-500"/>Entrada registrada em tempo real</p>
+        {!compact?<p className="flex items-center justify-center gap-1.5 text-xs text-slate-500"><ShieldCheck className="size-3.5 text-slate-500"/>Entrada registrada em tempo real</p>:null}
       </div>
     </form>
 
-    {!noTariffAvailable?<div className="grid gap-3 md:grid-cols-2">
-      <div className="flex min-h-[78px] items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50/60 px-4 py-3.5">
+    {compact?<p className="flex items-center gap-1.5 text-xs text-slate-500"><ShieldCheck className="size-3.5 text-slate-500"/>Horário, tarifa e operador serão registrados automaticamente.</p>:null}
+
+    {!compact&& !noTariffAvailable?<div className="grid auto-rows-fr gap-3 md:grid-cols-2">
+      <div className="flex h-full min-h-[76px] items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50/60 px-4 py-3.5">
         <span className="grid size-9 shrink-0 place-items-center rounded-full bg-emerald-100 text-emerald-700"><CheckCircle2 className="size-5"/></span>
-        <div className="min-w-0"><p className="text-sm font-bold leading-5 text-emerald-900">Tarifa ativa para {selectedTypeLabel}</p><p className="mt-0.5 text-xs leading-5 text-emerald-800">Entrada liberada. A tarifa será aplicada conforme as regras vigentes.</p></div>
+        <div><p className="text-sm font-bold text-emerald-900">Tarifa ativa para {selectedTypeLabel}</p><p className="mt-0.5 text-xs text-emerald-800">Entrada liberada. A tarifa será aplicada conforme as regras vigentes.</p></div>
       </div>
-      <div className="flex min-h-[78px] items-center gap-3 rounded-xl border border-blue-200 bg-blue-50/70 px-4 py-3.5">
+      <div className="flex h-full min-h-[76px] items-center gap-3 rounded-xl border border-blue-200 bg-blue-50/70 px-4 py-3.5">
         <span className="grid size-9 shrink-0 place-items-center rounded-full bg-blue-100 text-blue-700"><Clock3 className="size-5"/></span>
-        <div className="min-w-0"><p className="text-sm font-bold leading-5 text-slate-900">Registro automático</p><p className="mt-0.5 text-xs leading-5 text-slate-600">Horário oficial, tarifa e operador serão registrados ao confirmar.</p></div>
+        <div><p className="text-sm font-bold text-slate-900">Registro automático</p><p className="mt-0.5 text-xs text-slate-600">Horário oficial, tarifa e operador serão registrados ao confirmar.</p></div>
       </div>
-    </div>:<div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800"><Info className="mt-0.5 size-5 shrink-0"/><span>Nenhuma tarifa ativa disponível para entrada. Configure ao menos uma tarifa de carro ou moto antes de registrar veículos.</span></div>}
+    </div>:null}
+
+    {noTariffAvailable?<div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800"><Info className="mt-0.5 size-5 shrink-0"/><span>Nenhuma tarifa ativa disponível para entrada. Configure ao menos uma tarifa de carro ou moto antes de registrar veículos.</span></div>:null}
 
     {(state.error||state.success)&&<div role="status" className={`flex flex-wrap items-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold ${state.error?"bg-red-50 text-red-700":"bg-emerald-50 text-emerald-700"}`}><CheckCircle2 className="size-5"/><span>{state.error??state.success}{state.relatedMessage&&!state.error?` ${state.relatedMessage}`:""}</span>{state.relatedHref?<Link className="ml-auto underline" href={state.relatedHref}>{state.error?state.relatedMessage:"Ver histórico"}</Link>:null}</div>}
 
