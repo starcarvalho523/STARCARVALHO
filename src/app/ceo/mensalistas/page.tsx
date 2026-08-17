@@ -88,6 +88,7 @@ export default async function MonthlySubscribersPage({
     );
   });
 
+  const contractCount = rows?.length ?? 0;
   const activeRows = (rows ?? []).filter((row) => row.status === "ACTIVE");
   const activeMrr = activeRows.reduce((sum, row) => sum + Number(row.contracted_price ?? 0), 0);
   const pendingActivation = (rows ?? []).filter((row) => row.status === "PENDING_ACTIVATION").length;
@@ -99,7 +100,7 @@ export default async function MonthlySubscribersPage({
       <div className="mx-auto max-w-[1500px] space-y-4">
         <CeoPageHeader
           title="Mensalistas"
-          description={`${rows?.length ?? 0} contrato(s) cadastrado(s). Gestão de planos, cobertura e cobranças mensais por unidade.`}
+          description={`${contractCount} ${contractCount === 1 ? "contrato cadastrado" : "contratos cadastrados"}. Gestão de planos, cobertura e cobranças mensais por unidade.`}
         >
           {canManage ? (
             <Link href="/ceo/mensalistas/nova" className={primary}>
@@ -178,7 +179,7 @@ export default async function MonthlySubscribersPage({
             <div>
               <h2 className="font-bold text-slate-950">Assinaturas</h2>
               <p className="mt-0.5 text-xs text-slate-500">
-                {filtered.length} resultado(s) no filtro atual
+                {filtered.length} {filtered.length === 1 ? "resultado" : "resultados"} no filtro atual
               </p>
             </div>
           </div>
