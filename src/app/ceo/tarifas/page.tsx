@@ -174,7 +174,7 @@ function TariffCard({ tariff }: { tariff: Tariff }) {
       }`}
     >
       <div className={`h-1 ${isMotorcycle ? "bg-emerald-500" : "bg-blue-500"}`} />
-      <div className="p-5 sm:p-6">
+      <div className="p-5">
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-xs font-bold uppercase tracking-wide text-blue-600">
@@ -190,14 +190,14 @@ function TariffCard({ tariff }: { tariff: Tariff }) {
         </div>
 
         <div
-          className={`mt-5 grid size-16 place-items-center rounded-2xl ${
+          className={`mt-4 grid size-14 place-items-center rounded-2xl ${
             isMotorcycle ? "bg-emerald-50 text-emerald-600" : "bg-blue-50 text-blue-600"
           }`}
         >
-          {isMotorcycle ? <Bike className="size-8" /> : <CarFront className="size-8" />}
+          {isMotorcycle ? <Bike className="size-7" /> : <CarFront className="size-7" />}
         </div>
 
-        <dl className="mt-5 grid gap-3 sm:grid-cols-2">
+        <dl className="mt-4 grid gap-2.5 sm:grid-cols-2">
           <Metric icon={Clock3} label="Primeira hora" value={formatMoney(tariff.first_hour_amount)} />
           <Metric
             icon={Timer}
@@ -232,13 +232,13 @@ function Metric({
   value: string;
 }) {
   return (
-    <div className="flex items-start gap-3 rounded-xl border border-slate-100 bg-slate-50/55 p-3.5">
-      <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-white text-blue-600 shadow-sm">
+    <div className="flex items-start gap-3 rounded-xl border border-slate-100 bg-slate-50/55 p-3">
+      <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-white text-blue-600 shadow-sm">
         <Icon className="size-4" />
       </span>
       <div className="min-w-0">
         <dt className="text-xs text-slate-500">{label}</dt>
-        <dd className="mt-1 font-bold text-slate-950">{value}</dd>
+        <dd className="mt-0.5 font-bold text-slate-950">{value}</dd>
       </div>
     </div>
   );
