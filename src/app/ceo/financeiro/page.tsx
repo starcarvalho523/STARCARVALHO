@@ -53,9 +53,9 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ p
                   <p className="mt-1 text-3xl font-extrabold tracking-tight text-slate-950">{formatMoney(data.metrics.revenue)}</p>
                 </div>
               </div>
-              <div className="hidden items-end gap-1 sm:flex" aria-hidden="true">
-                {[18, 28, 22, 40, 34, 50].map((height, index) => <span key={index} className="w-1.5 rounded-full bg-emerald-200" style={{ height }} />)}
-              </div>
+              <span className="hidden size-11 shrink-0 place-items-center rounded-full border-2 border-emerald-200 bg-emerald-50 text-emerald-600 sm:grid" aria-hidden="true">
+                <CircleDollarSign className="size-6" />
+              </span>
             </div>
           </article>
 
