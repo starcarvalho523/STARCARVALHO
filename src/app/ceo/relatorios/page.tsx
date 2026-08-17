@@ -52,7 +52,7 @@ export default async function Page({
           <CeoFilters units={data.units} />
         </CeoPageHeader>
 
-        <div className="grid gap-4 lg:grid-cols-3">
+        <div className="grid items-start gap-4 lg:grid-cols-3">
           <SummaryCard
             title="Operacional"
             icon={CarFront}
@@ -235,38 +235,42 @@ export default async function Page({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {data.sessions.map((session) => (
-                  <tr key={session.id} className="hover:bg-slate-50/50">
-                    <td className="px-4 py-3 font-bold">{session.plate_snapshot}</td>
-                    <td className="px-4 py-3">{formatDateTime(session.entered_at)}</td>
-                    <td className="px-4 py-3">
-                      {session.exited_at ? formatDateTime(session.exited_at) : "—"}
-                    </td>
-                    <td className="px-4 py-3">
-                      {sessionParkingStatus(
-                        session.status,
-                        session.entry_mode,
-                        session.financial_obligation,
-                      ).label}
-                    </td>
-                    <td className="px-4 py-3">
-                      {formatSessionFinancialStatus(
-                        session.entry_mode,
-                        session.financial_obligation,
-                      )
-                        ? "Mensalidade"
-                        : "Avulso"}
-                    </td>
-                    <td className="px-4 py-3 font-semibold">
-                      {formatMoney(session.final_amount ?? session.calculated_amount)}
-                    </td>
-                    <td className="px-4 py-3">
-                      <Link className="font-semibold text-blue-600" href={sessionHref(session.id)}>
-                        Ver sessão
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
+                {data.sessions.map((session) => {
+                  const sessionStatus = sessionParkingStatus(
+                    session.status,
+                    session.entry_mode,
+                    session.financial_obligation,
+                  ).label;
+
+                  return (
+                    <tr key={session.id} className="hover:bg-slate-50/50">
+                      <td className="px-4 py-3 font-bold">{session.plate_snapshot}</td>
+                      <td className="px-4 py-3">{formatDateTime(session.entered_at)}</td>
+                      <td className="px-4 py-3">
+                        {session.exited_at ? formatDateTime(session.exited_at) : "—"}
+                      </td>
+                      <td className="px-4 py-3">
+                        <StatusBadge label={sessionStatus} />
+                      </td>
+                      <td className="px-4 py-3">
+                        {formatSessionFinancialStatus(
+                          session.entry_mode,
+                          session.financial_obligation,
+                        )
+                          ? "Mensalidade"
+                          : "Avulso"}
+                      </td>
+                      <td className="px-4 py-3 font-semibold">
+                        {formatMoney(session.final_amount ?? session.calculated_amount)}
+                      </td>
+                      <td className="px-4 py-3">
+                        <Link className="font-semibold text-blue-600" href={sessionHref(session.id)}>
+                          Ver sessão
+                        </Link>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </DataSection>
@@ -292,42 +296,46 @@ export default async function Page({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {data.payments.map((payment) => (
-                  <tr key={payment.id} className="hover:bg-slate-50/50">
-                    <td className="px-4 py-3">
-                      {formatDateTime(payment.paid_at ?? payment.created_at)}
-                    </td>
-                    <td className="px-4 py-3 font-bold">
-                      {payment.payment_subject_type === "MONTHLY_BILLING_PERIOD"
-                        ? "Mensalidade"
-                        : payment.parking_sessions?.plate_snapshot ?? "Estacionamento avulso"}
-                    </td>
-                    <td className="px-4 py-3">
-                      {payment.parking_sessions?.entered_at
-                        ? formatDateTime(payment.parking_sessions.entered_at)
-                        : "—"}
-                    </td>
-                    <td className="px-4 py-3">
-                      {formatPaymentMethod(payment.method, payment.manual_confirmation)}
-                    </td>
-                    <td className="px-4 py-3">
-                      {payment.status === "PAID" ? "Pago" : payment.status}
-                    </td>
-                    <td className="px-4 py-3 font-semibold">{formatMoney(payment.amount)}</td>
-                    <td className="px-4 py-3">
-                      {payment.parking_session_id ? (
-                        <Link
-                          className="font-semibold text-blue-600"
-                          href={sessionHref(payment.parking_session_id)}
-                        >
-                          Ver sessão
-                        </Link>
-                      ) : (
-                        "Mensalidade"
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                {data.payments.map((payment) => {
+                  const paymentStatus = payment.status === "PAID" ? "Pago" : payment.status;
+
+                  return (
+                    <tr key={payment.id} className="hover:bg-slate-50/50">
+                      <td className="px-4 py-3">
+                        {formatDateTime(payment.paid_at ?? payment.created_at)}
+                      </td>
+                      <td className="px-4 py-3 font-bold">
+                        {payment.payment_subject_type === "MONTHLY_BILLING_PERIOD"
+                          ? "Mensalidade"
+                          : payment.parking_sessions?.plate_snapshot ?? "Estacionamento avulso"}
+                      </td>
+                      <td className="px-4 py-3">
+                        {payment.parking_sessions?.entered_at
+                          ? formatDateTime(payment.parking_sessions.entered_at)
+                          : "—"}
+                      </td>
+                      <td className="px-4 py-3">
+                        {formatPaymentMethod(payment.method, payment.manual_confirmation)}
+                      </td>
+                      <td className="px-4 py-3">
+                        <StatusBadge label={paymentStatus} />
+                      </td>
+                      <td className="px-4 py-3 font-semibold">{formatMoney(payment.amount)}</td>
+                      <td className="px-4 py-3">
+                        {payment.parking_session_id ? (
+                          <Link
+                            className="font-semibold text-blue-600"
+                            href={sessionHref(payment.parking_session_id)}
+                          >
+                            Ver sessão
+                          </Link>
+                        ) : (
+                          "Mensalidade"
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </DataSection>
@@ -504,6 +512,21 @@ function DataSection({
         <div className="overflow-x-auto">{children}</div>
       )}
     </section>
+  );
+}
+
+function StatusBadge({ label }: { label: string }) {
+  const normalized = label.toLowerCase();
+  const tone = normalized === "pago"
+    ? "bg-emerald-50 text-emerald-700 ring-emerald-100"
+    : normalized === "estacionado"
+      ? "bg-blue-50 text-blue-700 ring-blue-100"
+      : "bg-slate-100 text-slate-700 ring-slate-200";
+
+  return (
+    <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold ring-1 ring-inset ${tone}`}>
+      {label}
+    </span>
   );
 }
 
