@@ -7,7 +7,6 @@ import {
   Landmark,
   MonitorCog,
   RadioTower,
-  Smartphone,
   WalletCards,
   WifiOff,
   Wrench,
@@ -186,42 +185,12 @@ export default async function TerminalsPage() {
 }
 
 function TerminalIllustration() {
-  const keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "•", "0", "⌫"];
-
   return (
-    <div className="relative h-44 w-32" aria-hidden="true">
-      <div className="absolute left-9 top-5 h-[132px] w-[78px] rotate-[8deg] rounded-[20px] bg-gradient-to-b from-blue-500 to-blue-600 shadow-xl shadow-blue-200/70" />
-
-      <div className="absolute left-2 top-0 h-[158px] w-[94px] -rotate-[4deg] rounded-[22px] border border-slate-200 bg-white px-2.5 pb-3 pt-2.5 shadow-xl shadow-slate-300/45">
-        <div className="mx-auto h-2 w-10 rounded-full bg-slate-200" />
-        <div className="mx-auto mt-1 text-center text-[6px] font-extrabold tracking-tight text-blue-600">POINT</div>
-
-        <div className="mt-1.5 h-[46px] rounded-[7px] border border-slate-700 bg-slate-900 p-1.5 shadow-inner">
-          <div className="h-full rounded-[4px] bg-slate-700/90" />
-        </div>
-
-        <div className="mt-2 grid grid-cols-3 gap-1.5 px-0.5">
-          {keys.map((key) => (
-            <span
-              key={key}
-              className="grid h-[15px] place-items-center rounded-[6px] border border-slate-200 bg-slate-50 text-[6px] font-bold text-slate-500 shadow-[0_1px_1px_rgba(15,23,42,0.05)]"
-            >
-              {key}
-            </span>
-          ))}
-        </div>
-
-        <div className="mt-2 grid grid-cols-3 gap-1.5 px-0.5">
-          <span className="h-[14px] rounded-[6px] bg-emerald-400 shadow-sm" />
-          <span className="h-[14px] rounded-[6px] bg-amber-300 shadow-sm" />
-          <span className="h-[14px] rounded-[6px] bg-rose-400 shadow-sm" />
-        </div>
-      </div>
-
-      <span className="absolute bottom-0 right-0 grid size-10 place-items-center rounded-full border-4 border-white bg-blue-50 text-blue-600 shadow-md">
-        <Smartphone className="size-4" />
-      </span>
-    </div>
+    <img
+      src="/mercado-pago-terminal.svg"
+      alt="Terminal Mercado Pago Point"
+      className="h-44 w-44 rounded-[28px] object-cover shadow-sm"
+    />
   );
 }
 
