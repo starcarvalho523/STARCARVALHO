@@ -11,6 +11,7 @@ import {
 import { logout } from "@/app/login/actions";
 import { Brand } from "@/components/dashboard-shell";
 import { CustomerNotificationBell } from "@/components/customer-notification-bell";
+import { MobileNavScrollEnhancer } from "@/components/mobile-nav-scroll-enhancer";
 
 const nav = [
   { label: "Início", href: "/cliente", icon: House },
@@ -78,8 +79,9 @@ export function CustomerShell({
       </header>
       <div className="mx-auto min-w-0 max-w-[1120px] px-3 py-5 sm:px-4 sm:py-8">{children}</div>
       <nav
+        id="mobile-nav-cliente"
         aria-label="Navegação móvel do cliente"
-        className="mobile-nav-scroll fixed inset-x-0 bottom-0 z-40 flex h-[calc(4.5rem+env(safe-area-inset-bottom))] items-center gap-1.5 overflow-x-auto overscroll-x-contain border-t bg-white px-2 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_24px_rgba(15,23,42,.08)] md:hidden"
+        className="mobile-nav-scroll fixed inset-x-0 bottom-0 z-40 flex h-[calc(4.5rem+env(safe-area-inset-bottom))] items-center gap-1.5 overflow-x-auto overscroll-x-contain border-t bg-white px-2 pr-12 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_24px_rgba(15,23,42,.08)] md:hidden"
       >
         {nav.map(({ label, href, icon: Icon }) => (
           <Link
@@ -93,6 +95,7 @@ export function CustomerShell({
           </Link>
         ))}
       </nav>
+      <MobileNavScrollEnhancer navId="mobile-nav-cliente" storageKey="starcarvalhos:mobile-nav:cliente" hideAt="md" />
     </main>
   );
 }
