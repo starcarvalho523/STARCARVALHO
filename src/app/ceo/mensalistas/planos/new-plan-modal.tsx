@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CircleDollarSign, Plus, X } from "lucide-react";
 import { createPlan } from "../actions";
 import { field, primary, secondary } from "../ui";
@@ -15,16 +15,19 @@ export function NewPlanModal({
   defaultOpen?: boolean;
 }) {
   const [open, setOpen] = useState(defaultOpen);
+  const nameInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!open) return;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+    const focusTimer = window.setTimeout(() => nameInputRef.current?.focus(), 0);
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") setOpen(false);
     };
     window.addEventListener("keydown", onKeyDown);
     return () => {
+      window.clearTimeout(focusTimer);
       document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", onKeyDown);
     };
@@ -86,7 +89,7 @@ export function NewPlanModal({
               </Label>
 
               <Label text="Nome do plano">
-                <input name="name" minLength={2} required className={field} placeholder="Ex.: Mensal padrão" />
+                <input ref={nameInputRef} name="name" minLength={2} required className={field} placeholder="Ex.: Mensal padrão" />
               </Label>
 
               <Label text="Preço mensal">
