@@ -168,18 +168,6 @@ body { background: #f7f9fd; }
 .mobile-nav-scroll::-webkit-scrollbar { display: none; }
 
 @media (max-width: 767px) {
-  main section:has(> table) {
-    max-width: 100%;
-    overflow-x: auto !important;
-    overscroll-behavior-x: contain;
-    -webkit-overflow-scrolling: touch;
-  }
-  main section:has(> table) > table {
-    min-width: 760px;
-  }
-  main table.table-fixed {
-    table-layout: auto;
-  }
   main h1 {
     overflow-wrap: anywhere;
   }
