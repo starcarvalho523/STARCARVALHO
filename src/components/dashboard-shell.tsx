@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
 import { Bell, CircleHelp, LogOut, ParkingSquare } from "lucide-react";
 import { ActionButton } from "@/components/action-button";
+import { MobileNavScrollEnhancer } from "@/components/mobile-nav-scroll-enhancer";
 import { logout } from "@/app/login/actions";
 import { cn } from "@/lib/utils";
 export type NavItem = {
@@ -39,6 +40,8 @@ export function DashboardShell({
 }) {
   const home =
     role === "CEO" ? "/ceo" : role === "Frentista" ? "/frentista" : "/cliente";
+  const mobileNavId = role === "CEO" ? "mobile-nav-ceo" : "mobile-nav-frentista";
+  const mobileStorageKey = role === "CEO" ? "starcarvalhos:mobile-nav:ceo" : "starcarvalhos:mobile-nav:frentista";
   return (
     <div className="min-h-dvh overflow-x-hidden bg-[#f7f9fd] pb-[calc(4.5rem+env(safe-area-inset-bottom))] text-slate-950 lg:pb-0">
       <header className="sticky top-0 z-30 h-[74px] border-b bg-white/95 backdrop-blur">
@@ -107,8 +110,9 @@ export function DashboardShell({
         </main>
       </div>
       <nav
+        id={mobileNavId}
         aria-label="Navegação móvel"
-        className="mobile-nav-scroll fixed inset-x-0 bottom-0 z-40 flex h-[calc(4.5rem+env(safe-area-inset-bottom))] items-center gap-1.5 overflow-x-auto overscroll-x-contain border-t bg-white px-2 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_24px_rgba(15,23,42,.08)] lg:hidden"
+        className="mobile-nav-scroll fixed inset-x-0 bottom-0 z-40 flex h-[calc(4.5rem+env(safe-area-inset-bottom))] items-center gap-1.5 overflow-x-auto overscroll-x-contain border-t bg-white px-2 pr-12 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_24px_rgba(15,23,42,.08)] lg:hidden"
       >
         {nav.map(({ label, href, icon: Icon }) => (
           <Link
@@ -125,6 +129,7 @@ export function DashboardShell({
           </Link>
         ))}
       </nav>
+      <MobileNavScrollEnhancer navId={mobileNavId} storageKey={mobileStorageKey} hideAt="lg" />
     </div>
   );
 }
