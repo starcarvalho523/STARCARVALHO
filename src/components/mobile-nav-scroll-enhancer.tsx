@@ -1,7 +1,7 @@
 "use client";
 
-import { ChevronRight } from "lucide-react";
-import { useEffect, useState } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useLayoutEffect, useState } from "react";
 
 export function MobileNavScrollEnhancer({
   navId,
@@ -12,52 +12,89 @@ export function MobileNavScrollEnhancer({
   storageKey: string;
   hideAt: "lg" | "md";
 }) {
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const nav = document.getElementById(navId);
     if (!(nav instanceof HTMLElement)) return;
 
-    const update = () => {
-      const remaining = nav.scrollWidth - nav.clientWidth - nav.scrollLeft;
-      setCanScrollRight(remaining > 3);
+    let restored = false;
+
+    const persist = () => {
       sessionStorage.setItem(storageKey, String(nav.scrollLeft));
     };
 
-    const saved = Number(sessionStorage.getItem(storageKey) ?? "0");
-    requestAnimationFrame(() => {
+    const update = () => {
       const max = Math.max(0, nav.scrollWidth - nav.clientWidth);
-      nav.scrollLeft = Math.min(Math.max(0, saved), max);
+      setCanScrollLeft(nav.scrollLeft > 3);
+      setCanScrollRight(max - nav.scrollLeft > 3);
+      if (restored) persist();
+    };
+
+    const persistBeforeNavigation = (event: Event) => {
+      const target = event.target;
+      if (target instanceof Element && target.closest("a")) persist();
+    };
+
+    const saved = Number(sessionStorage.getItem(storageKey) ?? "0");
+    const restore = () => {
+      const max = Math.max(0, nav.scrollWidth - nav.clientWidth);
+      nav.scrollLeft = Math.min(Math.max(0, Number.isFinite(saved) ? saved : 0), max);
+      restored = true;
       update();
-    });
+    };
+
+    restore();
+    requestAnimationFrame(restore);
 
     nav.addEventListener("scroll", update, { passive: true });
+    nav.addEventListener("pointerdown", persistBeforeNavigation, true);
+    nav.addEventListener("click", persistBeforeNavigation, true);
     window.addEventListener("resize", update);
-    const observer = new ResizeObserver(update);
+    const observer = new ResizeObserver(() => {
+      if (restored) update();
+    });
     observer.observe(nav);
 
     return () => {
+      persist();
       nav.removeEventListener("scroll", update);
+      nav.removeEventListener("pointerdown", persistBeforeNavigation, true);
+      nav.removeEventListener("click", persistBeforeNavigation, true);
       window.removeEventListener("resize", update);
       observer.disconnect();
     };
   }, [navId, storageKey]);
 
-  if (!canScrollRight) return null;
+  const responsiveClass = hideAt === "lg" ? "lg:hidden" : "md:hidden";
+  const move = (direction: -1 | 1) => {
+    const nav = document.getElementById(navId);
+    nav?.scrollBy({ left: direction * 180, behavior: "smooth" });
+  };
 
   return (
-    <button
-      type="button"
-      aria-label="Ver mais opções do menu"
-      onClick={() => {
-        const nav = document.getElementById(navId);
-        nav?.scrollBy({ left: 180, behavior: "smooth" });
-      }}
-      className={`fixed bottom-[calc(1.125rem+env(safe-area-inset-bottom)/2)] right-2 z-50 grid size-9 place-items-center rounded-full border border-white/70 bg-slate-900/40 text-white shadow-lg backdrop-blur-md animate-[pulse_2.2s_ease-in-out_infinite] ${
-        hideAt === "lg" ? "lg:hidden" : "md:hidden"
-      }`}
-    >
-      <ChevronRight className="size-5" strokeWidth={2.5} />
-    </button>
+    <>
+      {canScrollLeft ? (
+        <button
+          type="button"
+          aria-label="Ver opções anteriores do menu"
+          onClick={() => move(-1)}
+          className={`fixed bottom-[calc(1.125rem+env(safe-area-inset-bottom)/2)] left-2 z-50 grid size-9 place-items-center rounded-full border border-white/70 bg-slate-900/35 text-white shadow-lg backdrop-blur-md animate-[pulse_2.2s_ease-in-out_infinite] ${responsiveClass}`}
+        >
+          <ChevronLeft className="size-5" strokeWidth={2.5} />
+        </button>
+      ) : null}
+      {canScrollRight ? (
+        <button
+          type="button"
+          aria-label="Ver mais opções do menu"
+          onClick={() => move(1)}
+          className={`fixed bottom-[calc(1.125rem+env(safe-area-inset-bottom)/2)] right-2 z-50 grid size-9 place-items-center rounded-full border border-white/70 bg-slate-900/35 text-white shadow-lg backdrop-blur-md animate-[pulse_2.2s_ease-in-out_infinite] ${responsiveClass}`}
+        >
+          <ChevronRight className="size-5" strokeWidth={2.5} />
+        </button>
+      ) : null}
+    </>
   );
 }
