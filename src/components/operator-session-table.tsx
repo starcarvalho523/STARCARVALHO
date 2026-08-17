@@ -1,12 +1,12 @@
 import Link from "next/link";
-import { ArrowRight,CalendarDays,CarFront,CircleDollarSign,Clock3,Play } from "lucide-react";
+import { ArrowRight,CalendarDays,CircleDollarSign,Clock3,Play } from "lucide-react";
 import { OperationBadge } from "@/components/operation-badge";
-import { VehicleTypeIcon } from "@/components/vehicle-type-icon";
+import { VehicleGroupIcon, VehicleTypeIcon } from "@/components/vehicle-type-icon";
 import { formatDateTime,formatDuration,formatMoney,sessionParkingStatus,type ActiveSession } from "@/lib/operator-format";
 
 export function OperatorSessionTable({sessions,timezone,limit}:{sessions:ActiveSession[];timezone:string;limit?:number}){
   const rows=limit?sessions.slice(0,limit):sessions;
-  if(!rows.length)return <div className="flex items-center justify-center gap-3 p-8 text-sm text-slate-500"><span className="grid size-10 place-items-center rounded-full bg-slate-100"><CarFront className="size-5 text-slate-400"/></span><span>Nenhum veículo estacionado no momento.</span></div>;
+  if(!rows.length)return <div className="flex items-center justify-center gap-3 p-8 text-sm text-slate-500"><span className="grid size-10 place-items-center rounded-full bg-slate-100"><VehicleGroupIcon className="size-6 text-slate-400"/></span><span>Nenhum veículo estacionado no momento.</span></div>;
 
   return <>
     <div className="overflow-x-auto">
