@@ -15,7 +15,7 @@ export default async function OperatorPage(){
   if(!shift)redirect("/frentista/caixa?welcome=1");
 
   return <DashboardShell nav={operatorNav} active="Painel" role="Frentista" aside={<div className="rounded-2xl border bg-white p-4 shadow-sm"><p className="text-sm font-bold">Caixa do turno</p><><p className="mt-3 text-xs text-slate-500">Dinheiro esperado</p><p className="text-xl font-bold text-emerald-600">{formatMoney(Number(shift.opening_amount)+Number(shift.cash_total))}</p><p className="mt-2 text-xs text-slate-500">{shift.payment_count} pagamentos</p></><Link href="/frentista/caixa" className="mt-4 block rounded-lg border py-2 text-center text-xs font-semibold text-blue-600">Ver caixa</Link></div>}>
-    <div className="mx-auto max-w-[1400px] space-y-5">
+    <div className="mx-auto max-w-[1400px] space-y-4">
       <div>
         <h1 className="text-3xl font-bold">Painel do Frentista</h1>
         <p className="mt-1 text-sm text-slate-500">Operação em tempo real — {data.unit.name}</p>
@@ -29,7 +29,7 @@ export default async function OperatorPage(){
       </div>
 
       <section>
-        <h2 className="mb-3 text-sm font-bold text-slate-900">Ações rápidas</h2>
+        <h2 className="mb-2.5 text-sm font-bold text-slate-900">Ações rápidas</h2>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
           <Quick href="/frentista/entradas" icon={LogIn} label="Entrada"/>
           <Quick href="/frentista/saidas" icon={LogOut} label="Saída"/>
@@ -40,8 +40,8 @@ export default async function OperatorPage(){
         </div>
       </section>
 
-      <section className="rounded-2xl border border-blue-100 bg-blue-50/30 p-4 shadow-sm sm:p-5">
-        <div className="mb-3">
+      <section className="rounded-2xl border border-blue-100 bg-blue-50/30 p-3.5 shadow-sm sm:p-4">
+        <div className="mb-2">
           <h2 className="font-bold text-slate-950">Nova entrada rápida</h2>
         </div>
         <EntryForm compact carEnabled={data.has_active_car_tariff} motorcycleEnabled={data.has_active_motorcycle_tariff}/>
