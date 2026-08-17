@@ -9,10 +9,6 @@ export function LivePlateSearch({ initialQuery = "" }: { initialQuery?: string }
   const [value, setValue] = useState(initialQuery);
 
   useEffect(() => {
-    setValue(initialQuery);
-  }, [initialQuery]);
-
-  useEffect(() => {
     const normalized = value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 7);
     if (normalized === initialQuery) return;
 
