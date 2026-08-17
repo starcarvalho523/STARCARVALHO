@@ -99,7 +99,7 @@ export default async function MonthlySubscribersPage({
       <div className="mx-auto max-w-[1500px] space-y-4">
         <CeoPageHeader
           title="Mensalistas"
-          description={`${rows?.length ?? 0} contrato(s) cadastrado(s). Gestão de planos, cobertura e competências por unidade.`}
+          description={`${rows?.length ?? 0} contrato(s) cadastrado(s). Gestão de planos, cobertura e cobranças mensais por unidade.`}
         >
           {canManage ? (
             <Link href="/ceo/mensalistas/nova" className={primary}>
@@ -140,7 +140,7 @@ export default async function MonthlySubscribersPage({
             tone="amber"
           />
           <MetricCard
-            label="Competências pendentes"
+            label="Mensalidades pendentes"
             value={String(pendingPeriods)}
             detail="Cobranças ainda não concluídas"
             icon={<WalletCards className="size-5" />}
@@ -218,10 +218,10 @@ export default async function MonthlySubscribersPage({
                         />
                         {current ? (
                           <p className="mt-1.5 text-xs text-slate-500">
-                            Competência: {monthlyStatus[current.status] ?? current.status}
+                            Cobrança: {monthlyStatus[current.status] ?? current.status}
                           </p>
                         ) : (
-                          <p className="mt-1.5 text-xs text-slate-400">Sem competência gerada</p>
+                          <p className="mt-1.5 text-xs text-slate-400">Sem cobrança gerada</p>
                         )}
                       </td>
                       <td className="px-5 py-4 text-right">
@@ -276,15 +276,15 @@ function MetricCard({
   }[tone];
 
   return (
-    <article className="rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm sm:p-4">
+    <article className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-3.5">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</p>
           <p className="mt-1 text-2xl font-extrabold tracking-tight text-slate-950">{value}</p>
         </div>
-        <span className={`grid size-10 shrink-0 place-items-center rounded-xl ${palette}`}>{icon}</span>
+        <span className={`grid size-9 shrink-0 place-items-center rounded-xl ${palette}`}>{icon}</span>
       </div>
-      <p className="mt-2 text-xs leading-5 text-slate-500">{detail}</p>
+      <p className="mt-1.5 text-xs leading-5 text-slate-500">{detail}</p>
     </article>
   );
 }
