@@ -46,7 +46,7 @@ export function EntryForm({carEnabled,motorcycleEnabled}:{carEnabled:boolean;mot
       </div>
 
       <div className="space-y-2">
-        <button disabled={pending||!valid||!selectedTypeEnabled} className="flex h-16 w-full items-center justify-center gap-3 rounded-xl bg-blue-600 px-5 font-bold text-white shadow-lg shadow-blue-600/15 transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50">
+        <button disabled={pending||!valid||!selectedTypeEnabled} className="flex h-16 w-full items-center justify-center gap-3 rounded-xl bg-blue-600 px-5 font-bold text-white shadow-lg shadow-blue-600/15 transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-400 disabled:text-white/95 disabled:opacity-100 disabled:shadow-none">
           {pending?<LoaderCircle className="size-5 animate-spin"/>:<LogIn className="size-5"/>}
           {pending?"Verificando...":"Registrar entrada"}
         </button>
@@ -55,13 +55,13 @@ export function EntryForm({carEnabled,motorcycleEnabled}:{carEnabled:boolean;mot
     </form>
 
     {!noTariffAvailable?<div className="grid gap-3 md:grid-cols-2">
-      <div className="flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50/60 px-4 py-3.5">
+      <div className="flex min-h-[78px] items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50/60 px-4 py-3.5">
         <span className="grid size-9 shrink-0 place-items-center rounded-full bg-emerald-100 text-emerald-700"><CheckCircle2 className="size-5"/></span>
-        <div><p className="text-sm font-bold text-emerald-900">Tarifa ativa para {selectedTypeLabel}</p><p className="mt-0.5 text-xs text-emerald-800">Entrada liberada. A tarifa será aplicada conforme as regras vigentes.</p></div>
+        <div className="min-w-0"><p className="text-sm font-bold leading-5 text-emerald-900">Tarifa ativa para {selectedTypeLabel}</p><p className="mt-0.5 text-xs leading-5 text-emerald-800">Entrada liberada. A tarifa será aplicada conforme as regras vigentes.</p></div>
       </div>
-      <div className="flex items-start gap-3 rounded-xl border border-blue-200 bg-blue-50/70 px-4 py-3.5">
+      <div className="flex min-h-[78px] items-center gap-3 rounded-xl border border-blue-200 bg-blue-50/70 px-4 py-3.5">
         <span className="grid size-9 shrink-0 place-items-center rounded-full bg-blue-100 text-blue-700"><Clock3 className="size-5"/></span>
-        <div><p className="text-sm font-bold text-slate-900">Registro automático</p><p className="mt-0.5 text-xs text-slate-600">Horário oficial, tarifa e operador serão registrados ao confirmar.</p></div>
+        <div className="min-w-0"><p className="text-sm font-bold leading-5 text-slate-900">Registro automático</p><p className="mt-0.5 text-xs leading-5 text-slate-600">Horário oficial, tarifa e operador serão registrados ao confirmar.</p></div>
       </div>
     </div>:<div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800"><Info className="mt-0.5 size-5 shrink-0"/><span>Nenhuma tarifa ativa disponível para entrada. Configure ao menos uma tarifa de carro ou moto antes de registrar veículos.</span></div>}
 
