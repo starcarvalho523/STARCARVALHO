@@ -176,25 +176,26 @@ function TariffCard({ tariff }: { tariff: Tariff }) {
       <div className={`h-1 ${isMotorcycle ? "bg-emerald-500" : "bg-blue-500"}`} />
       <div className="p-5">
         <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-wide text-blue-600">
-              {tariff.parking_units?.name}
-            </p>
-            <h2 className="mt-1 text-2xl font-extrabold text-slate-950">
-              {typeLabel[tariff.vehicle_type]}
-            </h2>
+          <div className="flex min-w-0 items-center gap-3.5">
+            <div
+              className={`grid size-14 shrink-0 place-items-center rounded-2xl ${
+                isMotorcycle ? "bg-emerald-50 text-emerald-600" : "bg-blue-50 text-blue-600"
+              }`}
+            >
+              {isMotorcycle ? <Bike className="size-7" /> : <CarFront className="size-7" />}
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-bold uppercase tracking-wide text-blue-600">
+                {tariff.parking_units?.name}
+              </p>
+              <h2 className="mt-1 text-2xl font-extrabold text-slate-950">
+                {typeLabel[tariff.vehicle_type]}
+              </h2>
+            </div>
           </div>
-          <span className="rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700">
+          <span className="shrink-0 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700">
             Ativa · v{tariff.version_number}
           </span>
-        </div>
-
-        <div
-          className={`mt-4 grid size-14 place-items-center rounded-2xl ${
-            isMotorcycle ? "bg-emerald-50 text-emerald-600" : "bg-blue-50 text-blue-600"
-          }`}
-        >
-          {isMotorcycle ? <Bike className="size-7" /> : <CarFront className="size-7" />}
         </div>
 
         <dl className="mt-4 grid gap-2.5 sm:grid-cols-2">
