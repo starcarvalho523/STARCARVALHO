@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { LucideIcon } from "lucide-react";
+import type { ComponentType } from "react";
 import { Bell, CircleHelp, LogOut, ParkingSquare } from "lucide-react";
 import { ActionButton } from "@/components/action-button";
 import { MobileNavScrollEnhancer } from "@/components/mobile-nav-scroll-enhancer";
@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 export type NavItem = {
   label: string;
   href: string;
-  icon: LucideIcon;
+  icon: ComponentType<{ className?: string }>;
   group?: string;
 };
 export function Brand({ href = "/" }: { href?: string }) {
