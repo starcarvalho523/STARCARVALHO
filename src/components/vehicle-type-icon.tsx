@@ -37,12 +37,14 @@ export function VehicleTypeIcon({
 export function VehicleGroupIcon({ className }: { className?: string }) {
   return (
     <span
-      className={`inline-flex items-center justify-center gap-[2px] ${className ?? "size-5"}`}
+      className={`inline-flex items-center justify-center gap-[2px] overflow-visible ${className ?? "size-5"}`}
       aria-hidden="true"
     >
-      <CarFront className="h-[78%] w-[42%] shrink-0" />
-      <span className="h-[72%] w-px shrink-0 rounded-full bg-current opacity-45" />
-      <MotorcycleIcon className="h-[78%] w-[42%] shrink-0" />
+      <span className="inline-flex h-full w-full scale-[1.32] items-center justify-center gap-[2px]">
+        <CarFront className="h-[92%] w-[44%] shrink-0" />
+        <span className="h-[88%] w-[1.5px] shrink-0 rounded-full bg-current opacity-50" />
+        <MotorcycleIcon className="h-[92%] w-[44%] shrink-0" />
+      </span>
     </span>
   );
 }
