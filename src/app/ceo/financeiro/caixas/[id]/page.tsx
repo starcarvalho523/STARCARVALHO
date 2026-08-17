@@ -111,7 +111,7 @@ export default async function Page({
                 <tbody>{payments.map((payment) => <tr key={payment.id} className="border-t"><td className="px-4 py-3">{formatDateTime(payment.paid_at ?? payment.created_at)}</td><td className="font-bold">{payment.parking_sessions?.plate_snapshot ?? "—"}</td><td>{formatPaymentMethod(payment.method, payment.manual_confirmation)}</td><td className="font-bold">{formatMoney(payment.amount)}</td><td>{formatPaymentStatus(payment.status)}</td></tr>)}</tbody>
               </table>
             </div>
-          ) : <p className="p-8 text-center text-sm text-slate-500">Nenhum pagamento vinculado a este caixa.</p>}
+          ) : <p className="px-5 py-5 text-center text-sm text-slate-500">Nenhum pagamento vinculado a este caixa.</p>}
         </section>
 
         {shift.notes ? <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><h2 className="font-bold text-slate-950">Observações</h2><p className="mt-2 text-sm text-slate-600">{shift.notes}</p></section> : null}
