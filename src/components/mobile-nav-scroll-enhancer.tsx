@@ -12,7 +12,7 @@ export function MobileNavScrollEnhancer({
   storageKey: string;
   hideAt: "lg" | "md";
 }) {
-  const [showBackArrow, setShowBackArrow] = useState(false);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
 
   useLayoutEffect(() => {
@@ -27,8 +27,9 @@ export function MobileNavScrollEnhancer({
 
     const update = () => {
       const max = Math.max(0, nav.scrollWidth - nav.clientWidth);
-      const remaining = max - nav.scrollLeft;
-      setShowBackArrow(max > 3 && nav.scrollLeft > 3 && remaining <= 3);
+      const left = Math.max(0, nav.scrollLeft);
+      const remaining = Math.max(0, max - left);
+      setCanScrollLeft(left > 3);
       setCanScrollRight(remaining > 3);
       if (restored) persist();
     };
@@ -76,10 +77,10 @@ export function MobileNavScrollEnhancer({
 
   return (
     <>
-      {showBackArrow ? (
+      {canScrollLeft ? (
         <button
           type="button"
-          aria-label="Voltar para opções anteriores do menu"
+          aria-label="Ver opções anteriores do menu"
           onClick={() => move(-1)}
           className={`fixed bottom-[calc(1.125rem+env(safe-area-inset-bottom)/2)] left-2 z-50 grid size-9 place-items-center rounded-full border border-white/70 bg-slate-900/35 text-white shadow-lg backdrop-blur-md animate-[pulse_2.2s_ease-in-out_infinite] ${responsiveClass}`}
         >
