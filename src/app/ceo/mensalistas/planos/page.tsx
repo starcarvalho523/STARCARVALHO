@@ -25,6 +25,7 @@ export default async function PlansPage({
     }),
   ]);
   const unitMap = new Map((units ?? []).map((unit) => [unit.id, unit.name]));
+  const planCount = plans?.length ?? 0;
   const activePlans = (plans ?? []).filter((plan) => plan.enabled).length;
   const manageableUnits = (units ?? []).filter((unit) => manageableUnitIds.includes(unit.id));
 
@@ -44,7 +45,7 @@ export default async function PlansPage({
         <section className="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
           <h2 className="text-lg font-bold text-slate-950">Planos de mensalistas</h2>
           <p className="mt-1 text-sm text-slate-500">
-            {plans?.length ?? 0} plano(s) cadastrado(s), {activePlans} ativo(s). Condições de contratos existentes permanecem congeladas.
+            {planCount} {planCount === 1 ? "plano cadastrado" : "planos cadastrados"}, {activePlans} {activePlans === 1 ? "ativo" : "ativos"}. Condições de contratos existentes permanecem congeladas.
           </p>
         </section>
 
