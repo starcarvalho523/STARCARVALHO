@@ -45,3 +45,7 @@ jobs:
         run: npm run test:monthly-automation
       - name: Financial environment tests
         run: npm run test:financial-environment
+      - name: CEO analytics tests
+        run: npm run test:ceo-analytics
+      - name: Pre-go-live customer hardening tests
+        run: npm run test:pre-golive
