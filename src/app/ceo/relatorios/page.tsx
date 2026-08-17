@@ -1,13 +1,10 @@
 import Link from "next/link";
 import {
-  Banknote,
   CalendarClock,
   CarFront,
-  CashRegister,
   CircleDollarSign,
   Clock3,
   CreditCard,
-  FileText,
   Info,
   ReceiptText,
   UsersRound,
@@ -94,7 +91,7 @@ export default async function Page({
 
           <SummaryCard
             title="Caixas"
-            icon={CashRegister}
+            icon={ReceiptText}
             tone="violet"
             primaryLabel="Turnos no período"
             primaryValue={String(data.shifts.length)}
