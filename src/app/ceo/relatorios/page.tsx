@@ -52,7 +52,7 @@ export default async function Page({
           <CeoFilters units={data.units} />
         </CeoPageHeader>
 
-        <div className="grid items-start gap-4 lg:grid-cols-3">
+        <div className="grid gap-4 lg:grid-cols-3">
           <SummaryCard
             title="Operacional"
             icon={CarFront}
@@ -101,6 +101,7 @@ export default async function Page({
               ["Diferença total", formatMoney(data.metrics.cashDifference)],
             ]}
             emphasizeLast
+            centerRows
           />
         </div>
 
@@ -353,6 +354,7 @@ function SummaryCard({
   primaryValue,
   rows,
   emphasizeLast = false,
+  centerRows = false,
 }: {
   title: string;
   icon: typeof CarFront;
@@ -361,6 +363,7 @@ function SummaryCard({
   primaryValue: string;
   rows: Array<[string, string | number]>;
   emphasizeLast?: boolean;
+  centerRows?: boolean;
 }) {
   const palette = {
     blue: {
@@ -381,7 +384,7 @@ function SummaryCard({
   }[tone];
 
   return (
-    <section className="rounded-[22px] border border-slate-200 bg-white p-4 shadow-sm">
+    <section className="flex h-full flex-col rounded-[22px] border border-slate-200 bg-white p-4 shadow-sm">
       <div className="flex items-center gap-3 border-b border-slate-100 pb-3">
         <span className={`grid size-11 shrink-0 place-items-center rounded-2xl ${palette.icon}`}>
           <Icon className="size-5" />
@@ -395,7 +398,7 @@ function SummaryCard({
         </div>
       </div>
 
-      <dl className="mt-2">
+      <dl className={centerRows ? "flex flex-1 flex-col justify-center gap-2 py-3" : "mt-2"}>
         {rows.map(([label, value], index) => {
           const highlighted = emphasizeLast && index === rows.length - 1;
           return (
