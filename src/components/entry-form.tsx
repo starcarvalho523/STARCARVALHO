@@ -1,6 +1,7 @@
 "use client";
 import { useActionState,useRef,useState } from "react";
-import { CarFront,CheckCircle2,Clock3,Info,LoaderCircle,LogIn,ShieldCheck } from "lucide-react";
+import { CheckCircle2,Clock3,Info,LoaderCircle,LogIn,ShieldCheck } from "lucide-react";
+import { VehicleTypeIcon } from "@/components/vehicle-type-icon";
 import { registerEntry,requestMonthlyEntryAuthorization,type OperatorActionState } from "@/app/frentista/actions";
 import Link from "next/link";
 const initial:OperatorActionState={};
@@ -26,7 +27,7 @@ export function EntryForm({carEnabled,motorcycleEnabled,compact=false}:{carEnabl
       <div className={compact?"space-y-0":"space-y-2"}>
         {!compact?<label htmlFor="entryPlate" className="text-sm font-semibold text-slate-700">Placa do veículo</label>:null}
         <label className={`flex items-center rounded-xl border-2 border-blue-500 bg-white px-4 shadow-sm transition focus-within:ring-4 focus-within:ring-blue-100 ${compact?"h-12":"h-16"}`}>
-          <CarFront className="size-5 shrink-0 text-blue-600"/>
+          <VehicleTypeIcon vehicleType={vehicleType} className="size-5 shrink-0 text-blue-600"/>
           <span className="sr-only">Placa do veículo</span>
           <input id="entryPlate" ref={input} autoFocus name="plate" value={normalized} onChange={event=>setPlate(event.target.value)} aria-invalid={normalized.length>0&&!valid} className={`h-full min-w-0 flex-1 bg-transparent px-3 font-bold uppercase outline-none placeholder:font-medium placeholder:normal-case placeholder:text-slate-400 ${compact?"text-base placeholder:text-sm":"text-xl placeholder:text-base"}`} placeholder="Digite a placa do veículo" autoComplete="off"/>
         </label>
@@ -36,7 +37,7 @@ export function EntryForm({carEnabled,motorcycleEnabled,compact=false}:{carEnabl
       <div className={compact?"space-y-0":"space-y-2"}>
         {!compact?<label className="text-sm font-semibold text-slate-700" htmlFor="vehicleType">Tipo de veículo</label>:null}
         <div className="relative">
-          <CarFront className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-slate-500"/>
+          <VehicleTypeIcon vehicleType={vehicleType} className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-slate-500"/>
           <select id="vehicleType" name="vehicleType" value={vehicleType} onChange={event=>setVehicleType(event.target.value as VehicleType)} className={`w-full rounded-xl border border-slate-200 bg-white pl-11 pr-4 font-semibold text-slate-900 shadow-sm outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-50 ${compact?"h-12":"h-16"}`}>
             <option value="CAR" disabled={!carEnabled}>Carro{!carEnabled?" — sem tarifa":""}</option>
             <option value="MOTORCYCLE" disabled={!motorcycleEnabled}>Moto{!motorcycleEnabled?" — sem tarifa":""}</option>
