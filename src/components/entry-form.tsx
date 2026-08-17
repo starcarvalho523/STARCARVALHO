@@ -19,16 +19,16 @@ export function EntryForm({carEnabled,motorcycleEnabled,compact=false}:{carEnabl
   const noTariffAvailable=!carEnabled&&!motorcycleEnabled;
   const selectedTypeLabel=vehicleType==="CAR"?"Carro":"Moto";
 
-  return <div className={compact?"space-y-3":"space-y-4"}>
-    <form action={action} className={`grid items-end ${compact?"gap-3 lg:grid-cols-[minmax(0,1fr)_280px_280px]":"gap-4 lg:grid-cols-[minmax(0,1fr)_260px_280px]"}`}>
+  return <div className={compact?"space-y-2":"space-y-4"}>
+    <form action={action} className={`grid items-end ${compact?"gap-2.5 lg:grid-cols-[minmax(0,1fr)_280px_280px]":"gap-4 lg:grid-cols-[minmax(0,1fr)_260px_280px]"}`}>
       <input type="hidden" name="entryDecision" value="REQUIRE_DECISION"/>
 
       <div className={compact?"space-y-0":"space-y-2"}>
         {!compact?<label htmlFor="entryPlate" className="text-sm font-semibold text-slate-700">Placa do veículo</label>:null}
-        <label className={`flex items-center rounded-xl border-2 border-blue-500 bg-white shadow-sm transition focus-within:ring-4 focus-within:ring-blue-100 ${compact?"h-14 px-4":"h-16 px-4"}`}>
+        <label className={`flex items-center rounded-xl border-2 border-blue-500 bg-white px-4 shadow-sm transition focus-within:ring-4 focus-within:ring-blue-100 ${compact?"h-12":"h-16"}`}>
           <CarFront className="size-5 shrink-0 text-blue-600"/>
           <span className="sr-only">Placa do veículo</span>
-          <input id="entryPlate" ref={input} autoFocus name="plate" value={normalized} onChange={event=>setPlate(event.target.value)} aria-invalid={normalized.length>0&&!valid} className={`h-full min-w-0 flex-1 bg-transparent px-3 font-bold uppercase outline-none placeholder:font-medium placeholder:normal-case placeholder:text-slate-400 ${compact?"text-lg placeholder:text-sm":"text-xl placeholder:text-base"}`} placeholder="Digite a placa do veículo" autoComplete="off"/>
+          <input id="entryPlate" ref={input} autoFocus name="plate" value={normalized} onChange={event=>setPlate(event.target.value)} aria-invalid={normalized.length>0&&!valid} className={`h-full min-w-0 flex-1 bg-transparent px-3 font-bold uppercase outline-none placeholder:font-medium placeholder:normal-case placeholder:text-slate-400 ${compact?"text-base placeholder:text-sm":"text-xl placeholder:text-base"}`} placeholder="Digite a placa do veículo" autoComplete="off"/>
         </label>
         {!compact?<p className="text-xs text-slate-500">Digite apenas letras e números, sem espaços ou traços.</p>:null}
       </div>
@@ -37,7 +37,7 @@ export function EntryForm({carEnabled,motorcycleEnabled,compact=false}:{carEnabl
         {!compact?<label className="text-sm font-semibold text-slate-700" htmlFor="vehicleType">Tipo de veículo</label>:null}
         <div className="relative">
           <CarFront className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-slate-500"/>
-          <select id="vehicleType" name="vehicleType" value={vehicleType} onChange={event=>setVehicleType(event.target.value as VehicleType)} className={`w-full rounded-xl border border-slate-200 bg-white pl-11 pr-4 font-semibold text-slate-900 shadow-sm outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-50 ${compact?"h-14":"h-16"}`}>
+          <select id="vehicleType" name="vehicleType" value={vehicleType} onChange={event=>setVehicleType(event.target.value as VehicleType)} className={`w-full rounded-xl border border-slate-200 bg-white pl-11 pr-4 font-semibold text-slate-900 shadow-sm outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-50 ${compact?"h-12":"h-16"}`}>
             <option value="CAR" disabled={!carEnabled}>Carro{!carEnabled?" — sem tarifa":""}</option>
             <option value="MOTORCYCLE" disabled={!motorcycleEnabled}>Moto{!motorcycleEnabled?" — sem tarifa":""}</option>
           </select>
@@ -46,7 +46,7 @@ export function EntryForm({carEnabled,motorcycleEnabled,compact=false}:{carEnabl
       </div>
 
       <div className={compact?"space-y-0":"space-y-2"}>
-        <button disabled={pending||!valid||!selectedTypeEnabled} className={`flex w-full items-center justify-center gap-3 rounded-xl bg-blue-600 px-5 font-bold text-white shadow-lg shadow-blue-600/15 transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-400 disabled:text-white/95 disabled:opacity-100 ${compact?"h-14":"h-16"}`}>
+        <button disabled={pending||!valid||!selectedTypeEnabled} className={`flex w-full items-center justify-center gap-3 rounded-xl bg-blue-600 px-5 font-bold text-white shadow-lg shadow-blue-600/15 transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-400 disabled:text-white/95 disabled:opacity-100 ${compact?"h-12":"h-16"}`}>
           {pending?<LoaderCircle className="size-5 animate-spin"/>:<LogIn className="size-5"/>}
           {pending?"Verificando...":"Registrar entrada"}
         </button>
@@ -54,7 +54,7 @@ export function EntryForm({carEnabled,motorcycleEnabled,compact=false}:{carEnabl
       </div>
     </form>
 
-    {compact?<p className="flex items-center gap-1.5 text-xs text-slate-500"><ShieldCheck className="size-3.5 text-slate-500"/>Horário, tarifa e operador serão registrados automaticamente.</p>:null}
+    {compact?<p className="flex items-center gap-1.5 text-[11px] leading-4 text-slate-500"><ShieldCheck className="size-3.5 text-slate-500"/>Horário, tarifa e operador serão registrados automaticamente.</p>:null}
 
     {!compact&& !noTariffAvailable?<div className="grid auto-rows-fr gap-3 md:grid-cols-2">
       <div className="flex h-full min-h-[76px] items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50/60 px-4 py-3.5">
