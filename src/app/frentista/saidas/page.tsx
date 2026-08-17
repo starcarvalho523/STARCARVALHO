@@ -44,7 +44,7 @@ export default async function ExitsPage({ searchParams }: { searchParams: Promis
             <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-bold text-blue-700">{data.active_sessions.length}</span>
           </div>
 
-          <LivePlateSearch initialQuery={query} />
+          <LivePlateSearch key={query} initialQuery={query} />
 
           <div className="mt-3 space-y-2.5">
             {visibleSessions.map((item) => {
