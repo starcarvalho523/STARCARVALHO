@@ -26,7 +26,7 @@ type Tone = "green" | "blue" | "violet" | "cyan" | "orange" | "slate";
 
 export default async function Page({ searchParams }: { searchParams: Promise<{ period?: string; unit?: string; method?: string; status?: string }> }) {
   const query = await searchParams;
-  const data = await getCeoAnalytics(normalizeCeoFilters(query));
+  const data = await getCeoAnalytics(normalizeCeoFilters(query), "finance");
   const unitNames = new Map(data.units.map((unit) => [unit.id, unit.name]));
   const payments = data.payments.filter((payment) => (!query.method || query.method === "all" || payment.method === query.method) && (!query.status || query.status === "all" || payment.status === query.status));
   const cashReceived = (shiftId: string) => data.paid.filter((payment) => payment.cash_shift_id === shiftId && payment.method === "CASH").reduce((sum, payment) => sum + Number(payment.amount), 0);
