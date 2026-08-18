@@ -1,12 +1,14 @@
 import "server-only";
 import { getCeoAnalytics as getRawCeoAnalytics, normalizeCeoFilters, type CeoFilters, type CeoPayment, type CeoPeriod, type CeoSession } from "@/lib/ceo-analytics-raw";
+import { requireCeoScope, type CeoScope } from "@/lib/auth";
 import { isOperationalFinancialPayment } from "@/lib/financial-environment";
 import { previousRevenueTotal } from "@/lib/ceo-analytics-domain";
 
 export { normalizeCeoFilters };
 export type { CeoAlert, CeoFilters, CeoPayment, CeoPeriod, CeoSession, CeoShift, CeoUnit } from "@/lib/ceo-analytics-raw";
 
-export async function getCeoAnalytics(filters: CeoFilters) {
+export async function getCeoAnalytics(filters: CeoFilters, scope: CeoScope = "admin") {
+  await requireCeoScope(scope);
   const data = await getRawCeoAnalytics(filters);
   const payments = data.payments.filter(isOperationalFinancialPayment);
   const paid = data.paid.filter(isOperationalFinancialPayment);
