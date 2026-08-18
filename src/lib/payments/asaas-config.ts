@@ -35,18 +35,21 @@ export function resolveAsaasRuntimeConfig(env: NodeJS.ProcessEnv = process.env):
   };
 }
 
-export function isAsaasSandboxConfigured(env: NodeJS.ProcessEnv = process.env) {
+export function isAsaasConfigured(env: NodeJS.ProcessEnv = process.env) {
   try {
-    return resolveAsaasRuntimeConfig({ ...env, ASAAS_ENVIRONMENT: "sandbox" }).environment === "sandbox";
+    resolveAsaasRuntimeConfig(env);
+    return Boolean(env.ASAAS_WEBHOOK_TOKEN);
   } catch {
     return false;
   }
 }
 
+export function isAsaasSandboxConfigured(env: NodeJS.ProcessEnv = process.env) {
+  if (env.ASAAS_ENVIRONMENT !== "sandbox") return false;
+  return isAsaasConfigured(env);
+}
+
 export function isAsaasLiveConfigured(env: NodeJS.ProcessEnv = process.env) {
-  try {
-    return resolveAsaasRuntimeConfig({ ...env, ASAAS_ENVIRONMENT: "production" }).environment === "production";
-  } catch {
-    return false;
-  }
+  if (env.ASAAS_ENVIRONMENT !== "production") return false;
+  return isAsaasConfigured(env);
 }

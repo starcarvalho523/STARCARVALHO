@@ -11,7 +11,6 @@ import { formatDateTime, formatDuration, formatMoney, getOperatorDashboard } fro
 import { formatSessionFinancialStatus, formatVehicleType, sessionParkingStatus } from "@/lib/operator-format";
 import { operatorNav } from "@/lib/operator-nav";
 import { canUsePayment, getPaymentAvailability } from "@/lib/payments/payment-availability";
-import { isAsaasSandboxConfigured } from "@/lib/payments/provider-factory";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +19,7 @@ export default async function ExitsPage({ searchParams }: { searchParams: Promis
   const availability = await getPaymentAvailability(data.unit.id);
   const cashEnabled = canUsePayment(availability,"CASH","MANUAL","INTERNAL");
   const pixEnabled = canUsePayment(availability,"PIX","QR","ASAAS");
-  const creditEnabled = isAsaasSandboxConfigured()&&canUsePayment(availability,"CREDIT_CARD","HOSTED_CHECKOUT","ASAAS");
+  const creditEnabled = canUsePayment(availability,"CREDIT_CARD","HOSTED_CHECKOUT","ASAAS");
   const query=(params.q??"").toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,7);
   const visibleSessions=data.active_sessions.filter(item=>!query||item.plate.includes(query));
   const selectedByParam=data.active_sessions.find((item)=>item.id===params.session);

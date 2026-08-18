@@ -100,7 +100,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
             <div className="mt-4 grid grid-cols-2 gap-x-5 gap-y-4 border-t border-slate-100 pt-4 sm:grid-cols-3">
               <CompactStat label="Dinheiro" value={formatMoney(d.methods.CASH.amount)} icon={Banknote} />
               <CompactStat label="Cartão" value={formatMoney(d.methods.CARD.amount)} icon={CreditCard} />
-              <CompactStat label="PIX" value="Integração pendente" icon={CircleDollarSign} />
+              <CompactStat label="PIX" value={formatMoney(d.methods.PIX.amount)} icon={CircleDollarSign} />
               <CompactStat label="Pagamentos" value={String(d.metrics.payments)} icon={WalletCards} />
               <CompactStat label="Diferenças" value={formatMoney(d.metrics.cashDifference)} icon={CircleDollarSign} />
             </div>
@@ -149,7 +149,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
                       </div>
                     </div>
                     <p className="mt-2.5 border-t border-slate-200 pt-2.5 text-[11px] text-slate-500">
-                      {formatPaymentMethod("CARD")} e dinheiro aceitos
+                      Dinheiro, PIX e crédito online disponíveis conforme configuração da unidade
                     </p>
                   </div>
                 );

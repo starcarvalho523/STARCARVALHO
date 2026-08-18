@@ -68,6 +68,25 @@ test("casual checkout remains server-priced and ownership protected", async () =
   assert.doesNotMatch(ui, /amount/);
 });
 
+test("live Asaas availability has no sandbox-only UI gates", async () => {
+  const [availability, exits, cash, unit, envExample] = await Promise.all([
+    read("src/lib/payments/payment-availability.ts"),
+    read("src/app/frentista/saidas/page.tsx"),
+    read("src/app/frentista/caixa/page.tsx"),
+    read("src/app/ceo/unidades/[id]/page.tsx"),
+    read(".env.example"),
+  ]);
+  assert.match(availability, /isAsaasConfigured\(\)/);
+  assert.doesNotMatch(availability, /ASAAS_ENVIRONMENT\s*===\s*["']sandbox["']/);
+  assert.doesNotMatch(availability, /ASAAS_SANDBOX_CUSTOMER_ID|ASAAS_PRODUCTION_CUSTOMER_ID/);
+  assert.doesNotMatch(exits, /isAsaasSandboxConfigured/);
+  assert.match(exits, /creditEnabled\s*=\s*canUsePayment\(availability,"CREDIT_CARD","HOSTED_CHECKOUT","ASAAS"\)/);
+  assert.doesNotMatch(cash, /PIX confirmado[^\n]*Integração indisponível/);
+  assert.doesNotMatch(unit, /PIX[^\n]*Integração pendente/);
+  assert.match(unit, /d\.methods\.PIX\.amount/);
+  assert.doesNotMatch(envExample, /ASAAS_SANDBOX_CUSTOMER_ID|ASAAS_PRODUCTION_CUSTOMER_ID/);
+});
+
 test("parking sessions freeze the complete tariff version", async () => {
   const sql = await read(snapshotFixPath);
   assert.match(sql, /before insert on public\.parking_sessions/i);
