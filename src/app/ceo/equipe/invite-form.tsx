@@ -120,7 +120,7 @@ export function InviteForm({ units }: { units: UnitOption[] }) {
                   <div>
                     <p className="font-bold text-blue-950">{roleLabel[role]}</p>
                     <p className="mt-1 text-sm leading-6 text-blue-800">{roleDescription[role]}</p>
-                    <p className="mt-1 text-xs text-blue-700">O servidor valida novamente sua permissão para atribuir essa função.</p>
+                    <p className="mt-1 text-xs text-blue-700">A função será aplicada apenas à unidade selecionada, conforme suas permissões.</p>
                   </div>
                 </div>
               </div>
