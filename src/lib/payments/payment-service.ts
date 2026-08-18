@@ -1,8 +1,8 @@
-
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { AsaasPublicError } from "./asaas-provider";
+import { resolveAsaasRuntimeConfig } from "./asaas-config";
 import { getPaymentProvider } from "./provider-factory";
 import { checkoutResolutionDisposition, selectCheckoutCandidates, type CheckoutCandidate } from "./checkout-webhook-reconciliation";
 import type { PaymentProvider, ProviderCharge, ProviderCheckoutWebhookEvent, ProviderWebhookEvent } from "./payment-provider";
@@ -53,7 +53,7 @@ export class PaymentService{
           throw error;
         }
         try{
-          charge=await provider.createPixPayment({customerId:requiredCustomerId(),amount:Number(context.amount),dueDate:sandboxDueDate(),description:subject.type==="PARKING_SESSION"?"Estadia Star Carvalhos":"Mensalidade Star Carvalhos",externalReference:context.externalReference});
+          charge=await provider.createPixPayment({customerId:requiredCustomerId(),amount:Number(context.amount),dueDate:paymentDueDate(),description:subject.type==="PARKING_SESSION"?"Estadia Star Carvalhos":"Mensalidade Star Carvalhos",externalReference:context.externalReference});
         }catch(error){
           await this.markReconciliationPending(context.transactionId,error);
           logPaymentError("asaas.create",error);
@@ -183,8 +183,8 @@ export class PaymentService{
   private async markManualReview(transactionId:string){await this.admin.rpc("mark_provider_manual_review",{transaction_id:transactionId,reason_code:"DUPLICATE_EXTERNAL_REFERENCE"})}
 }
 
-function requiredCustomerId(){const value=process.env.ASAAS_SANDBOX_CUSTOMER_ID;if(!value)throw new Error("ASAAS_SANDBOX_CUSTOMER_NOT_CONFIGURED");return value}
-function sandboxDueDate(){return new Intl.DateTimeFormat("en-CA",{timeZone:"America/Bahia",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date())}
+function requiredCustomerId(){return resolveAsaasRuntimeConfig().customerId}
+function paymentDueDate(){return new Intl.DateTimeFormat("en-CA",{timeZone:"America/Bahia",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date())}
 function publicPayment(value:Reservation){return{state:value.state,amount:Number(value.amount),qrCodePayload:value.qrCodePayload??null,qrCodeImageBase64:value.qrCodeImageBase64??null,expiresAt:value.expiresAt??null,hostedPaymentUrl:value.hostedPaymentUrl??null}}
 function publicCheckout(value:Reservation){return{state:value.state,amount:Number(value.amount),hostedPaymentUrl:value.hostedPaymentUrl??null,expiresAt:value.expiresAt??null}}
 function validateReconciledCharge(charge:ProviderCharge,context:RecoveryContext){
