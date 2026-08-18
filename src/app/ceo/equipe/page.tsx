@@ -190,7 +190,7 @@ export default async function TeamPage({
                           <span className="grid size-9 shrink-0 place-items-center rounded-full bg-blue-50 text-xs font-extrabold text-blue-700">{name.charAt(0).toUpperCase()}</span>
                           <div className="min-w-0">
                             <p className="truncate font-semibold text-slate-950">{name}</p>
-                            <p className="mt-0.5 truncate text-xs text-slate-400">{email ?? "E-mail não disponível nesta origem"}</p>
+                            {email ? <p className="mt-0.5 truncate text-xs text-slate-400">{email}</p> : null}
                           </div>
                         </div>
                       </td>
