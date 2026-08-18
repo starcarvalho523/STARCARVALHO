@@ -1,6 +1,5 @@
-
 import { timingSafeEqual } from "node:crypto";
-import type { CreateChargeInput, CreateCheckoutInput, PaymentProvider, ProviderCharge, ProviderCheckout, ProviderCheckoutPayment, ProviderCheckoutWebhookEvent, ProviderPaymentState, ProviderPixQrCode, ProviderWebhookEvent } from "./payment-provider";
+import type { CreateChargeInput, CreateCheckoutInput, PaymentProvider, ProviderCharge, ProviderCheckout, ProviderCheckoutPayment, ProviderPaymentState, ProviderPixQrCode, ProviderWebhookEvent, ProviderCheckoutWebhookEvent } from "./payment-provider";
 
 type Fetcher = typeof fetch;
 type AsaasPayment = { id?:unknown; customer?:unknown; status?:unknown; billingType?:unknown; value?:unknown; externalReference?:unknown; invoiceUrl?:unknown; checkoutSession?:unknown };
@@ -16,19 +15,22 @@ export class AsaasPublicError extends Error {
   }
 }
 
-export type AsaasProviderConfig = { apiKey:string; baseUrl:string; environment:"sandbox"; fetcher?:Fetcher };
+export type AsaasProviderConfig = { apiKey:string; baseUrl:string; environment:"sandbox"|"production"; fetcher?:Fetcher };
 
 export class AsaasProvider implements PaymentProvider {
   readonly name = "ASAAS" as const;
-  readonly environment = "SANDBOX" as const;
+  readonly environment: "SANDBOX" | "PRODUCTION";
   readonly capabilities = [{method:"PIX",channel:"QR"},{method:"CREDIT_CARD",channel:"HOSTED_CHECKOUT"}] as const;
   private readonly fetcher: Fetcher;
   private readonly baseUrl: string;
 
   constructor(private readonly config:AsaasProviderConfig) {
-    if(config.environment!=="sandbox" || config.baseUrl.replace(/\/$/,"")!=="https://api-sandbox.asaas.com/v3") throw new Error("ASAAS_SANDBOX_ONLY");
+    const baseUrl=config.baseUrl.replace(/\/$/,"");
+    const expected=config.environment==="sandbox"?"https://api-sandbox.asaas.com/v3":"https://api.asaas.com/v3";
+    if(baseUrl!==expected)throw new Error("ASAAS_BASE_URL_ENVIRONMENT_MISMATCH");
     if(!config.apiKey) throw new Error("ASAAS_API_KEY_NOT_CONFIGURED");
-    this.baseUrl=config.baseUrl.replace(/\/$/,"");
+    this.environment=config.environment==="sandbox"?"SANDBOX":"PRODUCTION";
+    this.baseUrl=baseUrl;
     this.fetcher=config.fetcher??fetch;
   }
 
@@ -113,7 +115,7 @@ export class AsaasProvider implements PaymentProvider {
   }
 
   private async request<T=unknown>(path:string,init:RequestInit={}):Promise<T>{
-    const headers:Record<string,string>={accept:"application/json",access_token:this.config.apiKey,"user-agent":"StarCarvalhos-Sandbox/1.0"};
+    const headers:Record<string,string>={accept:"application/json",access_token:this.config.apiKey,"user-agent":`StarCarvalhos-${this.environment}/1.0`};
     if(init.body!==undefined)headers["content-type"]="application/json";
     const response=await this.fetcher(`${this.baseUrl}${path}`,{...init,headers:{...headers,...init.headers},cache:"no-store"});
     const body=await response.json().catch(()=>null);

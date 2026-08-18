@@ -72,7 +72,7 @@ export type ProviderCheckoutWebhookEvent = {
 
 export interface PaymentProvider {
   readonly name: "ASAAS";
-  readonly environment: "SANDBOX";
+  readonly environment: "SANDBOX" | "PRODUCTION";
   readonly capabilities: ReadonlyArray<{ method:"PIX"|"CREDIT_CARD"; channel:"QR"|"HOSTED_CHECKOUT" }>;
   createPixPayment(input: CreateChargeInput): Promise<ProviderCharge>;
   getPixQrCode(providerPaymentId: string): Promise<ProviderPixQrCode>;
@@ -103,6 +103,3 @@ export interface PointPaymentProvider {
     reason: "READY" | "INTEGRATION_DISABLED" | "AWAITING_TERMINAL";
   };
 }
-
-
-
