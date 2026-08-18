@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { resolveAsaasRuntimeConfig } from "./asaas-config.ts";
 
-function env(values: Record<string, string>): NodeJS.ProcessEnv { return values; }
+function env(values: Record<string, string>): NodeJS.ProcessEnv { return { NODE_ENV: "test", ...values }; }
 
 const sandbox = env({
   ASAAS_ENVIRONMENT: "sandbox",
