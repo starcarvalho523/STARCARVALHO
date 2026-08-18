@@ -25,7 +25,7 @@ export async function DashboardShell({nav,active,role,children,aside}:{nav:NavIt
   const access = role === "CEO" ? await getAccess() : null;
   const ceoRoles = access?.area === "ceo" ? access.roles : [];
   const effectiveNav = role === "CEO"
-    ? nav.filter((item) => !item.allowedRoles?.length || item.allowedRoles.some((allowed) => ceoRoles.includes(allowed as never)))
+    ? nav.filter((item) => !item.allowedRoles?.length || item.allowedRoles.some((allowed) => ceoRoles.some((ceoRole) => ceoRole === allowed)))
     : nav;
   const home=role==="CEO"?ceoHomeForRoles(ceoRoles):role==="Frentista"?"/frentista":"/cliente";
   const displayRole = role === "CEO"
