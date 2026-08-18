@@ -16,6 +16,7 @@ import {
 import { DashboardShell } from "@/components/dashboard-shell";
 import { CeoPageHeader } from "@/components/ceo-page-header";
 import { CeoFilters } from "@/components/ceo-filters";
+import { requireCeoScope } from "@/lib/auth";
 import { ceoNav } from "@/lib/ceo-nav";
 import { getCeoAnalytics, normalizeCeoFilters } from "@/lib/ceo-analytics";
 import { formatDateTime, formatMoney, formatPaymentMethod, formatPaymentStatus } from "@/lib/operator-format";
@@ -26,7 +27,9 @@ type Tone = "green" | "blue" | "violet" | "cyan" | "orange" | "slate";
 
 export default async function Page({ searchParams }: { searchParams: Promise<{ period?: string; unit?: string; method?: string; status?: string }> }) {
   const query = await searchParams;
+  const access = await requireCeoScope("finance");
   const data = await getCeoAnalytics(normalizeCeoFilters(query), "finance");
+  const canViewReports = access.roles.includes("owner");
   const unitNames = new Map(data.units.map((unit) => [unit.id, unit.name]));
   const payments = data.payments.filter((payment) => (!query.method || query.method === "all" || payment.method === query.method) && (!query.status || query.status === "all" || payment.status === query.status));
   const cashReceived = (shiftId: string) => data.paid.filter((payment) => payment.cash_shift_id === shiftId && payment.method === "CASH").reduce((sum, payment) => sum + Number(payment.amount), 0);
@@ -91,7 +94,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ p
             <div className="overflow-x-auto">
               <table className="w-full min-w-[980px] text-left text-xs">
                 <thead className="bg-slate-50 text-slate-500"><tr>{["Horário","Placa","Entrada","Método","Valor","Status","Operador","Unidade","Ação"].map((label)=><th key={label} className="px-4 py-3">{label}</th>)}</tr></thead>
-                <tbody>{payments.map((payment)=><tr key={payment.id} className="border-t"><td className="px-4 py-3">{formatDateTime(payment.paid_at ?? payment.created_at)}</td><td className="font-bold">{payment.parking_sessions?.plate_snapshot ?? "—"}</td><td>{payment.parking_sessions?.entered_at ? formatDateTime(payment.parking_sessions.entered_at) : "—"}</td><td>{formatPaymentMethod(payment.method,payment.manual_confirmation)}</td><td className="font-bold">{formatMoney(payment.amount)}</td><td>{formatPaymentStatus(payment.status)}</td><td><Operator name={payment.received_by ? data.names[payment.received_by] ?? "Operador não identificado" : "—"}/></td><td>{unitNames.get(payment.unit_id)}</td><td>{payment.parking_sessions ? <Link className="font-semibold text-blue-600" href={`/ceo/relatorios?period=${data.filters.period}&unit=${data.filters.unitId}&session=${payment.parking_session_id}`}>Ver sessão</Link> : "—"}</td></tr>)}</tbody>
+                <tbody>{payments.map((payment)=><tr key={payment.id} className="border-t"><td className="px-4 py-3">{formatDateTime(payment.paid_at ?? payment.created_at)}</td><td className="font-bold">{payment.parking_sessions?.plate_snapshot ?? "—"}</td><td>{payment.parking_sessions?.entered_at ? formatDateTime(payment.parking_sessions.entered_at) : "—"}</td><td>{formatPaymentMethod(payment.method,payment.manual_confirmation)}</td><td className="font-bold">{formatMoney(payment.amount)}</td><td>{formatPaymentStatus(payment.status)}</td><td><Operator name={payment.received_by ? data.names[payment.received_by] ?? "Operador não identificado" : "—"}/></td><td>{unitNames.get(payment.unit_id)}</td><td>{canViewReports && payment.parking_sessions ? <Link className="font-semibold text-blue-600" href={`/ceo/relatorios?period=${data.filters.period}&unit=${data.filters.unitId}&session=${payment.parking_session_id}`}>Ver sessão</Link> : <span className="text-slate-400">—</span>}</td></tr>)}</tbody>
               </table>
             </div>
           ) : (
