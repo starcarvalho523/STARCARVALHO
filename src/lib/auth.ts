@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 export type AccessArea = "ceo" | "frentista" | "cliente";
 export type EmployeeRole = "owner" | "manager" | "operator" | "finance" | "auditor";
 export type Capability = "team:view" | "team:invite" | "team:disable" | "finance:view" | "audit:view";
+export type CeoScope = "admin" | "finance" | "audit" | "any";
 
 const CEO_ROLES: EmployeeRole[] = ["owner", "manager", "finance", "auditor"];
 const CAPABILITIES: Record<EmployeeRole, Capability[]> = {
@@ -19,6 +20,24 @@ export function areaFromRoles(roles: string[], isCustomer = false): AccessArea |
   if (roles.some((role) => CEO_ROLES.includes(role as EmployeeRole))) return "ceo";
   if (roles.includes("operator")) return "frentista";
   return isCustomer ? "cliente" : null;
+}
+
+export function hasCapability(roles: EmployeeRole[], capability: Capability) {
+  return roles.some((role) => CAPABILITIES[role]?.includes(capability));
+}
+
+export function canAccessCeoScope(roles: EmployeeRole[], scope: CeoScope) {
+  if (scope === "any") return roles.some((role) => CEO_ROLES.includes(role));
+  if (scope === "admin") return roles.some((role) => role === "owner" || role === "manager");
+  if (scope === "finance") return hasCapability(roles, "finance:view");
+  return hasCapability(roles, "audit:view");
+}
+
+export function ceoHomeForRoles(roles: EmployeeRole[]) {
+  if (canAccessCeoScope(roles, "admin")) return "/ceo";
+  if (canAccessCeoScope(roles, "finance")) return "/ceo/financeiro";
+  if (canAccessCeoScope(roles, "audit")) return "/ceo/auditoria";
+  return "/login?erro=sem-acesso";
 }
 
 export async function getAccess() {
@@ -60,8 +79,16 @@ export async function requireArea(expected: AccessArea) {
 
 export async function requireCapability(capability: Capability) {
   const access = await requireArea("ceo");
-  if (!access.roles.some((role) => CAPABILITIES[role]?.includes(capability))) {
-    redirect("/ceo?erro=sem-permissao");
+  if (!hasCapability(access.roles, capability)) {
+    redirect(`${ceoHomeForRoles(access.roles)}?erro=sem-permissao`);
+  }
+  return access;
+}
+
+export async function requireCeoScope(scope: CeoScope) {
+  const access = await requireArea("ceo");
+  if (!canAccessCeoScope(access.roles, scope)) {
+    redirect(`${ceoHomeForRoles(access.roles)}?erro=sem-permissao`);
   }
   return access;
 }
