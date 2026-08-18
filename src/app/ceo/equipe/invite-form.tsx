@@ -23,20 +23,17 @@ const roleDescription: Record<AssignableTeamRole, string> = {
   auditor: "Acesso de auditoria e consulta autorizado para a unidade, sem gestão operacional.",
 };
 
+function assignableRoles(unit?: UnitOption) {
+  return (unit?.allowedRoles ?? []).filter((item): item is AssignableTeamRole => item !== "owner");
+}
+
 export function InviteForm({ units }: { units: UnitOption[] }) {
   const [state, action, pending] = useActionState(inviteEmployee, initial);
   const [open, setOpen] = useState(false);
   const [unitId, setUnitId] = useState(units[0]?.id ?? "");
   const selectedUnit = units.find((unit) => unit.id === unitId) ?? units[0];
-  const availableRoles = useMemo(
-    () => (selectedUnit?.allowedRoles ?? []).filter((item): item is AssignableTeamRole => item !== "owner"),
-    [selectedUnit],
-  );
+  const availableRoles = useMemo(() => assignableRoles(selectedUnit), [selectedUnit]);
   const [role, setRole] = useState<AssignableTeamRole>(availableRoles[0] ?? "operator");
-
-  useEffect(() => {
-    if (!availableRoles.includes(role)) setRole(availableRoles[0] ?? "operator");
-  }, [availableRoles, role]);
 
   useEffect(() => {
     if (!open) return;
@@ -51,6 +48,12 @@ export function InviteForm({ units }: { units: UnitOption[] }) {
   }, [open]);
 
   if (!units.length) return null;
+
+  function changeUnit(nextUnitId: string) {
+    setUnitId(nextUnitId);
+    const nextRoles = assignableRoles(units.find((unit) => unit.id === nextUnitId));
+    if (!nextRoles.includes(role)) setRole(nextRoles[0] ?? "operator");
+  }
 
   return (
     <>
@@ -101,7 +104,7 @@ export function InviteForm({ units }: { units: UnitOption[] }) {
                 <input name="email" type="email" required placeholder="nome@empresa.com" className={field} />
               </Label>
               <Label text="Unidade" icon={Building2}>
-                <select name="unitId" required value={unitId} onChange={(event) => setUnitId(event.target.value)} className={field}>
+                <select name="unitId" required value={unitId} onChange={(event) => changeUnit(event.target.value)} className={field}>
                   {units.map((unit) => <option key={unit.id} value={unit.id}>{unit.name}</option>)}
                 </select>
               </Label>
