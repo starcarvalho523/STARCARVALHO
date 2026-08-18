@@ -105,8 +105,8 @@ export default async function CeoSessionDetail({ params }: { params: Promise<{ i
             </span>
           </div>
           <div className="mt-5 grid gap-3 sm:grid-cols-3">
-            <Value label="Valor calculado" value={formatMoney(Number(session.calculated_amount ?? 0))} />
-            <Value label="Valor final" value={formatMoney(Number(session.final_amount ?? session.calculated_amount ?? 0))} />
+            <Value label="Valor calculado" value={formatOptionalMoney(session.calculated_amount)} />
+            <Value label="Valor final" value={formatOptionalMoney(session.final_amount)} />
             <Value label="Último pagamento" value={payment ? `${formatMoney(Number(payment.amount))} · ${methodLabel(payment.method)}` : covered ? "Dispensado pela cobertura" : "Não registrado"} />
           </div>
           {covered && session.monthly_coverage_reason ? <p className="mt-4 rounded-xl bg-violet-50 px-4 py-3 text-sm text-violet-700">Cobertura aplicada: {coverageLabel(session.monthly_coverage_reason)}</p> : null}
@@ -122,6 +122,7 @@ function Summary({ icon: Icon, label, value }: { icon: typeof Clock3; label: str
 function Detail({ icon: Icon, label, value }: { icon: typeof Clock3; label: string; value: string }) { return <div className="flex gap-3 bg-white p-5"><Icon className="mt-0.5 size-4 shrink-0 text-slate-400"/><div><p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</p><p className="mt-1 font-semibold text-slate-900">{value}</p></div></div>; }
 function Value({ label, value }: { label: string; value: string }) { return <div className="rounded-xl bg-slate-50 p-4"><p className="text-xs text-slate-500">{label}</p><p className="mt-1 font-bold text-slate-950">{value}</p></div>; }
 function formatDuration(minutes: number) { const hours=Math.floor(minutes/60),rest=minutes%60; return hours ? `${hours}h ${String(rest).padStart(2,"0")}min` : `${rest} min`; }
+function formatOptionalMoney(value:number|null){return value===null?"Ainda não calculado":formatMoney(Number(value));}
 function formatDateTime(value:string,timeZone:string){return new Intl.DateTimeFormat("pt-BR",{dateStyle:"short",timeStyle:"short",timeZone}).format(new Date(value));}
 function statusLabel(value:string){return ({OPEN:"No pátio",PAYMENT_PENDING:"Aguardando pagamento",PAID:"Pagamento confirmado",EXITED:"Encerrada",MANUAL_REVIEW:"Revisão manual"} as Record<string,string>)[value]??"Em acompanhamento";}
 function paymentLabel(value:string){return ({PENDING:"Pendente",PAID:"Pago",FAILED:"Falhou",REFUNDED:"Estornado"} as Record<string,string>)[value]??"Em acompanhamento";}
