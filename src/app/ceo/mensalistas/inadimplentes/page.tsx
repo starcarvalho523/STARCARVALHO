@@ -1,3 +1,271 @@
-import Link from"next/link";import{DashboardShell}from"@/components/dashboard-shell";import{CeoPageHeader}from"@/components/ceo-page-header";import{ceoNav}from"@/lib/ceo-nav";import{createAdminClient}from"@/lib/supabase/admin";import{createClient}from"@/lib/supabase/server";import{dateBR,getMonthlyAccess,money}from"@/lib/monthly-admin";import{MonthlyTabs}from"../ui";
-export const dynamic="force-dynamic";
-export default async function OverduePage(){const{unitIds}=await getMonthlyAccess();const supabase=await createClient();const today=new Date().toISOString().slice(0,10);const{data:periods}=await supabase.from("monthly_billing_periods").select("id,subscription_id,unit_id,reference_year,reference_month,amount,due_date,grace_until,status,monthly_subscriptions(customer_id,plan_name,status)").in("unit_id",unitIds).eq("status","PENDING").lt("grace_until",today).order("grace_until");const ids=[...new Set((periods??[]).map((p:any)=>p.monthly_subscriptions?.customer_id).filter(Boolean))] as string[];const admin=createAdminClient();const{data:customers}=ids.length?await admin.from("customer_profiles").select("user_id,full_name").in("user_id",ids):{data:[]};const names=new Map((customers??[]).map(c=>[c.user_id,c.full_name]));return <DashboardShell nav={ceoNav} active="Mensalistas" role="CEO"><div className="mx-auto max-w-6xl space-y-5"><CeoPageHeader title="Inadimplência" description="Competências pendentes fora do prazo de tolerância. Situação derivada, sem baixa manual."/><MonthlyTabs active="overdue"/><section className="rounded-2xl border bg-white p-5"><p className="text-sm text-slate-500">Total em atraso</p><p className="text-3xl font-bold text-red-600">{money((periods??[]).reduce((sum,p)=>sum+Number(p.amount),0))}</p></section><div className="space-y-3">{(periods??[]).map((p:any)=><article key={p.id} className="flex flex-col gap-3 rounded-2xl border bg-white p-5 sm:flex-row sm:items-center sm:justify-between"><div><h2 className="font-bold">{names.get(p.monthly_subscriptions?.customer_id)??"Cliente"}</h2><p className="text-sm text-slate-500">{p.monthly_subscriptions?.plan_name} · {String(p.reference_month).padStart(2,"0")}/{p.reference_year}</p><p className="mt-1 text-sm text-red-600">{money(p.amount)} · tolerância encerrada em {dateBR(p.grace_until)}</p></div><Link href={`/ceo/mensalistas/${p.subscription_id}`} className="font-semibold text-blue-600">Abrir assinatura</Link></article>)}{!periods?.length?<p className="rounded-2xl border bg-white p-10 text-center text-slate-500">Nenhuma competência inadimplente.</p>:null}</div></div></DashboardShell>}
+import Link from "next/link";
+import { AlertTriangle, ArrowUpRight, CircleDollarSign, FileSearch, UserRound } from "lucide-react";
+import { DashboardShell } from "@/components/dashboard-shell";
+import { CeoPageHeader } from "@/components/ceo-page-header";
+import { ceoNav } from "@/lib/ceo-nav";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
+import { dateBR, getMonthlyAccess, money, monthlyStatus } from "@/lib/monthly-admin";
+import { MonthlyTabs, StatusPill } from "../ui";
+
+export const dynamic = "force-dynamic";
+
+export default async function OverduePage() {
+  const { unitIds } = await getMonthlyAccess();
+  const supabase = await createClient();
+  const today = new Date().toISOString().slice(0, 10);
+  const { data: allPeriods } = await supabase
+    .from("monthly_billing_periods")
+    .select(
+      "id,subscription_id,unit_id,reference_year,reference_month,amount,due_date,grace_until,status,monthly_subscriptions(customer_id,plan_name,status)",
+    )
+    .in("unit_id", unitIds)
+    .eq("status", "PENDING")
+    .lt("grace_until", today)
+    .order("grace_until");
+
+  const activationPeriods = (allPeriods ?? []).filter(
+    (period: any) => period.monthly_subscriptions?.status === "PENDING_ACTIVATION",
+  );
+  const periods = (allPeriods ?? []).filter((period: any) =>
+    ["ACTIVE", "SUSPENDED"].includes(period.monthly_subscriptions?.status),
+  );
+
+  const allCustomerIds = [
+    ...new Set(
+      (allPeriods ?? [])
+        .map((period: any) => period.monthly_subscriptions?.customer_id)
+        .filter(Boolean),
+    ),
+  ] as string[];
+  const overdueCustomerIds = [
+    ...new Set(
+      periods
+        .map((period: any) => period.monthly_subscriptions?.customer_id)
+        .filter(Boolean),
+    ),
+  ] as string[];
+
+  const admin = createAdminClient();
+  const { data: customers } = allCustomerIds.length
+    ? await admin
+        .from("customer_profiles")
+        .select("user_id,full_name")
+        .in("user_id", allCustomerIds)
+    : { data: [] };
+  const names = new Map((customers ?? []).map((customer) => [customer.user_id, customer.full_name]));
+
+  const total = periods.reduce((sum, period) => sum + Number(period.amount), 0);
+  const activationTotal = activationPeriods.reduce((sum, period) => sum + Number(period.amount), 0);
+  const suspendedSubscriptions = new Set(
+    periods
+      .filter((period: any) => period.monthly_subscriptions?.status === "SUSPENDED")
+      .map((period) => period.subscription_id),
+  ).size;
+
+  return (
+    <DashboardShell nav={ceoNav} active="Mensalistas" role="CEO">
+      <div className="mx-auto max-w-[1500px] space-y-4">
+        <CeoPageHeader
+          title="Mensalistas"
+          description="Gestão de contratos, planos e cobranças recorrentes."
+        />
+        <MonthlyTabs active="overdue" />
+
+        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <Metric
+            label="Total em atraso"
+            value={money(total)}
+            icon={<CircleDollarSign className="size-5" />}
+            tone="red"
+          />
+          <Metric
+            label="Mensalidades vencidas"
+            value={String(periods.length)}
+            icon={<FileSearch className="size-5" />}
+            tone="amber"
+          />
+          <Metric
+            label="Clientes em atraso"
+            value={String(overdueCustomerIds.length)}
+            icon={<UserRound className="size-5" />}
+            tone="blue"
+          />
+          <Metric
+            label="Assinaturas suspensas"
+            value={String(suspendedSubscriptions)}
+            icon={<AlertTriangle className="size-5" />}
+            tone="slate"
+          />
+        </section>
+
+        {activationPeriods.length ? (
+          <section className="overflow-hidden rounded-2xl border border-blue-200 bg-blue-50/40 shadow-sm">
+            <div className="flex flex-col gap-2 border-b border-blue-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="font-bold text-slate-950">Ativações aguardando primeiro pagamento</h2>
+                <p className="mt-1 text-xs leading-5 text-slate-600">
+                  Essas adesões ainda não viraram contratos ativos e, por isso, não entram nos indicadores de inadimplência recorrente.
+                </p>
+              </div>
+              <div className="shrink-0 text-left sm:text-right">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Valor pendente de ativação</p>
+                <p className="mt-1 text-xl font-extrabold text-blue-700">{money(activationTotal)}</p>
+              </div>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[860px] text-left text-sm">
+                <thead className="bg-white/70 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  <tr>
+                    <th className="px-5 py-3">Cliente</th>
+                    <th className="px-4 py-3">Plano</th>
+                    <th className="px-4 py-3">Mês</th>
+                    <th className="px-4 py-3">Prazo para primeiro pagamento</th>
+                    <th className="px-4 py-3">Valor</th>
+                    <th className="px-5 py-3 text-right">Ação</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {activationPeriods.map((period: any) => (
+                    <tr key={period.id} className="border-t border-blue-100 bg-white/60">
+                      <td className="px-5 py-4 font-semibold text-slate-950">
+                        {names.get(period.monthly_subscriptions?.customer_id) ?? "Cliente"}
+                      </td>
+                      <td className="px-4 py-4 text-slate-600">{period.monthly_subscriptions?.plan_name ?? "—"}</td>
+                      <td className="px-4 py-4 text-slate-600">
+                        {String(period.reference_month).padStart(2, "0")}/{period.reference_year}
+                      </td>
+                      <td className="px-4 py-4 text-slate-600">{dateBR(period.grace_until)}</td>
+                      <td className="px-4 py-4 font-bold text-slate-950">{money(period.amount)}</td>
+                      <td className="px-5 py-4 text-right">
+                        <Link
+                          href={`/ceo/mensalistas/${period.subscription_id}`}
+                          className="inline-flex items-center gap-1 font-semibold text-blue-600 hover:text-blue-700"
+                        >
+                          Abrir assinatura
+                          <ArrowUpRight className="size-4" />
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        ) : null}
+
+        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div className="border-b border-slate-100 px-5 py-4">
+            <h2 className="font-bold text-slate-950">Mensalidades em atraso</h2>
+            <p className="mt-1 text-xs text-slate-500">
+              Exibe somente cobranças mensais pendentes fora da tolerância de assinaturas ativas ou suspensas.
+            </p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[980px] text-left text-sm">
+              <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                <tr>
+                  <th className="px-5 py-3">Cliente</th>
+                  <th className="px-4 py-3">Plano</th>
+                  <th className="px-4 py-3">Mês</th>
+                  <th className="px-4 py-3">Fim da tolerância</th>
+                  <th className="px-4 py-3">Dias em atraso</th>
+                  <th className="px-4 py-3">Valor</th>
+                  <th className="px-4 py-3">Contrato</th>
+                  <th className="px-5 py-3 text-right">Ação</th>
+                </tr>
+              </thead>
+              <tbody>
+                {periods.map((period: any) => {
+                  const contractStatus = period.monthly_subscriptions?.status ?? "ACTIVE";
+                  return (
+                    <tr key={period.id} className="border-t border-slate-100 hover:bg-slate-50/70">
+                      <td className="px-5 py-4 font-semibold text-slate-950">
+                        {names.get(period.monthly_subscriptions?.customer_id) ?? "Cliente"}
+                      </td>
+                      <td className="px-4 py-4 text-slate-600">
+                        {period.monthly_subscriptions?.plan_name ?? "—"}
+                      </td>
+                      <td className="px-4 py-4 text-slate-600">
+                        {String(period.reference_month).padStart(2, "0")}/{period.reference_year}
+                      </td>
+                      <td className="px-4 py-4 text-slate-600">{dateBR(period.grace_until)}</td>
+                      <td className="px-4 py-4 font-semibold text-red-600">
+                        {daysLate(period.grace_until, today)}
+                      </td>
+                      <td className="px-4 py-4 font-bold text-red-600">{money(period.amount)}</td>
+                      <td className="px-4 py-4">
+                        <StatusPill
+                          status={contractStatus}
+                          label={monthlyStatus[contractStatus] ?? contractStatus}
+                        />
+                      </td>
+                      <td className="px-5 py-4 text-right">
+                        <Link
+                          href={`/ceo/mensalistas/${period.subscription_id}`}
+                          className="inline-flex items-center gap-1 font-semibold text-blue-600 hover:text-blue-700"
+                        >
+                          Abrir assinatura
+                          <ArrowUpRight className="size-4" />
+                        </Link>
+                      </td>
+                    </tr>
+                  );
+                })}
+                {!periods.length ? (
+                  <tr>
+                    <td colSpan={8} className="px-5 py-12 text-center">
+                      <p className="font-semibold text-emerald-700">Nenhuma inadimplência recorrente</p>
+                      <p className="mt-1 text-sm text-slate-500">
+                        Não há mensalidades vencidas de assinaturas ativas ou suspensas.
+                      </p>
+                    </td>
+                  </tr>
+                ) : null}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </DashboardShell>
+  );
+}
+
+function daysLate(graceUntil: string, today: string) {
+  const end = new Date(`${graceUntil}T12:00:00Z`).getTime();
+  const now = new Date(`${today}T12:00:00Z`).getTime();
+  return Math.max(0, Math.floor((now - end) / 86_400_000));
+}
+
+function Metric({
+  label,
+  value,
+  icon,
+  tone,
+}: {
+  label: string;
+  value: string;
+  icon: React.ReactNode;
+  tone: "red" | "amber" | "blue" | "slate";
+}) {
+  const palette = {
+    red: "bg-red-50 text-red-600",
+    amber: "bg-amber-50 text-amber-600",
+    blue: "bg-blue-50 text-blue-600",
+    slate: "bg-slate-100 text-slate-600",
+  }[tone];
+
+  return (
+    <article className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</p>
+          <p className={`mt-1 text-2xl font-extrabold tracking-tight ${tone === "red" ? "text-red-600" : "text-slate-950"}`}>
+            {value}
+          </p>
+        </div>
+        <span className={`grid size-10 place-items-center rounded-xl ${palette}`}>{icon}</span>
+      </div>
+    </article>
+  );
+}

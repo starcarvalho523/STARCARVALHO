@@ -1,11 +1,12 @@
 import Link from "next/link";
-import { CarFront, CircleDollarSign, Clock3, Info, Tag, Zap } from "lucide-react";
+import { CircleDollarSign, Clock3, Info, Tag, Zap } from "lucide-react";
 import { DashboardShell } from "@/components/dashboard-shell";
 import { LivePlateSearch } from "@/components/live-plate-search";
 import { OperationBadge } from "@/components/operation-badge";
 import { PixPaymentPanel } from "@/components/pix-payment-panel";
 import { CreditCheckoutPanel } from "@/components/credit-checkout-panel";
 import { CompleteExitForm, PaymentForm, StartExitForm } from "@/components/session-operation-form";
+import { VehicleTypeIcon } from "@/components/vehicle-type-icon";
 import { formatDateTime, formatDuration, formatMoney, getOperatorDashboard } from "@/lib/operator-data";
 import { formatSessionFinancialStatus, formatVehicleType, sessionParkingStatus } from "@/lib/operator-format";
 import { operatorNav } from "@/lib/operator-nav";
@@ -54,7 +55,7 @@ export default async function ExitsPage({ searchParams }: { searchParams: Promis
                   <div className="min-w-0">
                     <p className="text-base font-extrabold tracking-tight text-slate-950">{item.plate}</p>
                     <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500">
-                      <span className="flex items-center gap-1.5"><CarFront className="size-3.5 text-slate-400"/>{formatVehicleType(item.vehicle_type)}</span>
+                      <span className="flex items-center gap-1.5"><VehicleTypeIcon vehicleType={item.vehicle_type} className="size-3.5 text-slate-400"/>{formatVehicleType(item.vehicle_type)}</span>
                       <span className="text-slate-300">•</span>
                       <span className="flex items-center gap-1.5 font-semibold text-slate-700"><Clock3 className="size-3.5 text-blue-500"/>{formatDuration(item.duration_minutes)}</span>
                     </div>
@@ -93,7 +94,7 @@ function ExitDetail({selected,timezone,cashEnabled,pixEnabled,creditEnabled}:{se
   return <section className="rounded-2xl border bg-white p-5 shadow-sm sm:p-6">
     <div className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-5">
       <div className="flex items-center gap-4">
-        <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-blue-50 text-blue-600"><CarFront className="size-6"/></span>
+        <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-blue-50 text-blue-600"><VehicleTypeIcon vehicleType={selected.vehicle_type} className="size-6"/></span>
         <div>
           <h2 className="text-3xl font-extrabold tracking-tight text-slate-950">{selected.plate}</h2>
           <p className="mt-1 text-sm text-slate-500">{formatVehicleType(selected.vehicle_type)} • {selected.tariff_name}</p>

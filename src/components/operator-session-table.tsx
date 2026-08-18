@@ -1,11 +1,12 @@
 import Link from "next/link";
-import { ArrowRight,CalendarDays,CarFront,CircleDollarSign,Clock3,Play } from "lucide-react";
+import { ArrowRight,CalendarDays,CircleDollarSign,Clock3,Play } from "lucide-react";
 import { OperationBadge } from "@/components/operation-badge";
+import { VehicleGroupIcon, VehicleTypeIcon } from "@/components/vehicle-type-icon";
 import { formatDateTime,formatDuration,formatMoney,sessionParkingStatus,type ActiveSession } from "@/lib/operator-format";
 
 export function OperatorSessionTable({sessions,timezone,limit}:{sessions:ActiveSession[];timezone:string;limit?:number}){
   const rows=limit?sessions.slice(0,limit):sessions;
-  if(!rows.length)return <div className="flex items-center justify-center gap-3 p-8 text-sm text-slate-500"><span className="grid size-10 place-items-center rounded-full bg-slate-100"><CarFront className="size-5 text-slate-400"/></span><span>Nenhum veículo estacionado no momento.</span></div>;
+  if(!rows.length)return <div className="flex items-center justify-center gap-3 p-8 text-sm text-slate-500"><span className="grid size-10 place-items-center rounded-full bg-slate-100"><VehicleGroupIcon className="size-6 text-slate-400"/></span><span>Nenhum veículo estacionado no momento.</span></div>;
 
   return <>
     <div className="overflow-x-auto">
@@ -26,7 +27,7 @@ export function OperatorSessionTable({sessions,timezone,limit}:{sessions:ActiveS
             const open=s.status==="OPEN";
             return <tr key={s.id} className="border-t border-slate-100 transition hover:bg-slate-50/60">
               <td className="px-5 py-3.5 align-middle">
-                <span className="flex items-center gap-2 font-bold leading-none text-blue-600"><CarFront className="size-4 shrink-0 text-slate-500"/>{s.plate}</span>
+                <span className="flex items-center gap-2 font-bold leading-none text-blue-600"><VehicleTypeIcon vehicleType={s.vehicle_type} className="size-4 shrink-0 text-slate-500"/>{s.plate}</span>
               </td>
               <td className="px-3 py-3.5 align-middle"><span className="flex items-center gap-2 leading-none text-slate-700"><CalendarDays className="size-4 shrink-0 text-slate-400"/>{formatDateTime(s.entered_at,timezone)}</span></td>
               <td className="px-3 py-3.5 align-middle"><span className="flex items-center gap-2 font-medium leading-none text-slate-800"><Clock3 className="size-4 shrink-0 text-slate-400"/>{formatDuration(s.duration_minutes)}</span></td>

@@ -1,10 +1,12 @@
 import Link from "next/link";
+import type { ComponentType } from "react";
 import { redirect } from "next/navigation";
-import { Banknote,CarFront,CreditCard,Gauge,LogIn,LogOut,Users } from "lucide-react";
+import { Banknote,CreditCard,Gauge,LogIn,LogOut,Users } from "lucide-react";
 import { DashboardShell } from "@/components/dashboard-shell";
 import { EntryForm } from "@/components/entry-form";
 import { MetricCard } from "@/components/dashboard-parts";
 import { OperatorSessionTable } from "@/components/operator-session-table";
+import { VehicleGroupIcon } from "@/components/vehicle-type-icon";
 import { getOperatorDashboard,formatMoney } from "@/lib/operator-data";
 import { operatorNav } from "@/lib/operator-nav";
 export const dynamic="force-dynamic";
@@ -22,7 +24,7 @@ export default async function OperatorPage(){
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <MetricCard label="Veículos no pátio" value={String(data.vehicles_in_yard)} icon={CarFront}/>
+        <MetricCard label="Veículos no pátio" value={String(data.vehicles_in_yard)} icon={VehicleGroupIcon}/>
         <MetricCard label="Vagas disponíveis" value={String(data.available_spaces)} icon={Gauge} tone="green"/>
         <MetricCard label="Entradas hoje" value={String(data.entries_today)} icon={LogIn} tone="violet"/>
         <MetricCard label="Saídas hoje" value={String(data.exits_today)} icon={LogOut} tone="orange"/>
@@ -33,7 +35,7 @@ export default async function OperatorPage(){
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
           <Quick href="/frentista/entradas" icon={LogIn} label="Entrada"/>
           <Quick href="/frentista/saidas" icon={LogOut} label="Saída"/>
-          <Quick href="/frentista/veiculos" icon={CarFront} label="Veículos"/>
+          <Quick href="/frentista/veiculos" icon={VehicleGroupIcon} label="Veículos"/>
           <Quick href="/frentista/caixa" icon={Banknote} label="Caixa"/>
           <Quick href="/frentista/mensalistas" icon={Users} label="Mensalistas"/>
           <Quick href="/frentista/pagamentos" icon={CreditCard} label="Pagamentos"/>
@@ -60,6 +62,6 @@ export default async function OperatorPage(){
   </DashboardShell>;
 }
 
-function Quick({href,icon:Icon,label}:{href:string;icon:typeof CarFront;label:string}){
+function Quick({href,icon:Icon,label}:{href:string;icon:ComponentType<{className?:string}>;label:string}){
   return <Link href={href} className="flex h-16 items-center justify-center gap-2 rounded-xl border bg-white text-sm font-semibold text-blue-600 shadow-sm transition hover:border-blue-200 hover:bg-blue-50 hover:shadow-md"><Icon className="size-5"/>{label}</Link>;
 }

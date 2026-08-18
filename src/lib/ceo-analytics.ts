@@ -1,12 +1,14 @@
 import "server-only";
 import { getCeoAnalytics as getRawCeoAnalytics, normalizeCeoFilters, type CeoFilters, type CeoPayment, type CeoPeriod, type CeoSession } from "@/lib/ceo-analytics-raw";
+import { requireCeoScope, type CeoScope } from "@/lib/auth";
 import { isOperationalFinancialPayment } from "@/lib/financial-environment";
 import { previousRevenueTotal } from "@/lib/ceo-analytics-domain";
 
 export { normalizeCeoFilters };
 export type { CeoAlert, CeoFilters, CeoPayment, CeoPeriod, CeoSession, CeoShift, CeoUnit } from "@/lib/ceo-analytics-raw";
 
-export async function getCeoAnalytics(filters: CeoFilters) {
+export async function getCeoAnalytics(filters: CeoFilters, scope: CeoScope = "admin") {
+  await requireCeoScope(scope);
   const data = await getRawCeoAnalytics(filters);
   const payments = data.payments.filter(isOperationalFinancialPayment);
   const paid = data.paid.filter(isOperationalFinancialPayment);
@@ -21,7 +23,14 @@ export async function getCeoAnalytics(filters: CeoFilters) {
   const buckets = makeBuckets(filters.period, new Date(data.periodStart), data.selectedUnits[0]?.timezone ?? data.units[0]?.timezone ?? "America/Bahia", paid, data.sessions, data.metrics.capacity);
   const casualRevenue = paid.filter((payment) => payment.payment_subject_type === "PARKING_SESSION").reduce((sum, payment) => sum + Number(payment.amount), 0);
   const monthlyRevenue = paid.filter((payment) => payment.payment_subject_type === "MONTHLY_BILLING_PERIOD").reduce((sum, payment) => sum + Number(payment.amount), 0);
-  return { ...data, payments, paid, unitSummaries, buckets, metrics: { ...data.metrics, revenue, casualRevenue, monthlyRevenue, previousRevenue, ticket: paid.length ? revenue / paid.length : 0, payments: paid.length }, methods: { CASH: method("CASH"), CARD: method("CARD"), PIX: method("PIX"), DEBIT_CARD: method("DEBIT_CARD"), CREDIT_CARD: method("CREDIT_CARD") } };
+  const alerts = data.alerts.map((alert) => ({ ...alert, href: normalizeAlertHref(alert.href) }));
+  return { ...data, alerts, payments, paid, unitSummaries, buckets, metrics: { ...data.metrics, revenue, casualRevenue, monthlyRevenue, previousRevenue, ticket: paid.length ? revenue / paid.length : 0, payments: paid.length }, methods: { CASH: method("CASH"), CARD: method("CARD"), PIX: method("PIX"), DEBIT_CARD: method("DEBIT_CARD"), CREDIT_CARD: method("CREDIT_CARD") } };
+}
+
+function normalizeAlertHref(href: string) {
+  if (!href.startsWith("/frentista/saidas?session=")) return href;
+  const sessionId = href.split("session=")[1]?.split("&")[0];
+  return sessionId ? `/ceo/sessoes/${encodeURIComponent(sessionId)}` : "/ceo/alertas";
 }
 
 function makeBuckets(period: CeoPeriod, since: Date, timezone: string, paid: CeoPayment[], sessions: CeoSession[], capacity: number) {
