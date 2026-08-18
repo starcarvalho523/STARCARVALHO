@@ -2,7 +2,6 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { AsaasPublicError } from "./asaas-provider";
-import { resolveAsaasRuntimeConfig } from "./asaas-config";
 import { getPaymentProvider } from "./provider-factory";
 import { checkoutResolutionDisposition, selectCheckoutCandidates, type CheckoutCandidate } from "./checkout-webhook-reconciliation";
 import type { PaymentProvider, ProviderCharge, ProviderCheckoutWebhookEvent, ProviderWebhookEvent } from "./payment-provider";
@@ -11,6 +10,7 @@ import type { PaymentSubject } from "./payment-model";
 type Reservation={paymentId:string;transactionId:string;state:string;amount:number;isCreator:boolean;qrCodePayload?:string|null;qrCodeImageBase64?:string|null;expiresAt?:string|null;hostedPaymentUrl?:string|null};
 type RecoveryContext={transactionId:string;state:string;externalReference:string;providerPaymentId:string|null;providerCustomerId:string|null;providerStatus:string|null;providerAmount:number|null;hostedPaymentUrl:string|null;amount:number};
 type StoredCheckoutEvent={id:string;type:string;paymentId:string;paymentStatus:string;amount:number;billingType:string;externalReference:string|null};
+type PaymentCustomerContext={user_id:string;full_name:string;email:string|null;billing_document:string|null;external_reference:string;provider_customer_id:string|null};
 
 export class PaymentService{
   constructor(private readonly provider?:PaymentProvider,private readonly admin=createAdminClient()){}
@@ -53,7 +53,8 @@ export class PaymentService{
           throw error;
         }
         try{
-          charge=await provider.createPixPayment({customerId:requiredCustomerId(),amount:Number(context.amount),dueDate:paymentDueDate(),description:subject.type==="PARKING_SESSION"?"Estadia Star Carvalhos":"Mensalidade Star Carvalhos",externalReference:context.externalReference});
+          const customerId=await this.resolveProviderCustomer(subject,provider);
+          charge=await provider.createPixPayment({customerId,amount:Number(context.amount),dueDate:paymentDueDate(),description:subject.type==="PARKING_SESSION"?"Estadia Star Carvalhos":"Mensalidade Star Carvalhos",externalReference:context.externalReference});
         }catch(error){
           await this.markReconciliationPending(context.transactionId,error);
           logPaymentError("asaas.create",error);
@@ -87,7 +88,8 @@ export class PaymentService{
     const reservation=data as Reservation;if(!reservation.isCreator)return publicCheckout(reservation);
     const context=await this.recoveryContext(reservation.transactionId);const provider=this.provider??getPaymentProvider();
     try{
-      const checkout=await provider.createCreditCardCheckout({amount:Number(context.amount),description:subject.type==="PARKING_SESSION"?"Pagamento de estadia":"Pagamento de mensalidade",externalReference:context.externalReference,expiresInMinutes:45,callback:{successUrl:`${origin}/pagamento/retorno?status=success`,cancelUrl:`${origin}/pagamento/retorno?status=cancel`,expiredUrl:`${origin}/pagamento/retorno?status=expired`}});
+      const customerId=await this.resolveProviderCustomer(subject,provider);
+      const checkout=await provider.createCreditCardCheckout({customerId,amount:Number(context.amount),description:subject.type==="PARKING_SESSION"?"Pagamento de estadia":"Pagamento de mensalidade",externalReference:context.externalReference,expiresInMinutes:45,callback:{successUrl:`${origin}/pagamento/retorno?status=success`,cancelUrl:`${origin}/pagamento/retorno?status=cancel`,expiredUrl:`${origin}/pagamento/retorno?status=expired`}});
       const{error:saveError}=await this.admin.rpc("mark_credit_checkout_created",{transaction_id:context.transactionId,checkout_id:checkout.providerCheckoutId,checkout_status:checkout.providerStatus,checkout_link:checkout.link,external_reference:checkout.externalReference,checkout_amount:checkout.amount,expires_at:checkout.expiresAt});if(saveError)throw rpcError("mark_credit_checkout_created",saveError.message);
       return publicCheckout({...reservation,state:"PENDING",hostedPaymentUrl:checkout.link,expiresAt:checkout.expiresAt});
     }catch(cause){logPaymentError("asaas.checkout.create",cause);throw cause}
@@ -159,6 +161,30 @@ export class PaymentService{
     if(error)throw new Error(error.message);return data;
   }
 
+  private async resolveProviderCustomer(subject:PaymentSubject,provider:PaymentProvider){
+    const{data,error}=await this.admin.rpc("get_payment_customer_context",{subject_type:subject.type,subject_id:subject.id,target_provider:provider.name,target_environment:provider.environment});
+    if(error)throw rpcError("get_payment_customer_context",error.message);
+    const customer=data as PaymentCustomerContext;
+    if(customer.provider_customer_id)return customer.provider_customer_id;
+    const document=String(customer.billing_document??"").replace(/\D/g,"");
+    if(!/^(?:\d{11}|\d{14})$/.test(document))throw new Error("CUSTOMER_BILLING_DOCUMENT_REQUIRED");
+
+    let providerCustomer;
+    try{
+      providerCustomer=await provider.findCustomerByExternalReference(customer.external_reference);
+      if(!providerCustomer){
+        providerCustomer=await provider.createCustomer({name:customer.full_name,cpfCnpj:document,email:customer.email,externalReference:customer.external_reference});
+      }
+    }catch(error){
+      logPaymentError("asaas.customer.resolve",error);
+      throw error;
+    }
+
+    const{data:bound,error:bindError}=await this.admin.rpc("bind_payment_provider_customer",{customer_user_id:customer.user_id,target_provider:provider.name,target_environment:provider.environment,target_provider_customer_id:providerCustomer.providerCustomerId,target_external_reference:customer.external_reference});
+    if(bindError)throw rpcError("bind_payment_provider_customer",bindError.message);
+    return String(bound??providerCustomer.providerCustomerId);
+  }
+
   private async recoveryContext(transactionId:string){
     const{data,error}=await this.admin.rpc("get_provider_recovery_context",{transaction_id:transactionId});
     if(error)throw rpcError("get_provider_recovery_context",error.message);
@@ -183,7 +209,6 @@ export class PaymentService{
   private async markManualReview(transactionId:string){await this.admin.rpc("mark_provider_manual_review",{transaction_id:transactionId,reason_code:"DUPLICATE_EXTERNAL_REFERENCE"})}
 }
 
-function requiredCustomerId(){return resolveAsaasRuntimeConfig().customerId}
 function paymentDueDate(){return new Intl.DateTimeFormat("en-CA",{timeZone:"America/Bahia",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date())}
 function publicPayment(value:Reservation){return{state:value.state,amount:Number(value.amount),qrCodePayload:value.qrCodePayload??null,qrCodeImageBase64:value.qrCodeImageBase64??null,expiresAt:value.expiresAt??null,hostedPaymentUrl:value.hostedPaymentUrl??null}}
 function publicCheckout(value:Reservation){return{state:value.state,amount:Number(value.amount),hostedPaymentUrl:value.hostedPaymentUrl??null,expiresAt:value.expiresAt??null}}
