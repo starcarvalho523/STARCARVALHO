@@ -5,17 +5,18 @@ import { Building2, Mail, ShieldCheck, UserPlus, UserRound, X } from "lucide-rea
 import { inviteEmployee, type TeamState } from "./actions";
 
 const initial: TeamState = {};
-type TeamRole = "operator" | "manager" | "finance" | "auditor";
+type TeamRole = "owner" | "operator" | "manager" | "finance" | "auditor";
+type AssignableTeamRole = Exclude<TeamRole, "owner">;
 type UnitOption = { id: string; name: string; allowedRoles: TeamRole[] };
 
-const roleLabel: Record<TeamRole, string> = {
+const roleLabel: Record<AssignableTeamRole, string> = {
   operator: "Frentista",
   manager: "Gerente",
   finance: "Financeiro",
   auditor: "Auditor",
 };
 
-const roleDescription: Record<TeamRole, string> = {
+const roleDescription: Record<AssignableTeamRole, string> = {
   operator: "Acesso operacional à unidade para executar as rotinas liberadas ao frentista.",
   manager: "Gestão administrativa da unidade e da equipe dentro das permissões de gerente.",
   finance: "Acesso às capacidades financeiras autorizadas para a unidade, sem gestão de equipe.",
@@ -27,8 +28,11 @@ export function InviteForm({ units }: { units: UnitOption[] }) {
   const [open, setOpen] = useState(false);
   const [unitId, setUnitId] = useState(units[0]?.id ?? "");
   const selectedUnit = units.find((unit) => unit.id === unitId) ?? units[0];
-  const availableRoles = useMemo(() => selectedUnit?.allowedRoles ?? [], [selectedUnit]);
-  const [role, setRole] = useState<TeamRole>(availableRoles[0] ?? "operator");
+  const availableRoles = useMemo(
+    () => (selectedUnit?.allowedRoles ?? []).filter((item): item is AssignableTeamRole => item !== "owner"),
+    [selectedUnit],
+  );
+  const [role, setRole] = useState<AssignableTeamRole>(availableRoles[0] ?? "operator");
 
   useEffect(() => {
     if (!availableRoles.includes(role)) setRole(availableRoles[0] ?? "operator");
@@ -102,7 +106,7 @@ export function InviteForm({ units }: { units: UnitOption[] }) {
                 </select>
               </Label>
               <Label text="Função" icon={ShieldCheck}>
-                <select name="role" required value={role} onChange={(event) => setRole(event.target.value as TeamRole)} className={field}>
+                <select name="role" required value={role} onChange={(event) => setRole(event.target.value as AssignableTeamRole)} className={field}>
                   {availableRoles.map((item) => <option key={item} value={item}>{roleLabel[item]}</option>)}
                 </select>
               </Label>
