@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { isAsaasConfigured, isAsaasLiveConfigured, isAsaasSandboxConfigured, resolveAsaasRuntimeConfig } from "./asaas-config.ts";
+import { isAsaasConfigured, isAsaasLiveConfigured, isAsaasSandboxConfigured, isAsaasWebhookConfigured, resolveAsaasRuntimeConfig } from "./asaas-config.ts";
 
 function env(values: Record<string, string>): NodeJS.ProcessEnv { return { NODE_ENV: "test", ...values }; }
 
@@ -49,13 +49,19 @@ test("production resolves with explicit live controls and no global customer id"
   assert.equal(config.baseUrl, "https://api.asaas.com/v3");
 });
 
-test("generic readiness accepts configured sandbox and production runtimes", () => {
+test("charge readiness accepts configured sandbox and production runtimes", () => {
   assert.equal(isAsaasConfigured(sandbox), true);
   assert.equal(isAsaasConfigured(production), true);
 });
 
-test("readiness requires webhook token and preserves environment-specific helpers", () => {
-  assert.equal(isAsaasConfigured({ ...production, ASAAS_WEBHOOK_TOKEN: "" }), false);
+test("charge readiness does not depend on webhook token", () => {
+  const withoutWebhook = { ...production, ASAAS_WEBHOOK_TOKEN: "" };
+  assert.equal(isAsaasConfigured(withoutWebhook), true);
+  assert.equal(isAsaasWebhookConfigured(withoutWebhook), false);
+  assert.equal(isAsaasWebhookConfigured(production), true);
+});
+
+test("environment-specific helpers preserve the active runtime", () => {
   assert.equal(isAsaasSandboxConfigured(sandbox), true);
   assert.equal(isAsaasSandboxConfigured(production), false);
   assert.equal(isAsaasLiveConfigured(production), true);
