@@ -27,7 +27,7 @@ export default async function Page({
 }) {
   const { id } = await params;
   const query = await searchParams;
-  const data = await getCeoAnalytics(normalizeCeoFilters(query));
+  const data = await getCeoAnalytics(normalizeCeoFilters(query), "finance");
   const shift = data.shifts.find((item) => item.id === id);
   if (!shift) notFound();
 
