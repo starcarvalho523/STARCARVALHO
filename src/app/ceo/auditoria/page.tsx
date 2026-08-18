@@ -3,15 +3,16 @@ import { DashboardShell } from "@/components/dashboard-shell";
 import { CeoPageHeader } from "@/components/ceo-page-header";
 import { ceoNav } from "@/lib/ceo-nav";
 import { requireCeoScope } from "@/lib/auth";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
 type AuditCategory = "Operação" | "Financeiro" | "Mensalistas" | "Tarifas" | "Acessos" | "Sistema";
 type AuditRow = {
-  id: string;
+  id: string | number;
   unit_id: string;
   actor_user_id: string | null;
+  actor_name: string | null;
   action: string;
   created_at: string;
 };
@@ -59,47 +60,42 @@ export default async function AuditPage({
 }) {
   const query = await searchParams;
   const access = await requireCeoScope("audit");
-  const admin = createAdminClient();
+  const supabase = await createClient();
   const unitIds = [...new Set(access.assignments.map((assignment) => String(assignment.unit_id)))];
   const selectedUnit = query.unit && unitIds.includes(query.unit) ? query.unit : "all";
   const period = ["7", "30", "90", "all"].includes(query.period ?? "") ? String(query.period) : "30";
   const scopedUnitIds = selectedUnit === "all" ? unitIds : [selectedUnit];
 
   const { data: units } = unitIds.length
-    ? await admin.from("parking_units").select("id,name").in("id", unitIds).order("name")
+    ? await supabase.from("parking_units").select("id,name").in("id", unitIds).order("name")
     : { data: [] };
 
   let rows: AuditRow[] = [];
   if (scopedUnitIds.length) {
-    let logsQuery = admin
-      .from("audit_logs")
-      .select("id,unit_id,actor_user_id,action,created_at")
-      .in("unit_id", scopedUnitIds)
-      .order("created_at", { ascending: false })
-      .limit(500);
+    let since: string | null = null;
     if (period !== "all") {
-      const since = new Date();
-      since.setUTCDate(since.getUTCDate() - Number(period));
-      logsQuery = logsQuery.gte("created_at", since.toISOString());
+      const threshold = new Date();
+      threshold.setUTCDate(threshold.getUTCDate() - Number(period));
+      since = threshold.toISOString();
     }
-    const { data: logs } = await logsQuery;
-    rows = (logs ?? []) as AuditRow[];
+
+    const { data: logs, error } = await supabase.rpc("get_audit_events", {
+      p_unit_ids: scopedUnitIds,
+      p_since: since,
+      p_limit: 500,
+    });
+
+    if (!error) rows = (logs ?? []) as AuditRow[];
   }
 
-  const actorIds = [...new Set(rows.map((row) => row.actor_user_id).filter((id): id is string => Boolean(id)))];
-  const { data: actors } = actorIds.length
-    ? await admin.from("profiles").select("id,full_name").in("id", actorIds)
-    : { data: [] };
-
   const unitNames = new Map((units ?? []).map((unit) => [unit.id, unit.name]));
-  const actorNames = new Map((actors ?? []).map((actor) => [actor.id, actor.full_name]));
   const normalizedQ = (query.q ?? "").trim().toLowerCase();
   const selectedCategory = isCategory(query.category) ? query.category : "all";
 
   const filtered = rows.filter((row) => {
     const category = categoryForAction(row.action);
     const label = labelForAction(row.action, category);
-    const actor = row.actor_user_id ? actorNames.get(row.actor_user_id) ?? "Usuário identificado" : "Sistema";
+    const actor = actorLabel(row);
     const haystack = `${label} ${actor} ${unitNames.get(row.unit_id) ?? ""}`.toLowerCase();
     return (
       (selectedCategory === "all" || category === selectedCategory) &&
@@ -179,14 +175,13 @@ export default async function AuditPage({
               <tbody className="divide-y divide-slate-100">
                 {filtered.map((row) => {
                   const category = categoryForAction(row.action);
-                  const actor = row.actor_user_id ? actorNames.get(row.actor_user_id) ?? "Usuário identificado" : "Sistema";
                   return (
                     <tr key={row.id} className="hover:bg-slate-50/60">
                       <td className="px-5 py-4 text-slate-600">{formatDateTime(row.created_at)}</td>
                       <td className="px-4 py-4 font-medium text-slate-800">{unitNames.get(row.unit_id) ?? "Unidade"}</td>
                       <td className="px-4 py-4 font-semibold text-slate-950">{labelForAction(row.action, category)}</td>
                       <td className="px-4 py-4"><span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${categoryTone[category]}`}>{category}</span></td>
-                      <td className="px-5 py-4 text-slate-600">{actor}</td>
+                      <td className="px-5 py-4 text-slate-600">{actorLabel(row)}</td>
                     </tr>
                   );
                 })}
@@ -227,6 +222,12 @@ function labelForAction(action: string, category: AuditCategory) {
     Sistema: "Evento do sistema registrado",
   };
   return fallback[category];
+}
+
+function actorLabel(row: AuditRow) {
+  const value = row.actor_name?.trim();
+  if (value) return value;
+  return row.actor_user_id ? "Usuário identificado" : "Sistema";
 }
 
 function formatDateTime(value: string) {
