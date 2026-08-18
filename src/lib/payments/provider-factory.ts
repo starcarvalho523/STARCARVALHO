@@ -1,16 +1,13 @@
 import "server-only";
 import { AsaasProvider } from "./asaas-provider";
 import { MercadoPagoPointProvider } from "./mercado-pago-point-provider";
-import { isAsaasConfigured, isAsaasLiveConfigured, resolveAsaasRuntimeConfig } from "./asaas-config";
+import { isAsaasConfigured, isAsaasLiveConfigured, isAsaasSandboxConfigured, resolveAsaasRuntimeConfig } from "./asaas-config";
 
 export function getPaymentProvider(){
   const config=resolveAsaasRuntimeConfig();
   return new AsaasProvider({environment:config.environment,apiKey:config.apiKey,baseUrl:config.baseUrl});
 }
 
-export { isAsaasConfigured, isAsaasLiveConfigured };
-
-/** @deprecated Compatibility alias for older UI. Use isAsaasConfigured. */
-export const isAsaasSandboxConfigured = isAsaasConfigured;
+export { isAsaasConfigured, isAsaasSandboxConfigured, isAsaasLiveConfigured };
 
 export function getMercadoPagoPointProvider(){return new MercadoPagoPointProvider()}
