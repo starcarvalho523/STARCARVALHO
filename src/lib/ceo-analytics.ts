@@ -23,7 +23,14 @@ export async function getCeoAnalytics(filters: CeoFilters, scope: CeoScope = "ad
   const buckets = makeBuckets(filters.period, new Date(data.periodStart), data.selectedUnits[0]?.timezone ?? data.units[0]?.timezone ?? "America/Bahia", paid, data.sessions, data.metrics.capacity);
   const casualRevenue = paid.filter((payment) => payment.payment_subject_type === "PARKING_SESSION").reduce((sum, payment) => sum + Number(payment.amount), 0);
   const monthlyRevenue = paid.filter((payment) => payment.payment_subject_type === "MONTHLY_BILLING_PERIOD").reduce((sum, payment) => sum + Number(payment.amount), 0);
-  return { ...data, payments, paid, unitSummaries, buckets, metrics: { ...data.metrics, revenue, casualRevenue, monthlyRevenue, previousRevenue, ticket: paid.length ? revenue / paid.length : 0, payments: paid.length }, methods: { CASH: method("CASH"), CARD: method("CARD"), PIX: method("PIX"), DEBIT_CARD: method("DEBIT_CARD"), CREDIT_CARD: method("CREDIT_CARD") } };
+  const alerts = data.alerts.map((alert) => ({ ...alert, href: normalizeAlertHref(alert.href) }));
+  return { ...data, alerts, payments, paid, unitSummaries, buckets, metrics: { ...data.metrics, revenue, casualRevenue, monthlyRevenue, previousRevenue, ticket: paid.length ? revenue / paid.length : 0, payments: paid.length }, methods: { CASH: method("CASH"), CARD: method("CARD"), PIX: method("PIX"), DEBIT_CARD: method("DEBIT_CARD"), CREDIT_CARD: method("CREDIT_CARD") } };
+}
+
+function normalizeAlertHref(href: string) {
+  if (!href.startsWith("/frentista/saidas?session=")) return href;
+  const sessionId = href.split("session=")[1]?.split("&")[0];
+  return sessionId ? `/ceo/sessoes/${encodeURIComponent(sessionId)}` : "/ceo/alertas";
 }
 
 function makeBuckets(period: CeoPeriod, since: Date, timezone: string, paid: CeoPayment[], sessions: CeoSession[], capacity: number) {
