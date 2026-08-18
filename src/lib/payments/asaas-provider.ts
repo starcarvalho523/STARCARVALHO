@@ -1,8 +1,9 @@
 import { timingSafeEqual } from "node:crypto";
-import type { CreateChargeInput, CreateCheckoutInput, PaymentProvider, ProviderCharge, ProviderCheckout, ProviderCheckoutPayment, ProviderPaymentState, ProviderPixQrCode, ProviderWebhookEvent, ProviderCheckoutWebhookEvent } from "./payment-provider";
+import type { CreateChargeInput, CreateCheckoutInput, CreateProviderCustomerInput, PaymentProvider, ProviderCharge, ProviderCheckout, ProviderCheckoutPayment, ProviderCustomer, ProviderPaymentState, ProviderPixQrCode, ProviderWebhookEvent, ProviderCheckoutWebhookEvent } from "./payment-provider";
 
 type Fetcher = typeof fetch;
 type AsaasPayment = { id?:unknown; customer?:unknown; status?:unknown; billingType?:unknown; value?:unknown; externalReference?:unknown; invoiceUrl?:unknown; checkoutSession?:unknown };
+type AsaasCustomer = { id?:unknown; externalReference?:unknown };
 type AsaasQrCode = { payload?:unknown; encodedImage?:unknown; expirationDate?:unknown };
 type AsaasList = { data?:unknown };
 type AsaasErrorBody = { errors?:unknown };
@@ -34,6 +35,24 @@ export class AsaasProvider implements PaymentProvider {
     this.fetcher=config.fetcher??fetch;
   }
 
+  async findCustomerByExternalReference(externalReference:string):Promise<ProviderCustomer|null>{
+    const query=new URLSearchParams({externalReference,limit:"2",offset:"0"});
+    const result=await this.request<AsaasList>(`/customers?${query.toString()}`);
+    if(!Array.isArray(result.data))throw new Error("INVALID_ASAAS_CUSTOMER_LIST");
+    const matches=result.data.filter((item):item is AsaasCustomer=>isRecord(item)&&item.externalReference===externalReference);
+    if(matches.length>1)throw new Error("ASAAS_DUPLICATE_CUSTOMER_EXTERNAL_REFERENCE");
+    return matches.length===1?normalizeCustomer(matches[0]):null;
+  }
+
+  async createCustomer(input:CreateProviderCustomerInput):Promise<ProviderCustomer>{
+    const customer=await this.request<AsaasCustomer>("/customers",{method:"POST",body:JSON.stringify({
+      name:input.name,cpfCnpj:input.cpfCnpj,email:input.email||undefined,externalReference:input.externalReference,notificationDisabled:false,
+    })});
+    const normalized=normalizeCustomer(customer);
+    if(normalized.externalReference!==input.externalReference)throw new Error("ASAAS_CUSTOMER_EXTERNAL_REFERENCE_MISMATCH");
+    return normalized;
+  }
+
   async createPixPayment(input:CreateChargeInput):Promise<ProviderCharge>{
     return this.createCharge("PIX",input);
   }
@@ -61,7 +80,7 @@ export class AsaasProvider implements PaymentProvider {
   async createCreditCardCheckout(input:CreateCheckoutInput):Promise<ProviderCheckout>{
     const checkout=await this.request<AsaasCheckout>("/checkouts",{method:"POST",body:JSON.stringify({
       billingTypes:["CREDIT_CARD"],chargeTypes:["DETACHED"],minutesToExpire:input.expiresInMinutes,
-      externalReference:input.externalReference,callback:input.callback,
+      externalReference:input.externalReference,callback:input.callback,customer:input.customerId||undefined,
       items:[{externalReference:"parking-stay",name:"Estadia Star Carvalhos",description:input.description,quantity:1,value:input.amount}]
     })});
     if(typeof checkout.id!=="string"||typeof checkout.status!=="string"||typeof checkout.link!=="string"||checkout.externalReference!==input.externalReference)throw new Error("INVALID_ASAAS_CHECKOUT");
@@ -150,6 +169,10 @@ export function mapAsaasPaymentState(status:string,eventType?:string):ProviderPa
   return "PENDING";
 }
 
+function normalizeCustomer(value:AsaasCustomer):ProviderCustomer{
+  if(typeof value.id!=="string")throw new Error("INVALID_ASAAS_CUSTOMER");
+  return{providerCustomerId:value.id,externalReference:stringOrNull(value.externalReference)};
+}
 function normalizePayment(value:AsaasPayment):ProviderCharge{
   if(typeof value.id!=="string"||typeof value.customer!=="string"||typeof value.status!=="string")throw new Error("INVALID_ASAAS_PAYMENT");
   return{providerPaymentId:value.id,providerCustomerId:value.customer,providerStatus:value.status,billingType:stringOrNull(value.billingType),amount:numberOrNull(value.value)??0,externalReference:stringOrNull(value.externalReference)??"",hostedPaymentUrl:stringOrNull(value.invoiceUrl),qrCodePayload:null,qrCodeImageBase64:null,expiresAt:null};

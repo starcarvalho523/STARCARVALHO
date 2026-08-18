@@ -5,7 +5,6 @@ export type AsaasRuntimeConfig = {
   providerEnvironment: "SANDBOX" | "PRODUCTION";
   baseUrl: string;
   apiKey: string;
-  customerId: string;
 };
 
 const SANDBOX_URL = "https://api-sandbox.asaas.com/v3";
@@ -28,21 +27,11 @@ export function resolveAsaasRuntimeConfig(env: NodeJS.ProcessEnv = process.env):
   const apiKey = env.ASAAS_API_KEY ?? "";
   if (!apiKey) throw new Error("ASAAS_API_KEY_NOT_CONFIGURED");
 
-  const customerId = environment === "sandbox"
-    ? (env.ASAAS_SANDBOX_CUSTOMER_ID ?? "")
-    : (env.ASAAS_PRODUCTION_CUSTOMER_ID ?? "");
-  if (!customerId) {
-    throw new Error(environment === "sandbox"
-      ? "ASAAS_SANDBOX_CUSTOMER_NOT_CONFIGURED"
-      : "ASAAS_PRODUCTION_CUSTOMER_NOT_CONFIGURED");
-  }
-
   return {
     environment,
     providerEnvironment: environment === "sandbox" ? "SANDBOX" : "PRODUCTION",
     baseUrl,
     apiKey,
-    customerId,
   };
 }
 

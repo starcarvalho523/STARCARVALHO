@@ -15,6 +15,31 @@ function message(error:string){
   return"Não foi possível concluir a operação com segurança.";
 }
 
+function validCpf(value:string){
+  if(!/^\d{11}$/.test(value)||/^(\d)\1{10}$/.test(value))return false;
+  const digit=(base:string,factor:number)=>{let sum=0;for(const char of base)sum+=Number(char)*factor--;const mod=(sum*10)%11;return mod===10?0:mod};
+  return digit(value.slice(0,9),10)===Number(value[9])&&digit(value.slice(0,10),11)===Number(value[10]);
+}
+function validCnpj(value:string){
+  if(!/^\d{14}$/.test(value)||/^(\d)\1{13}$/.test(value))return false;
+  const calc=(base:string,weights:number[])=>{const sum=base.split("").reduce((total,char,index)=>total+Number(char)*weights[index],0);const mod=sum%11;return mod<2?0:11-mod};
+  const first=calc(value.slice(0,12),[5,4,3,2,9,8,7,6,5,4,3,2]);
+  const second=calc(value.slice(0,12)+first,[6,5,4,3,2,9,8,7,6,5,4,3,2]);
+  return first===Number(value[12])&&second===Number(value[13]);
+}
+
+export async function updateBillingDocument(_:CustomerActionState,formData:FormData):Promise<CustomerActionState>{
+  const document=String(formData.get("billingDocument")??"").replace(/\D/g,"");
+  if(!validCpf(document)&&!validCnpj(document))return{error:"Informe um CPF ou CNPJ válido."};
+  const supabase=await createClient();
+  const{data:{user},error:userError}=await supabase.auth.getUser();
+  if(userError||!user)return{error:"Sua sessão expirou. Entre novamente."};
+  const{error}=await supabase.from("customer_profiles").update({billing_document:document,updated_at:new Date().toISOString()}).eq("user_id",user.id);
+  if(error)return{error:"Não foi possível salvar o CPF/CNPJ com segurança."};
+  revalidatePath("/cliente/conta");
+  return{success:"CPF/CNPJ salvo para emissão e conciliação de cobranças."};
+}
+
 export async function claimVehicle(_:CustomerActionState,formData:FormData):Promise<CustomerActionState>{
   const plate=String(formData.get("plate")??"");
   const vehicleType=String(formData.get("vehicleType")??"");

@@ -1,5 +1,17 @@
 export type ProviderPaymentState = "PENDING" | "PAID" | "EXPIRED" | "CANCELLED" | "REVIEW";
 
+export type ProviderCustomer = {
+  providerCustomerId: string;
+  externalReference: string | null;
+};
+
+export type CreateProviderCustomerInput = {
+  name: string;
+  cpfCnpj: string;
+  email: string | null;
+  externalReference: string;
+};
+
 export type CreateChargeInput = {
   customerId: string;
   amount: number;
@@ -22,6 +34,7 @@ export type ProviderCharge = {
 };
 
 export type CreateCheckoutInput = {
+  customerId?: string | null;
   amount: number;
   description: string;
   externalReference: string;
@@ -74,6 +87,8 @@ export interface PaymentProvider {
   readonly name: "ASAAS";
   readonly environment: "SANDBOX" | "PRODUCTION";
   readonly capabilities: ReadonlyArray<{ method:"PIX"|"CREDIT_CARD"; channel:"QR"|"HOSTED_CHECKOUT" }>;
+  findCustomerByExternalReference(externalReference:string):Promise<ProviderCustomer|null>;
+  createCustomer(input:CreateProviderCustomerInput):Promise<ProviderCustomer>;
   createPixPayment(input: CreateChargeInput): Promise<ProviderCharge>;
   getPixQrCode(providerPaymentId: string): Promise<ProviderPixQrCode>;
   findPaymentByExternalReference(externalReference: string): Promise<ProviderCharge | null>;
