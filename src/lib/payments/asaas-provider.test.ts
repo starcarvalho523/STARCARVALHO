@@ -1,4 +1,3 @@
-
 import assert from "node:assert/strict";
 import test from "node:test";
 import { AsaasProvider, AsaasPublicError, mapAsaasPaymentState } from "./asaas-provider.ts";
@@ -46,7 +45,7 @@ test("reconciliation with multiple matches fails without choosing one",async()=>
 test("QR retry reuses the same provider payment id and never posts",async()=>{
   const calls:string[]=[];
   let attempt=0;
-  const fetcher:typeof fetch=async(input)=>{calls.push(String(input));attempt++;return attempt===1?Response.json({errors:[{code:"pix_unavailable",description:"Pix temporariamente indisponÃƒÂ­vel"}]},{status:400}):Response.json({payload:"pix-copy",encodedImage:"base64",expirationDate:"2026-08-10T23:59:59Z"})};
+  const fetcher:typeof fetch=async(input)=>{calls.push(String(input));attempt++;return attempt===1?Response.json({errors:[{code:"pix_unavailable",description:"Pix temporariamente indisponível"}]},{status:400}):Response.json({payload:"pix-copy",encodedImage:"base64",expirationDate:"2026-08-10T23:59:59Z"})};
   const provider=new AsaasProvider({...config,fetcher});
   await assert.rejects(()=>provider.getPixQrCode("pay_test"),AsaasPublicError);
   const qr=await provider.getPixQrCode("pay_test");
@@ -72,7 +71,8 @@ test("Asaas error keeps only sanitized public details",async()=>{
   );
 });
 
-test("production base URL is refused",()=>assert.throws(()=>new AsaasProvider({environment:"sandbox",apiKey:"x",baseUrl:"https://api.asaas.com/v3"}),/ASAAS_SANDBOX_ONLY/));
+test("provider rejects an endpoint that does not match its environment",()=>assert.throws(()=>new AsaasProvider({environment:"sandbox",apiKey:"x",baseUrl:"https://api.asaas.com/v3"}),/ASAAS_BASE_URL_ENVIRONMENT_MISMATCH/));
+test("provider accepts the exact production endpoint when production mode is explicitly supplied",()=>{const provider=new AsaasProvider({environment:"production",apiKey:"x",baseUrl:"https://api.asaas.com/v3",fetcher:async()=>Response.json({})});assert.equal(provider.environment,"PRODUCTION")});
 test("credit checkout sends only hosted CREDIT_CARD DETACHED contract",async()=>{const bodies:Record<string,unknown>[]=[];const fetcher:typeof fetch=async(_input,init)=>{bodies.push(JSON.parse(String(init?.body)) as Record<string,unknown>);return Response.json({id:"chk_test",status:"ACTIVE",link:"https://sandbox.asaas.com/checkoutSession/show/chk_test",externalReference:"opaque-ref",minutesToExpire:45})};const provider=new AsaasProvider({...config,fetcher});const result=await provider.createCreditCardCheckout({amount:9.5,description:"Estadia",externalReference:"opaque-ref",expiresInMinutes:45,callback:{successUrl:"https://example.com/s",cancelUrl:"https://example.com/c",expiredUrl:"https://example.com/e"}});const sent=bodies[0];assert.equal(result.amount,9.5);assert.deepEqual(sent.billingTypes,["CREDIT_CARD"]);assert.deepEqual(sent.chargeTypes,["DETACHED"]);assert.equal(sent.minutesToExpire,45);assert.equal("creditCard" in sent,false)});
 test("checkout webhook parser ignores card data and keeps identifiers",()=>{const provider=new AsaasProvider({...config,apiKey:"x"});const event=provider.parseCheckoutWebhook({id:"evt_1",event:"CHECKOUT_PAID",checkout:{id:"chk_1",status:"PAID",externalReference:"opaque-ref",creditCard:{number:"never-read"}}});assert.deepEqual(event,{id:"evt_1",type:"CHECKOUT_PAID",checkoutId:"chk_1",checkoutStatus:"PAID",externalReference:"opaque-ref"})});
 const checkoutPayment={id:"pay_1",customer:"cus_test",status:"CONFIRMED",billingType:"CREDIT_CARD",value:50,externalReference:null,checkoutSession:"chk_1"};
