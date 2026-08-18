@@ -20,6 +20,17 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
   const currentSubscription = subscriptions.find((item) => item.status === "ACTIVE") ?? subscriptions.find((item) => item.status === "PENDING_ACTIVATION") ?? subscriptions[0] ?? null;
   const lastBilling = currentSubscription ? billingPeriods.find((item) => item.subscription_id === currentSubscription.id) ?? null : null;
   const activeSessions = sessions.filter((session) => ["OPEN", "PAYMENT_PENDING", "PAID"].includes(session.status)).length;
+  const eligibilityLabel = currentSubscription
+    ? currentSubscription.status === "PENDING_ACTIVATION"
+      ? "Assinatura em ativação"
+      : currentSubscription.status === "ACTIVE"
+        ? "Já possui assinatura"
+        : currentSubscription.status === "SUSPENDED"
+          ? "Assinatura suspensa"
+          : "Já possui assinatura"
+    : detail.eligible_for_monthly
+      ? "Pronto para mensalista"
+      : "Ainda não elegível";
 
   return (
     <DashboardShell nav={ceoNav} active="Clientes" role="CEO">
@@ -36,7 +47,7 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
           <Summary icon={CarFront} label="Veículos relacionados" value={String(vehicles.length)} />
           <Summary icon={Clock3} label="Passagens registradas" value={String(sessions.length)} />
           <Summary icon={WalletCards} label="Mensalidade" value={monthlyLabel(currentSubscription?.status ?? null)} />
-          <Summary icon={CircleCheckBig} label="Elegibilidade" value={detail.eligible_for_monthly ? "Pronto para mensalista" : "Ainda não elegível"} />
+          <Summary icon={CircleCheckBig} label="Elegibilidade" value={eligibilityLabel} />
         </section>
 
         <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
