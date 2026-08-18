@@ -4,6 +4,7 @@ import { DashboardShell } from "@/components/dashboard-shell";
 import { CeoPageHeader } from "@/components/ceo-page-header";
 import { ceoNav } from "@/lib/ceo-nav";
 import { getCeoAnalytics, normalizeCeoFilters, type CeoAlert } from "@/lib/ceo-analytics";
+import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
@@ -13,12 +14,27 @@ type SeverityKey = "all" | "Info" | "Atenção" | "Crítico";
 export default async function Page({ searchParams }: { searchParams: Promise<{ unit?: string; filter?: string; severity?: string; q?: string }> }) {
   const p = await searchParams;
   const d = await getCeoAnalytics(normalizeCeoFilters({ period: "today", unit: p.unit }));
+  const supabase = await createClient();
+
+  const activationSubscriptionIds = [...new Set(
+    d.alerts
+      .filter((alert) => alert.title.startsWith("Primeiro pagamento") && alert.href.startsWith("/ceo/mensalistas/"))
+      .map((alert) => alert.href.split("/").pop())
+      .filter((id): id is string => Boolean(id && id !== "inadimplentes" && id !== "automacao")),
+  )];
+  const { data: activationSubscriptions } = activationSubscriptionIds.length
+    ? await supabase.from("monthly_subscriptions").select("id,plan_name").in("id", activationSubscriptionIds)
+    : { data: [] };
+  const planNames = new Map((activationSubscriptions ?? []).map((subscription) => [subscription.id, subscription.plan_name]));
+  const activeById = new Map(d.active.map((session) => [session.id, session]));
+
+  const enrichedAlerts = d.alerts.map((alert) => enrichAlert(alert, activeById, planNames));
   const selectedUnit = p.unit && d.units.some((unit) => unit.id === p.unit) ? p.unit : "all";
   const filter: FilterKey = ["all", "operacional", "financeiro", "critical"].includes(p.filter ?? "") ? p.filter as FilterKey : "all";
   const severity: SeverityKey = ["Info", "Atenção", "Crítico"].includes(p.severity ?? "") ? p.severity as SeverityKey : "all";
   const q = (p.q ?? "").trim().toLowerCase();
 
-  const alerts = d.alerts.filter((alert) => {
+  const alerts = enrichedAlerts.filter((alert) => {
     const categoryMatch = filter === "all" || (filter === "critical" && alert.severity === "Crítico") || alert.category.toLowerCase() === filter;
     const severityMatch = severity === "all" || alert.severity === severity;
     const searchMatch = !q || `${alert.title} ${alert.description} ${alert.unitName}`.toLowerCase().includes(q);
@@ -26,10 +42,10 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ u
   });
 
   const counts = {
-    all: d.alerts.length,
-    critical: d.alerts.filter((alert) => alert.severity === "Crítico").length,
-    operational: d.alerts.filter((alert) => alert.category === "Operacional").length,
-    financial: d.alerts.filter((alert) => alert.category === "Financeiro").length,
+    all: enrichedAlerts.length,
+    critical: enrichedAlerts.filter((alert) => alert.severity === "Crítico").length,
+    operational: enrichedAlerts.filter((alert) => alert.category === "Operacional").length,
+    financial: enrichedAlerts.filter((alert) => alert.category === "Financeiro").length,
   };
 
   return (
@@ -89,6 +105,36 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ u
 }
 
 const filterClass = "h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100";
+
+function enrichAlert(
+  alert: CeoAlert,
+  activeById: Map<string, { id: string; entered_at: string; plate_snapshot: string }>,
+  planNames: Map<string, string | null>,
+): CeoAlert {
+  if (alert.id.startsWith("long-")) {
+    const session = activeById.get(alert.id.slice("long-".length));
+    if (session) {
+      const minutes = Math.max(0, Math.floor((Date.now() - new Date(session.entered_at).getTime()) / 60000));
+      return { ...alert, description: `${session.plate_snapshot} permanece no pátio há ${formatElapsed(minutes)}.` };
+    }
+  }
+
+  if (alert.title.startsWith("Primeiro pagamento") && alert.href.startsWith("/ceo/mensalistas/")) {
+    const subscriptionId = alert.href.split("/").pop() ?? "";
+    const planName = planNames.get(subscriptionId);
+    if (planName) return { ...alert, description: `${planName} · ${lowerFirst(alert.description)}` };
+  }
+
+  return alert;
+}
+
+function formatElapsed(minutes: number) {
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  if (!hours) return `${rest} min`;
+  return `${hours}h ${String(rest).padStart(2, "0")}min`;
+}
+function lowerFirst(value: string) { return value ? value[0].toLowerCase() + value.slice(1) : value; }
 
 function AlertCard({ alert }: { alert: CeoAlert }) {
   const critical = alert.severity === "Crítico";
