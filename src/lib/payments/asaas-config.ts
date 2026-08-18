@@ -38,10 +38,14 @@ export function resolveAsaasRuntimeConfig(env: NodeJS.ProcessEnv = process.env):
 export function isAsaasConfigured(env: NodeJS.ProcessEnv = process.env) {
   try {
     resolveAsaasRuntimeConfig(env);
-    return Boolean(env.ASAAS_WEBHOOK_TOKEN);
+    return true;
   } catch {
     return false;
   }
+}
+
+export function isAsaasWebhookConfigured(env: NodeJS.ProcessEnv = process.env) {
+  return Boolean(env.ASAAS_WEBHOOK_TOKEN);
 }
 
 export function isAsaasSandboxConfigured(env: NodeJS.ProcessEnv = process.env) {
