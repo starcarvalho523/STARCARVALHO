@@ -11,17 +11,17 @@ const SANDBOX_URL = "https://api-sandbox.asaas.com/v3";
 const PRODUCTION_URL = "https://api.asaas.com/v3";
 
 export function resolveAsaasRuntimeConfig(env: NodeJS.ProcessEnv = process.env): AsaasRuntimeConfig {
-  const environment = env.ASAAS_ENVIRONMENT;
+  const environment = String(env.ASAAS_ENVIRONMENT ?? "").trim().toLowerCase();
   if (environment !== "sandbox" && environment !== "production") {
     throw new Error("ASAAS_ENVIRONMENT_NOT_CONFIGURED");
   }
 
-  if (environment === "production" && env.ASAAS_LIVE_PAYMENTS_ENABLED !== "true") {
+  if (environment === "production" && String(env.ASAAS_LIVE_PAYMENTS_ENABLED ?? "").trim().toLowerCase() !== "true") {
     throw new Error("ASAAS_LIVE_PAYMENTS_DISABLED");
   }
 
   const expectedBaseUrl = environment === "sandbox" ? SANDBOX_URL : PRODUCTION_URL;
-  const baseUrl = (env.ASAAS_BASE_URL || expectedBaseUrl).replace(/\/$/, "");
+  const baseUrl = String(env.ASAAS_BASE_URL || expectedBaseUrl).trim().replace(/\/$/, "");
   if (baseUrl !== expectedBaseUrl) throw new Error("ASAAS_BASE_URL_ENVIRONMENT_MISMATCH");
 
   const apiKey = env.ASAAS_API_KEY ?? "";

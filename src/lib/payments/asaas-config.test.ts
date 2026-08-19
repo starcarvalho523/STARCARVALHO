@@ -33,6 +33,10 @@ test("production fails closed unless live flag is explicit", () => {
   })), /ASAAS_LIVE_PAYMENTS_DISABLED/);
 });
 
+test("production normalizes an explicitly enabled live flag", () => {
+  assert.equal(resolveAsaasRuntimeConfig({ ...production, ASAAS_LIVE_PAYMENTS_ENABLED: " True " }).environment, "production");
+});
+
 test("production requires exact production URL", () => {
   const base = env({
     ASAAS_ENVIRONMENT: "production",
