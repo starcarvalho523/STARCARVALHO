@@ -84,7 +84,7 @@ export type ProviderCheckoutWebhookEvent = {
 };
 
 export interface PaymentProvider {
-  readonly name: "ASAAS";
+  readonly name: "ASAAS" | "EFI";
   readonly environment: "SANDBOX" | "PRODUCTION";
   readonly capabilities: ReadonlyArray<{ method:"PIX"|"CREDIT_CARD"; channel:"QR"|"HOSTED_CHECKOUT" }>;
   findCustomerByExternalReference(externalReference:string):Promise<ProviderCustomer|null>;

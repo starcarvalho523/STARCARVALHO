@@ -1,0 +1,5 @@
+import assert from "node:assert/strict";import test from "node:test";
+import { assertCreditToken,efiCertificate,mapEfiStatus } from "./efi-contracts.ts";
+test("maps Efí states fail-closed",()=>{assert.equal(mapEfiStatus("ATIVA"),"PENDING");assert.equal(mapEfiStatus("CONCLUIDA"),"PAID");assert.equal(mapEfiStatus("EXPIRED"),"EXPIRED");assert.throws(()=>mapEfiStatus("unknown"),/EFI_UNKNOWN_STATUS/)});
+test("certificate stays secret-only",()=>assert.throws(()=>efiCertificate({} as NodeJS.ProcessEnv),/EFI_CERTIFICATE_MISSING/));
+test("credit accepts only a token and rejects PAN/CVV",()=>{assert.deepEqual(assertCreditToken({paymentToken:"token",amount:5,externalReference:"ref"}),{paymentToken:"token",amount:5,externalReference:"ref"});assert.throws(()=>assertCreditToken({paymentToken:"t",pan:"1",amount:5,externalReference:"r"}),/EFI_CREDIT_TOKEN_REQUIRED/);assert.throws(()=>assertCreditToken({paymentToken:"t",cvv:"1",amount:5,externalReference:"r"}),/EFI_CREDIT_TOKEN_REQUIRED/)});
