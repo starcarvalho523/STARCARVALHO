@@ -1,0 +1,8 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import { getEfiAccessToken } from "./efi-oauth-client.ts";
+import type { EfiHttpRequest, EfiHttpResponse, EfiHttpTransport } from "./efi-http-client.ts";
+const env={EFI_ENABLED:"true",EFI_ENVIRONMENT:"sandbox",EFI_CLIENT_ID:"client-id",EFI_CLIENT_SECRET:"secret-value",EFI_CERTIFICATE_BASE64:Buffer.from("p12").toString("base64")} as unknown as NodeJS.ProcessEnv;
+class FakeTransport implements EfiHttpTransport{last?:EfiHttpRequest;constructor(private readonly response:EfiHttpResponse|Error){}async request(request:EfiHttpRequest){this.last=request;if(this.response instanceof Error)throw this.response;return this.response}}
+test("OAuth uses Basic auth and only the client-credentials body",async()=>{const http=new FakeTransport({status:200,body:JSON.stringify({access_token:"token",token_type:"Bearer",expires_in:3600,scope:"pix.read"})});const token=await getEfiAccessToken({env,http});assert.deepEqual(token,{accessToken:"token",tokenType:"Bearer",expiresIn:3600,scope:"pix.read"});assert.equal(http.last?.path,"/oauth/token");assert.equal(http.last?.headers.authorization,`Basic ${Buffer.from("client-id:secret-value").toString("base64")}`);assert.deepEqual(JSON.parse(http.last?.body??""),{grant_type:"client_credentials"});assert.equal(http.last?.body.includes("secret-value"),false)});
+test("OAuth fails closed without leaking secrets",async()=>{for(const response of [{status:200,body:"{}"},{status:401,body:"ignored"},new Error("EFI_TIMEOUT"),new Error("secret-value")])await assert.rejects(()=>getEfiAccessToken({env,http:new FakeTransport(response)}),error=>error instanceof Error&&/^EFI_/.test(error.message)&&!error.message.includes("secret-value"));});
