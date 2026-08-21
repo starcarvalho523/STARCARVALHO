@@ -13,8 +13,7 @@ export const efiPixCobProbeMethodNotAllowed = { ok: false, error: "EFI_PROBE_UNA
 
 /** Temporary preview-only probe. It is intentionally isolated from payment workflows. */
 export async function runEfiPixCobProbe(authorization: string | null, env: NodeJS.ProcessEnv = process.env, dependencies: ProbeDependencies = {}): Promise<EfiPixCobProbeResult> {
-  const expectedToken = env.EFI_PIX_PROBE_TOKEN;
-  if (!expectedToken || !matchesBearerToken(authorization, expectedToken)) return failure(401, "EFI_PROBE_UNAUTHORIZED");
+  if (!isEfiPixProbeAuthorized(authorization, env)) return failure(401, "EFI_PROBE_UNAUTHORIZED");
   if (env.VERCEL_ENV !== "preview" || env.EFI_ENABLED !== "true" || env.EFI_ENVIRONMENT !== "sandbox") return failure(400, "EFI_WRONG_ENVIRONMENT");
 
   try {
@@ -25,7 +24,9 @@ export async function runEfiPixCobProbe(authorization: string | null, env: NodeJ
   }
 }
 
-function matchesBearerToken(authorization: string | null, expectedToken: string): boolean {
+export function isEfiPixProbeAuthorized(authorization: string | null, env: NodeJS.ProcessEnv = process.env): boolean {
+  const expectedToken = env.EFI_PIX_PROBE_TOKEN;
+  if (!expectedToken) return false;
   if (!authorization?.startsWith("Bearer ")) return false;
   const received = Buffer.from(authorization.slice(7));
   const expected = Buffer.from(expectedToken);

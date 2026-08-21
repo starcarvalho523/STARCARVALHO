@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { efiPixCobProbeMethodNotAllowed, runEfiPixCobProbe } from "./efi-pix-cob-probe.ts";
+import { runEfiPixConfigProbe } from "./efi-pix-config-probe.ts";
 
 const env = { VERCEL_ENV: "preview", EFI_PIX_PROBE_TOKEN: "probe-token", EFI_ENABLED: "true", EFI_ENVIRONMENT: "sandbox" } as unknown as NodeJS.ProcessEnv;
 const authorization = "Bearer probe-token";
@@ -49,4 +50,18 @@ test("Pix Cob probe keeps only validated HTTP diagnostics", async () => {
 
   const rejected = await runEfiPixCobProbe(authorization, env, { createCob: async () => { throw new Error("EFI_PIX_CREATE_FAILED:400:secret-value"); } });
   assert.deepEqual(rejected, { status: 502, body: { ok: false, error: "EFI_PIX_CREATE_FAILED" } });
+});
+
+test("Pix config probe resolves only configuration and returns presence booleans", () => {
+  const configured = { ...env, EFI_CLIENT_ID: "client-value", EFI_CLIENT_SECRET: "secret-value", EFI_CERTIFICATE_BASE64: Buffer.from("p12").toString("base64"), EFI_PIX_KEY: "pix-key" } as NodeJS.ProcessEnv;
+  assert.deepEqual(runEfiPixConfigProbe(authorization, configured), { status: 200, body: { ok: true, result: "CONFIG_CHECK_OK", presence: { EFI_ENABLED_PRESENT: true, EFI_ENVIRONMENT_PRESENT: true, EFI_CLIENT_ID_PRESENT: true, EFI_CLIENT_SECRET_PRESENT: true, EFI_CERTIFICATE_BASE64_PRESENT: true, EFI_PIX_KEY_PRESENT: true } } });
+});
+
+test("Pix config probe exposes only safe resolver errors and never values", () => {
+  const configured = { ...env, EFI_CLIENT_ID: "client-value", EFI_CLIENT_SECRET: "secret-value", EFI_CERTIFICATE_BASE64: Buffer.from("p12").toString("base64"), EFI_PIX_KEY: "pix-key" } as NodeJS.ProcessEnv;
+  for (const [candidate, expected] of [[{ ...configured, EFI_ENABLED: "false" }, "EFI_DISABLED"], [{ ...configured, EFI_ENVIRONMENT: "" }, "EFI_ENVIRONMENT_NOT_CONFIGURED"], [{ ...configured, EFI_ENVIRONMENT: "production" }, "EFI_PRODUCTION_DISABLED"], [{ ...configured, EFI_CLIENT_ID: "" }, "EFI_CLIENT_ID_MISSING"], [{ ...configured, EFI_CLIENT_SECRET: "" }, "EFI_CLIENT_SECRET_MISSING"], [{ ...configured, EFI_CERTIFICATE_BASE64: "" }, "EFI_CERTIFICATE_MISSING"], [{ ...configured, EFI_CERTIFICATE_BASE64: "not-valid" }, "EFI_CERTIFICATE_INVALID"], [{ ...configured, EFI_PIX_KEY: "" }, "EFI_PIX_KEY_MISSING"]] as const) {
+    const result = runEfiPixConfigProbe(authorization, candidate);
+    assert.equal(result.body.ok, false); if (!result.body.ok) assert.equal(result.body.error, expected);
+    assert.doesNotMatch(JSON.stringify(result.body), /client-value|secret-value|p12|pix-key|probe-token/i);
+  }
 });
