@@ -1,7 +1,7 @@
 import https from "node:https";
 import type { EfiAuthRuntimeConfig } from "./efi-config.ts";
 
-export type EfiHttpRequest={path:"/oauth/token";method:"POST";headers:Record<string,string>;body:string};
+export type EfiHttpRequest={path:"/oauth/token"|"/v2/cob";method:"POST";headers:Record<string,string>;body:string};
 export type EfiHttpResponse={status:number;body:string};
 export interface EfiHttpTransport{request(request:EfiHttpRequest):Promise<EfiHttpResponse>}
 
