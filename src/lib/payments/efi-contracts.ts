@@ -1,5 +1,5 @@
 import type { ProviderPaymentState } from "./payment-provider";
-export type EfiErrorCode="EFI_NOT_CONFIGURED"|"EFI_DISABLED"|"EFI_PRODUCTION_BLOCKED"|"EFI_AUTH_FAILED"|"EFI_CERTIFICATE_MISSING"|"EFI_CERTIFICATE_INVALID"|"EFI_TIMEOUT"|"EFI_PIX_KEY_MISSING"|"EFI_PIX_CREATE_FAILED"|"EFI_PIX_QR_FAILED"|"EFI_RECONCILIATION_FAILED"|"EFI_AMOUNT_MISMATCH"|"EFI_CREDIT_TOKEN_REQUIRED"|"EFI_CREDIT_CREATE_FAILED"|"EFI_UNKNOWN_STATUS";
+export type EfiErrorCode="EFI_NOT_CONFIGURED"|"EFI_DISABLED"|"EFI_PRODUCTION_BLOCKED"|"EFI_AUTH_FAILED"|"EFI_CERTIFICATE_MISSING"|"EFI_CERTIFICATE_INVALID"|"EFI_TIMEOUT"|"EFI_PIX_KEY_MISSING"|"EFI_PIX_CREATE_FAILED"|"EFI_PIX_QR_FAILED"|"EFI_RECONCILIATION_FAILED"|"EFI_AMOUNT_MISMATCH"|"EFI_CREDIT_TOKEN_REQUIRED"|"EFI_CREDIT_CREATE_FAILED"|"EFI_INVALID_RESPONSE"|"EFI_UNKNOWN_STATUS";
 export type EfiPixCharge={txid:string;providerPaymentId:string;externalReference:string;amount:number;status:string;expiresAt:string;qrPayload:string|null;qrImageReference:string|null};
 export type EfiCreditInput={paymentToken:string;amount:number;externalReference:string};
 /** Decodes only in memory; the certificate is never logged or written to disk. */
