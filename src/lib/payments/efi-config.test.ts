@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { resolveEfiRuntimeConfig } from "./efi-config.ts";
-
+import { resolveEfiPixRuntimeConfig, resolveEfiRuntimeConfig } from "./efi-config.ts";
+const certificate=Buffer.from("sandbox-p12").toString("base64");
+const sandbox={EFI_ENABLED:"true",EFI_ENVIRONMENT:"sandbox",EFI_CLIENT_ID:"client",EFI_CLIENT_SECRET:"secret",EFI_CERTIFICATE_BASE64:certificate} as unknown as NodeJS.ProcessEnv;
 test("Efí stays disabled without an explicit enablement flag",()=>assert.throws(()=>resolveEfiRuntimeConfig({} as NodeJS.ProcessEnv),/EFI_DISABLED/));
-test("Efí requires every future secret and a certificate in sandbox",()=>assert.throws(()=>resolveEfiRuntimeConfig({EFI_ENABLED:"true",EFI_ENVIRONMENT:"sandbox"} as unknown as NodeJS.ProcessEnv),/EFI_CLIENT_ID_MISSING/));
-test("Efí production remains blocked even when configuration is supplied",()=>assert.throws(()=>resolveEfiRuntimeConfig({EFI_ENABLED:"true",EFI_ENVIRONMENT:"production"} as unknown as NodeJS.ProcessEnv),/EFI_PRODUCTION_DISABLED/));
+test("Efí requires an environment",()=>assert.throws(()=>resolveEfiRuntimeConfig({EFI_ENABLED:"true"} as unknown as NodeJS.ProcessEnv),/EFI_ENVIRONMENT_NOT_CONFIGURED/));
+test("Efí production remains blocked",()=>assert.throws(()=>resolveEfiRuntimeConfig({...sandbox,EFI_ENVIRONMENT:"production"}),/EFI_PRODUCTION_DISABLED/));
+test("OAuth requires client id, secret, and a valid base64 P12",()=>{assert.throws(()=>resolveEfiRuntimeConfig({...sandbox,EFI_CLIENT_ID:""}),/EFI_CLIENT_ID_MISSING/);assert.throws(()=>resolveEfiRuntimeConfig({...sandbox,EFI_CLIENT_SECRET:""}),/EFI_CLIENT_SECRET_MISSING/);assert.throws(()=>resolveEfiRuntimeConfig({...sandbox,EFI_CERTIFICATE_BASE64:""}),/EFI_CERTIFICATE_MISSING/);assert.throws(()=>resolveEfiRuntimeConfig({...sandbox,EFI_CERTIFICATE_BASE64:"not base64!"}),/EFI_CERTIFICATE_INVALID/)});
+test("OAuth resolves the fixed homologation origin without PIX key",()=>{const config=resolveEfiRuntimeConfig(sandbox);assert.equal(config.baseUrl,"https://pix-h.api.efipay.com.br");assert.deepEqual(config.certificateP12,Buffer.from("sandbox-p12"));assert.throws(()=>resolveEfiPixRuntimeConfig(sandbox),/EFI_PIX_KEY_MISSING/)});

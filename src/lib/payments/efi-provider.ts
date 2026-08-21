@@ -1,10 +1,10 @@
 import type { PaymentProvider,ProviderCharge,ProviderCheckout,ProviderCheckoutPayment,ProviderCustomer,ProviderPixQrCode,ProviderWebhookEvent,ProviderCheckoutWebhookEvent } from "./payment-provider";
-import type { EfiRuntimeConfig } from "./efi-config";
+import type { EfiAuthRuntimeConfig } from "./efi-config";
 
 /** Boundary only: no HTTP client is attached until Efí sandbox approval and mTLS design are approved. */
 export class EfiProvider implements PaymentProvider{
  readonly name="EFI" as const;readonly environment="SANDBOX" as const;readonly capabilities=[{method:"PIX" as const,channel:"QR" as const},{method:"CREDIT_CARD" as const,channel:"HOSTED_CHECKOUT" as const}];
- constructor(readonly config:EfiRuntimeConfig){}
+ constructor(readonly config:EfiAuthRuntimeConfig){}
  private unavailable():never{throw new Error("EFI_NOT_CONFIGURED")}
  async findCustomerByExternalReference():Promise<ProviderCustomer|null>{return null}
  async createCustomer():Promise<ProviderCustomer>{return this.unavailable()}
