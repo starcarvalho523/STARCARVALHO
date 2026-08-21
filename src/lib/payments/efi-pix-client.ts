@@ -7,6 +7,7 @@ export type EfiImmediatePixCob = { txid: string; status: string; locationId: num
 type OAuthPort = Pick<EfiOAuthClient, "getAccessToken">;
 type PixDependencies = { oauth?: OAuthPort; transport?: EfiHttpTransport };
 const defaultPayerRequest = "Pagamento estacionamento Star Carvalhos";
+const safeProviderErrorNames = new Set(["chave_invalida", "valor_invalido", "documento_bloqueado", "txid_duplicado", "erro_aplicacao"]);
 
 /** Sandbox-only Pix Cob client. It is not wired to any parking payment flow. */
 export class EfiPixClient {
@@ -27,11 +28,11 @@ export class EfiPixClient {
         headers: { "content-type": "application/json", authorization: `Bearer ${access.accessToken}` },
         body: JSON.stringify({ calendario: { expiracao: input.expiresInSeconds ?? 3600 }, valor: { original: formattedAmount }, chave: this.config.pixKey, solicitacaoPagador: input.payerRequest ?? defaultPayerRequest }),
       });
-      if (response.status < 200 || response.status >= 300) throw new Error("EFI_PIX_CREATE_FAILED");
+      if (response.status < 200 || response.status >= 300) throw providerHttpError(response.status, response.body);
       return parseCobResponse(response.body);
     } catch (error) {
       const code = error instanceof Error ? error.message : "";
-      if (code === "EFI_AUTH_FAILED" || code === "EFI_CERTIFICATE_INVALID" || code === "EFI_TIMEOUT" || code === "EFI_INVALID_RESPONSE") throw error;
+      if (code === "EFI_AUTH_FAILED" || code === "EFI_CERTIFICATE_INVALID" || code === "EFI_TIMEOUT" || code === "EFI_INVALID_RESPONSE" || code.startsWith("EFI_PIX_CREATE_FAILED:")) throw error;
       throw new Error("EFI_PIX_CREATE_FAILED");
     }
   }
@@ -55,6 +56,24 @@ function formatAmount(amount: number): string {
 
   return `${wholeReais}.${cents.toString().padStart(2, "0")}`;
 }
+
+function providerHttpError(status: number, body: string): Error {
+  const name = safeProviderErrorName(body);
+  return new Error(`EFI_PIX_CREATE_FAILED:${status}${name ? `:${name}` : ""}`);
+}
+
+function safeProviderErrorName(body: string): string | null {
+  try {
+    const parsed: unknown = JSON.parse(body);
+    if (!parsed || typeof parsed !== "object") return null;
+    const name = (parsed as Record<string, unknown>).nome;
+    if (typeof name !== "string") return null;
+    return safeProviderErrorNames.has(name) ? name : "provider_error";
+  } catch {
+    return null;
+  }
+}
+
 function parseCobResponse(body: string): EfiImmediatePixCob {
   let parsed: unknown; try { parsed = JSON.parse(body); } catch { throw new Error("EFI_INVALID_RESPONSE"); }
   if (!parsed || typeof parsed !== "object") throw new Error("EFI_INVALID_RESPONSE");

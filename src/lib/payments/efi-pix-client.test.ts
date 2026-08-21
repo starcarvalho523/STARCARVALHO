@@ -34,6 +34,23 @@ test("requires Pix key and keeps production blocked before any request", async (
 });
 test("sanitizes provider failures, timeout, and invalid responses without secrets", async () => {
   for (const response of [{ status: 400, body: JSON.stringify({ detail: "access-token-secret pix-key-secret secret-value" }) }, new Error("EFI_TIMEOUT"), { status: 201, body: "{}" }]) {
-    const transport = new FakeTransport(response); await assert.rejects(() => new EfiPixClient(config, { oauth, transport }).createImmediateCob({ amount: 5 }), error => error instanceof Error && !error.message.includes("secret") && ["EFI_PIX_CREATE_FAILED", "EFI_TIMEOUT", "EFI_INVALID_RESPONSE"].includes(error.message));
+    const transport = new FakeTransport(response); await assert.rejects(() => new EfiPixClient(config, { oauth, transport }).createImmediateCob({ amount: 5 }), error => error instanceof Error && !error.message.includes("secret") && ["EFI_PIX_CREATE_FAILED:400", "EFI_TIMEOUT", "EFI_INVALID_RESPONSE"].includes(error.message));
+  }
+});
+test("preserves only safe Efí HTTP diagnostics", async () => {
+  const sensitive = "access-token-secret pix-key-secret secret-value provider-message provider-detail raw-response";
+  for (const [status, body, expected] of [
+    [400, JSON.stringify({ nome: "chave_invalida", mensagem: sensitive, detail: sensitive }), "EFI_PIX_CREATE_FAILED:400:chave_invalida"],
+    [400, JSON.stringify({ nome: "valor_invalido", mensagem: sensitive }), "EFI_PIX_CREATE_FAILED:400:valor_invalido"],
+    [400, JSON.stringify({ nome: "documento_bloqueado", detail: sensitive }), "EFI_PIX_CREATE_FAILED:400:documento_bloqueado"],
+    [403, JSON.stringify({ mensagem: sensitive, detail: sensitive }), "EFI_PIX_CREATE_FAILED:403"],
+    [400, JSON.stringify({ nome: "untrusted_provider_value", mensagem: sensitive, detail: sensitive }), "EFI_PIX_CREATE_FAILED:400:provider_error"],
+  ] as const) {
+    const transport = new FakeTransport({ status, body });
+    await assert.rejects(() => new EfiPixClient(config, { oauth, transport }).createImmediateCob({ amount: 5 }), error => {
+      assert.equal(error instanceof Error ? error.message : "", expected);
+      assert.doesNotMatch(error instanceof Error ? error.message : "", /secret|message|detail|raw|token|pix-key/i);
+      return true;
+    });
   }
 });

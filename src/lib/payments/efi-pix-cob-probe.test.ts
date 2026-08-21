@@ -42,3 +42,11 @@ test("Pix Cob probe maps failures to sanitized codes", async () => {
     assert.deepEqual(result, { status, body: { ok: false, error: code } });
   }
 });
+
+test("Pix Cob probe keeps only validated HTTP diagnostics", async () => {
+  const allowed = await runEfiPixCobProbe(authorization, env, { createCob: async () => { throw new Error("EFI_PIX_CREATE_FAILED:400:chave_invalida"); } });
+  assert.deepEqual(allowed, { status: 502, body: { ok: false, error: "EFI_PIX_CREATE_FAILED:400:chave_invalida" } });
+
+  const rejected = await runEfiPixCobProbe(authorization, env, { createCob: async () => { throw new Error("EFI_PIX_CREATE_FAILED:400:secret-value"); } });
+  assert.deepEqual(rejected, { status: 502, body: { ok: false, error: "EFI_PIX_CREATE_FAILED" } });
+});

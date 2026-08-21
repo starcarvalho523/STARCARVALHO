@@ -3,7 +3,9 @@ import { createImmediateEfiPixCob, type EfiImmediatePixCob } from "./efi-pix-cli
 
 type ProbeBody =
   | { ok: true; environment: "sandbox"; amount: "5.00"; status: string; txidPresent: boolean; locationIdPresent: boolean; pixCopyPastePresent: boolean }
-  | { ok: false; error: "EFI_PROBE_UNAUTHORIZED" | "EFI_WRONG_ENVIRONMENT" | "EFI_PIX_CREATE_FAILED" | "EFI_AUTH_FAILED" | "EFI_CERTIFICATE_INVALID" | "EFI_PIX_KEY_MISSING" | "EFI_TIMEOUT" | "EFI_INVALID_RESPONSE" };
+  | { ok: false; error: "EFI_PROBE_UNAUTHORIZED" | "EFI_WRONG_ENVIRONMENT" | "EFI_PIX_CREATE_FAILED" | EfiPixCreateDiagnostic | "EFI_AUTH_FAILED" | "EFI_CERTIFICATE_INVALID" | "EFI_PIX_KEY_MISSING" | "EFI_TIMEOUT" | "EFI_INVALID_RESPONSE" };
+
+type EfiPixCreateDiagnostic = `EFI_PIX_CREATE_FAILED:${number}` | `EFI_PIX_CREATE_FAILED:${number}:${"chave_invalida" | "valor_invalido" | "documento_bloqueado" | "txid_duplicado" | "erro_aplicacao" | "provider_error"}`;
 
 export type EfiPixCobProbeResult = { status: number; body: ProbeBody };
 type ProbeDependencies = { createCob?: () => Promise<EfiImmediatePixCob> };
@@ -32,9 +34,14 @@ function matchesBearerToken(authorization: string | null, expectedToken: string)
 
 function errorCode(error: unknown): Extract<ProbeBody, { ok: false }> ["error"] {
   const code = error instanceof Error ? error.message : "";
+  if (isSafePixCreateDiagnostic(code)) return code;
   if (code === "EFI_AUTH_FAILED" || code === "EFI_TIMEOUT" || code === "EFI_INVALID_RESPONSE" || code === "EFI_PIX_KEY_MISSING") return code;
   if (code === "EFI_CERTIFICATE_INVALID" || code === "EFI_CERTIFICATE_MISSING") return "EFI_CERTIFICATE_INVALID";
   return "EFI_PIX_CREATE_FAILED";
+}
+
+function isSafePixCreateDiagnostic(code: string): code is EfiPixCreateDiagnostic {
+  return /^EFI_PIX_CREATE_FAILED:\d{3}(?::(?:chave_invalida|valor_invalido|documento_bloqueado|txid_duplicado|erro_aplicacao|provider_error))?$/.test(code);
 }
 
 function errorStatus(error: unknown): number {
