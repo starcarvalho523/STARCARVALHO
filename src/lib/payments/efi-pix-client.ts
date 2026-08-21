@@ -19,12 +19,13 @@ export class EfiPixClient {
 
   async createImmediateCob(input: EfiImmediatePixCobInput): Promise<EfiImmediatePixCob> {
     try {
+      const formattedAmount = formatAmount(input.amount);
       const access = await this.oauth.getAccessToken();
       const response = await this.transport.request({
         path: "/v2/cob",
         method: "POST",
         headers: { "content-type": "application/json", authorization: `Bearer ${access.accessToken}` },
-        body: JSON.stringify({ calendario: { expiracao: input.expiresInSeconds ?? 3600 }, valor: { original: formatAmount(input.amount) }, chave: this.config.pixKey, solicitacaoPagador: input.payerRequest ?? defaultPayerRequest }),
+        body: JSON.stringify({ calendario: { expiracao: input.expiresInSeconds ?? 3600 }, valor: { original: formattedAmount }, chave: this.config.pixKey, solicitacaoPagador: input.payerRequest ?? defaultPayerRequest }),
       });
       if (response.status < 200 || response.status >= 300) throw new Error("EFI_PIX_CREATE_FAILED");
       return parseCobResponse(response.body);
@@ -41,7 +42,19 @@ export function createImmediateEfiPixCob(input: EfiImmediatePixCobInput, options
   return new EfiPixClient(config, options.dependencies).createImmediateCob(input);
 }
 
-function formatAmount(amount: number): string { if (!Number.isFinite(amount) || amount <= 0) throw new Error("EFI_PIX_CREATE_FAILED"); return amount.toFixed(2); }
+function formatAmount(amount: number): string {
+  if (!Number.isFinite(amount) || amount <= 0) throw new Error("EFI_PIX_CREATE_FAILED");
+
+  const decimal = /^(0|[1-9]\d*)(?:\.(\d{1,2}))?$/.exec(String(amount));
+  if (!decimal) throw new Error("EFI_PIX_CREATE_FAILED");
+
+  const wholeReais = BigInt(decimal[1]);
+  const cents = BigInt((decimal[2] ?? "").padEnd(2, "0"));
+  const totalCents = wholeReais * BigInt(100) + cents;
+  if (totalCents <= BigInt(0)) throw new Error("EFI_PIX_CREATE_FAILED");
+
+  return `${wholeReais}.${cents.toString().padStart(2, "0")}`;
+}
 function parseCobResponse(body: string): EfiImmediatePixCob {
   let parsed: unknown; try { parsed = JSON.parse(body); } catch { throw new Error("EFI_INVALID_RESPONSE"); }
   if (!parsed || typeof parsed !== "object") throw new Error("EFI_INVALID_RESPONSE");

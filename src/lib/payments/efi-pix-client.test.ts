@@ -13,6 +13,20 @@ test("creates a sandbox Cob using POST, Bearer, configured Pix key, and two-deci
   assert.deepEqual(result, { txid: "txid-123", status: "ATIVA", locationId: 42, pixCopyPaste: null }); assert.equal(transport.last?.path, "/v2/cob"); assert.equal(transport.last?.method, "POST"); assert.equal(transport.last?.headers.authorization, "Bearer access-token-secret");
   assert.deepEqual(JSON.parse(transport.last?.body ?? ""), { calendario: { expiracao: 3600 }, valor: { original: "5.00" }, chave: "pix-key-secret", solicitacaoPagador: "Pagamento estacionamento Star Carvalhos" });
 });
+test("formats only amounts that are already exact positive cent values", async () => {
+  for (const [amount, expected] of [[5, "5.00"], [5.1, "5.10"], [5.01, "5.01"]] as const) {
+    const transport = new FakeTransport(success);
+    await new EfiPixClient(config, { oauth, transport }).createImmediateCob({ amount });
+    const payload = JSON.parse(transport.last?.body ?? "") as { valor: { original: string } };
+    assert.equal(payload.valor.original, expected);
+  }
+
+  for (const amount of [5.001, 0, -1, Number.NaN, Number.POSITIVE_INFINITY]) {
+    const transport = new FakeTransport(success);
+    await assert.rejects(() => new EfiPixClient(config, { oauth, transport }).createImmediateCob({ amount }), /EFI_PIX_CREATE_FAILED/);
+    assert.equal(transport.last, undefined);
+  }
+});
 test("requires Pix key and keeps production blocked before any request", async () => {
   const base = { EFI_ENABLED: "true", EFI_ENVIRONMENT: "sandbox", EFI_CLIENT_ID: "client", EFI_CLIENT_SECRET: "secret", EFI_CERTIFICATE_BASE64: Buffer.from("p12").toString("base64") } as unknown as NodeJS.ProcessEnv;
   assert.throws(() => createImmediateEfiPixCob({ amount: 5 }, { env: base }), /EFI_PIX_KEY_MISSING/);
