@@ -1,15 +1,21 @@
 import { timingSafeEqual } from "node:crypto";
 
-import {
-  efiPixIdempotencyKey,
-  parseEfiPixWebhook,
-} from "../../../../lib/payments/efi-pix-webhook-contract.ts";
+import { parseEfiPixWebhook } from "../../../../lib/payments/efi-pix-webhook-contract.ts";
+import type { EfiPixWebhookEvent } from "../../../../lib/payments/efi-pix-webhook-contract.ts";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const MAX_BODY_BYTES = 64 * 1024;
 const UNAUTHORIZED = { error: "EFI_WEBHOOK_UNAUTHORIZED" };
+type WebhookProcessor = { processEfiPixWebhook(events: readonly EfiPixWebhookEvent[]): Promise<unknown> };
+const realProcessorFactory = async (): Promise<WebhookProcessor> => {
+  const { PaymentService } = await import("../../../../lib/payments/payment-service.ts");
+  return new PaymentService();
+};
+let processorFactory: () => Promise<WebhookProcessor> = realProcessorFactory;
+/** Test seam; production always constructs the real PaymentService. */
+export function setEfiWebhookProcessorForTests(factory: (() => WebhookProcessor) | null) { processorFactory = factory ? async () => factory() : realProcessorFactory; }
 
 export function GET() {
   return Response.json({ error: "METHOD_NOT_ALLOWED" }, { status: 405 });
@@ -28,8 +34,7 @@ export async function POST(request: Request) {
     const body = await readBodyWithinLimit(request);
     const events = parseEfiPixWebhook(JSON.parse(body));
 
-    // Derive only after the pure parser has validated every endToEndId. Persistence is intentionally deferred.
-    events.forEach((event) => efiPixIdempotencyKey(event));
+    await (await processorFactory()).processEfiPixWebhook(events);
 
     return Response.json({ ok: true, result: "EFI_WEBHOOK_ACCEPTED" });
   } catch (error) {
