@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { efiPixCobProbeMethodNotAllowed, runEfiPixCobProbe } from "./efi-pix-cob-probe.ts";
 import { runEfiPixConfigStagesProbe } from "./efi-pix-config-probe.ts";
+import { runEfiOAuthProbe } from "./efi-oauth-probe.ts";
 
 const env = { VERCEL_ENV: "preview", EFI_PIX_PROBE_TOKEN: "probe-token", EFI_ENABLED: "true", EFI_ENVIRONMENT: "sandbox" } as unknown as NodeJS.ProcessEnv;
 const authorization = "Bearer probe-token";
@@ -125,4 +126,11 @@ test("Pix config stages probe isolates successful auth and Pix resolvers", () =>
   const result = runEfiPixConfigStagesProbe(authorization, configured, { resolveAuthConfig: () => { authCalled = true; return auth; }, resolvePixConfig: () => { pixCalled = true; return pix; } });
   assert.equal(authCalled, true); assert.equal(pixCalled, true);
   assert.deepEqual(result.body.stages.slice(-3), ["EFI_AUTH_CONFIG_RESOLVER_OK", "EFI_PIX_CONFIG_RESOLVER_OK", "CONFIG_CHECK_OK"]);
+});
+
+test("OAuth probe returns only non-secret metadata", async () => {
+  const configured = { ...env } as NodeJS.ProcessEnv;
+  const result = await runEfiOAuthProbe(authorization, configured, { getToken: async () => ({ accessToken: "must-not-leak", tokenType: "Bearer", expiresIn: 3600, scope: "cob.write" }) });
+  assert.deepEqual(result, { status: 200, body: { ok: true, result: "EFI_OAUTH_OK", tokenTypePresent: true, expiresInPresent: true, scopePresent: true } });
+  assert.doesNotMatch(JSON.stringify(result.body), /must-not-leak|probe-token/i);
 });
