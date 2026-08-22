@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { efiPixCobProbeMethodNotAllowed, runEfiPixCobProbe } from "./efi-pix-cob-probe.ts";
-import { runEfiPixConfigProbe } from "./efi-pix-config-probe.ts";
+import { runEfiPixConfigStagesProbe } from "./efi-pix-config-probe.ts";
 
 const env = { VERCEL_ENV: "preview", EFI_PIX_PROBE_TOKEN: "probe-token", EFI_ENABLED: "true", EFI_ENVIRONMENT: "sandbox" } as unknown as NodeJS.ProcessEnv;
 const authorization = "Bearer probe-token";
@@ -52,16 +52,29 @@ test("Pix Cob probe keeps only validated HTTP diagnostics", async () => {
   assert.deepEqual(rejected, { status: 502, body: { ok: false, error: "EFI_PIX_CREATE_FAILED" } });
 });
 
-test("Pix config probe resolves only configuration and returns presence booleans", () => {
+test("Pix config stages probe returns the complete fixed safe sequence", () => {
   const configured = { ...env, EFI_CLIENT_ID: "client-value", EFI_CLIENT_SECRET: "secret-value", EFI_CERTIFICATE_BASE64: Buffer.from("p12").toString("base64"), EFI_PIX_KEY: "pix-key" } as NodeJS.ProcessEnv;
-  assert.deepEqual(runEfiPixConfigProbe(authorization, configured), { status: 200, body: { ok: true, result: "CONFIG_CHECK_OK", presence: { EFI_ENABLED_PRESENT: true, EFI_ENVIRONMENT_PRESENT: true, EFI_CLIENT_ID_PRESENT: true, EFI_CLIENT_SECRET_PRESENT: true, EFI_CERTIFICATE_BASE64_PRESENT: true, EFI_PIX_KEY_PRESENT: true } } });
+  assert.deepEqual(runEfiPixConfigStagesProbe(authorization, configured), { status: 200, body: { ok: true, stages: ["PROBE_AUTH_OK", "VERCEL_PREVIEW_OK", "EFI_ENABLED_OK", "EFI_ENVIRONMENT_SANDBOX_OK", "EFI_CLIENT_ID_OK", "EFI_CLIENT_SECRET_OK", "EFI_CERTIFICATE_BASE64_FORMAT_OK", "EFI_CERTIFICATE_BUFFER_OK", "EFI_PIX_KEY_OK", "CONFIG_CHECK_OK"] } });
 });
 
-test("Pix config probe exposes only safe resolver errors and never values", () => {
+test("Pix config stages probe stops at every deterministic validation stage without leaking values", () => {
   const configured = { ...env, EFI_CLIENT_ID: "client-value", EFI_CLIENT_SECRET: "secret-value", EFI_CERTIFICATE_BASE64: Buffer.from("p12").toString("base64"), EFI_PIX_KEY: "pix-key" } as NodeJS.ProcessEnv;
-  for (const [candidate, expected] of [[{ ...configured, EFI_ENABLED: "false" }, "EFI_DISABLED"], [{ ...configured, EFI_ENVIRONMENT: "" }, "EFI_ENVIRONMENT_NOT_CONFIGURED"], [{ ...configured, EFI_ENVIRONMENT: "production" }, "EFI_PRODUCTION_DISABLED"], [{ ...configured, EFI_CLIENT_ID: "" }, "EFI_CLIENT_ID_MISSING"], [{ ...configured, EFI_CLIENT_SECRET: "" }, "EFI_CLIENT_SECRET_MISSING"], [{ ...configured, EFI_CERTIFICATE_BASE64: "" }, "EFI_CERTIFICATE_MISSING"], [{ ...configured, EFI_CERTIFICATE_BASE64: "not-valid" }, "EFI_CERTIFICATE_INVALID"], [{ ...configured, EFI_PIX_KEY: "" }, "EFI_PIX_KEY_MISSING"]] as const) {
-    const result = runEfiPixConfigProbe(authorization, candidate);
-    assert.equal(result.body.ok, false); if (!result.body.ok) assert.equal(result.body.error, expected);
-    assert.doesNotMatch(JSON.stringify(result.body), /client-value|secret-value|p12|pix-key|probe-token/i);
+  const cases = [
+    [null, configured, undefined, "PROBE_AUTH_FAILED"],
+    [authorization, { ...configured, VERCEL_ENV: "production" }, undefined, "VERCEL_ENV_INVALID"],
+    [authorization, { ...configured, EFI_ENABLED: "false" }, undefined, "EFI_ENABLED_INVALID"],
+    [authorization, { ...configured, EFI_ENVIRONMENT: "production" }, undefined, "EFI_ENVIRONMENT_INVALID"],
+    [authorization, { ...configured, EFI_CLIENT_ID: "" }, undefined, "EFI_CLIENT_ID_INVALID"],
+    [authorization, { ...configured, EFI_CLIENT_SECRET: "" }, undefined, "EFI_CLIENT_SECRET_INVALID"],
+    [authorization, { ...configured, EFI_CERTIFICATE_BASE64: "not-base64" }, undefined, "EFI_CERTIFICATE_BASE64_INVALID"],
+    [authorization, configured, { decodeCertificate: () => Buffer.alloc(0) }, "EFI_CERTIFICATE_DECODE_INVALID"],
+    [authorization, { ...configured, EFI_PIX_KEY: "" }, undefined, "EFI_PIX_KEY_INVALID"],
+    [authorization, configured, { resolveConfig: () => { throw new Error("raw provider detail"); } }, "EFI_CONFIG_RESOLVER_UNKNOWN"],
+  ] as const;
+  for (const [candidateAuthorization, candidateEnvironment, dependencies, expected] of cases) {
+    const result = runEfiPixConfigStagesProbe(candidateAuthorization, candidateEnvironment, dependencies);
+    assert.equal(result.body.ok, false);
+    assert.equal(result.body.stages.at(-1), expected);
+    assert.doesNotMatch(JSON.stringify(result.body), /client-value|secret-value|p12|pix-key|probe-token|raw provider detail/i);
   }
 });

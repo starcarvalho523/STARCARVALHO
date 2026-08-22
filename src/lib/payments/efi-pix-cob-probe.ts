@@ -1,5 +1,5 @@
-import { timingSafeEqual } from "node:crypto";
 import { createImmediateEfiPixCob, type EfiImmediatePixCob } from "./efi-pix-client.ts";
+import { isEfiPixProbeAuthorized } from "./efi-pix-probe-auth.ts";
 
 type ProbeBody =
   | { ok: true; environment: "sandbox"; amount: "5.00"; status: string; txidPresent: boolean; locationIdPresent: boolean; pixCopyPastePresent: boolean }
@@ -22,15 +22,6 @@ export async function runEfiPixCobProbe(authorization: string | null, env: NodeJ
   } catch (error) {
     return failure(errorStatus(error), errorCode(error));
   }
-}
-
-export function isEfiPixProbeAuthorized(authorization: string | null, env: NodeJS.ProcessEnv = process.env): boolean {
-  const expectedToken = env.EFI_PIX_PROBE_TOKEN;
-  if (!expectedToken) return false;
-  if (!authorization?.startsWith("Bearer ")) return false;
-  const received = Buffer.from(authorization.slice(7));
-  const expected = Buffer.from(expectedToken);
-  return received.length === expected.length && timingSafeEqual(received, expected);
 }
 
 function errorCode(error: unknown): Extract<ProbeBody, { ok: false }> ["error"] {
