@@ -6,7 +6,7 @@ import { Check, Copy, LoaderCircle, QrCode, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 type PixCharge = {
-  state: "CREATING" | "PENDING" | "PAID" | "EXPIRED" | "CANCELLED";
+  state: "CREATING" | "RECONCILING" | "PENDING" | "PAID" | "EXPIRED" | "CANCELLED" | "RECONCILIATION_FAILED";
   amount: number;
   qrCodePayload: string | null;
   qrCodeImageBase64: string | null;
@@ -48,7 +48,7 @@ export function PixPaymentPanel({ sessionId, billingPeriodId, resumeExisting=fal
     setError(null);
     try {
       const monthly=Boolean(billingPeriodId);
-      await readResponse(await fetch(monthly?"/api/payments/monthly/pix":"/api/payments/pix", {
+      await readResponse(await fetch(monthly?"/api/payments/monthly/pix":"/api/payments/efi-pix", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(monthly?{billingPeriodId}:{sessionId}),
@@ -63,8 +63,12 @@ export function PixPaymentPanel({ sessionId, billingPeriodId, resumeExisting=fal
   const refreshCharge = useCallback(async (silent = false) => {
     if (!silent) setRefreshing(true);
     try {
-      const endpoint=billingPeriodId?`/api/payments/monthly/pix?billingPeriodId=${encodeURIComponent(billingPeriodId)}`:`/api/payments/pix?sessionId=${encodeURIComponent(sessionId??"")}`;
-      await readResponse(await fetch(endpoint, { cache: "no-store" }));
+    const monthly = Boolean(billingPeriodId);
+    if (monthly) {
+      await readResponse(await fetch(`/api/payments/monthly/pix?billingPeriodId=${encodeURIComponent(billingPeriodId ?? "")}`, { cache: "no-store" }));
+    } else {
+      await readResponse(await fetch("/api/payments/efi-pix/reconcile", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ sessionId }) }));
+    }
     } catch (cause) {
       if (!silent) setError(cause instanceof Error ? cause.message : errorMessages.PAYMENT_REQUEST_FAILED);
     } finally {
@@ -103,17 +107,20 @@ export function PixPaymentPanel({ sessionId, billingPeriodId, resumeExisting=fal
     ? charge.qrCodeImageBase64.startsWith("data:image/") ? charge.qrCodeImageBase64 : `data:image/png;base64,${charge.qrCodeImageBase64}`
     : null;
 
+  const isPaid=charge.state === "PAID";
+  const isTerminal=charge.state === "EXPIRED" || charge.state === "CANCELLED" || charge.state === "RECONCILIATION_FAILED";
+  const statusLabel=isPaid ? "Pago" : isTerminal ? (charge.state === "EXPIRED" ? "Cobrança expirada" : "Cobrança indisponível") : charge.state === "RECONCILING" ? "Confirmando pagamento" : "Aguardando pagamento";
   return <section className="space-y-4 rounded-2xl border border-emerald-200 bg-emerald-50/50 p-4 sm:col-span-3 sm:p-5">
     <div className="flex flex-wrap items-start justify-between gap-3">
       <div><h3 className="text-lg font-bold">Pagamento via PIX</h3><p className="mt-1 text-2xl font-bold text-emerald-700">{formatMoney(charge.amount)}</p></div>
-      <span className={`rounded-full px-3 py-1 text-xs font-bold ${charge.state === "PAID" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-800"}`}>{charge.state === "PAID" ? "Pago" : "Aguardando pagamento"}</span>
+      <span className={`rounded-full px-3 py-1 text-xs font-bold ${isPaid ? "bg-emerald-100 text-emerald-700" : isTerminal ? "bg-slate-200 text-slate-700" : "bg-amber-100 text-amber-800"}`}>{statusLabel}</span>
     </div>
-    {charge.state !== "PAID" ? <div className="grid gap-4 md:grid-cols-[200px_1fr]"><div className="grid min-h-48 place-items-center rounded-xl border bg-white p-3">{imageSource ? <Image unoptimized src={imageSource} alt="QR Code para pagamento PIX" width={184} height={184} className="size-44" /> : <p className="text-center text-xs text-slate-500">QR Code indisponível para esta cobrança.</p>}</div><div className="min-w-0 space-y-3"><div><label htmlFor={`pix-code-${sessionId??billingPeriodId}`} className="text-xs font-semibold text-slate-600">Código PIX Copia e Cola</label><textarea id={`pix-code-${sessionId??billingPeriodId}`} readOnly value={charge.qrCodePayload ?? ""} rows={5} className="mt-1 w-full resize-none rounded-xl border bg-white p-3 text-xs outline-none" /></div><button type="button" onClick={copyPayload} disabled={!charge.qrCodePayload} className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 text-sm font-bold text-white disabled:opacity-50">{copied ? <Check className="size-4" /> : <Copy className="size-4" />}{copied ? "Código copiado" : "Copiar código PIX"}</button>{charge.expiresAt ? <p className="text-xs text-slate-600">Expira em {formatExpiration(charge.expiresAt)}</p> : null}</div></div> : null}
+    {!isPaid && !isTerminal ? <div className="grid gap-4 md:grid-cols-[200px_1fr]"><div className="grid min-h-48 place-items-center rounded-xl border bg-white p-3">{imageSource ? <Image unoptimized src={imageSource} alt="QR Code para pagamento PIX" width={184} height={184} className="size-44" /> : <p className="text-center text-xs text-slate-500">QR Code indisponível para esta cobrança.</p>}</div><div className="min-w-0 space-y-3"><div><label htmlFor={`pix-code-${sessionId??billingPeriodId}`} className="text-xs font-semibold text-slate-600">Código PIX Copia e Cola</label><textarea id={`pix-code-${sessionId??billingPeriodId}`} readOnly value={charge.qrCodePayload ?? ""} rows={5} className="mt-1 w-full resize-none rounded-xl border bg-white p-3 text-xs outline-none" /></div><button type="button" onClick={copyPayload} disabled={!charge.qrCodePayload} className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 text-sm font-bold text-white disabled:opacity-50">{copied ? <Check className="size-4" /> : <Copy className="size-4" />}{copied ? "Código copiado" : "Copiar código PIX"}</button>{charge.expiresAt ? <p className="text-xs text-slate-600">Expira em {formatExpiration(charge.expiresAt)}</p> : null}</div></div> : null}
     <button type="button" onClick={() => void refreshCharge()} disabled={refreshing} className="flex h-10 w-full items-center justify-center gap-2 rounded-xl border bg-white text-sm font-bold text-blue-600 disabled:opacity-50"><RefreshCw className={`size-4 ${refreshing ? "animate-spin" : ""}`} />{refreshing ? "Verificando..." : "Atualizar estado"}</button>
     {error ? <p role="alert" className="text-xs font-semibold text-red-600">{error}</p> : null}
   </section>;
 }
 
-function parseCharge(value: unknown): PixCharge | null {if (!value || typeof value !== "object") return null;const item = value as Record<string, unknown>;const allowedStates = ["CREATING", "PENDING", "PAID", "EXPIRED", "CANCELLED"];if (!allowedStates.includes(String(item.state)) || typeof item.amount !== "number") return null;return {state: item.state as PixCharge["state"],amount: item.amount,qrCodePayload: typeof item.qrCodePayload === "string" ? item.qrCodePayload : null,qrCodeImageBase64: typeof item.qrCodeImageBase64 === "string" ? item.qrCodeImageBase64 : null,expiresAt: typeof item.expiresAt === "string" ? item.expiresAt : null};}
+function parseCharge(value: unknown): PixCharge | null {if (!value || typeof value !== "object") return null;const item = value as Record<string, unknown>;const allowedStates = ["CREATING", "RECONCILING", "PENDING", "PAID", "EXPIRED", "CANCELLED", "RECONCILIATION_FAILED"];if (!allowedStates.includes(String(item.state)) || typeof item.amount !== "number") return null;return {state: item.state as PixCharge["state"],amount: item.amount,qrCodePayload: typeof item.qrCodePayload === "string" ? item.qrCodePayload : null,qrCodeImageBase64: typeof item.qrCodeImageBase64 === "string" ? item.qrCodeImageBase64 : null,expiresAt: typeof item.expiresAt === "string" ? item.expiresAt : null};}
 function formatMoney(value: number) {return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);}
 function formatExpiration(value: string) {const date = new Date(value);return Number.isNaN(date.getTime()) ? value : new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(date);}

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { GET, POST } from "./route.ts";
+import { GET, POST, setEfiWebhookProcessorForTests } from "./route.ts";
 
 const forwardSecret = "test-forward-secret";
 const validPayload = {
@@ -62,8 +62,12 @@ test("validates media type, body size, JSON, and Pix payload without side effect
     assert.equal((await POST(request(JSON.stringify({ pix: [{ ...validPayload.pix[0], horario: "invalid" }] }), { authorization: auth }))).status, 400);
     assert.equal((await POST(request("x".repeat(65 * 1024), { authorization: auth, contentLength: String(65 * 1024) }))).status, 413);
 
+    let persisted = 0;
+    setEfiWebhookProcessorForTests(() => ({ processEfiPixWebhook: async () => { persisted += 1; return ["processed"]; } }));
     const response = await POST(request(JSON.stringify({ ...validPayload, extra: "ignored", pix: [{ ...validPayload.pix[0], extra: "ignored" }] }), { authorization: auth }));
     assert.equal(response.status, 200);
     assert.deepEqual(await response.json(), { ok: true, result: "EFI_WEBHOOK_ACCEPTED" });
+    assert.equal(persisted, 1);
+    setEfiWebhookProcessorForTests(null);
   });
 });

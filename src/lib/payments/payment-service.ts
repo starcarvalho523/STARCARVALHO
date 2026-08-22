@@ -6,6 +6,11 @@ import { getPaymentProvider } from "./provider-factory";
 import { checkoutResolutionDisposition, selectCheckoutCandidates, type CheckoutCandidate } from "./checkout-webhook-reconciliation";
 import type { PaymentProvider, ProviderCharge, ProviderCheckoutWebhookEvent, ProviderWebhookEvent } from "./payment-provider";
 import type { PaymentSubject } from "./payment-model";
+import { efiPixIdempotencyKey, type EfiPixWebhookEvent } from "./efi-pix-webhook-contract";
+import { settleEfiPixEvents, type EfiPixSettlementResult } from "./efi-pix-settlement";
+import { createImmediateEfiPixCob } from "./efi-pix-client";
+import { getEfiPixQrCode } from "./efi-pix-qr-client";
+import { getEfiPixCobSnapshot } from "./efi-pix-reconciliation-client";
 
 type Reservation={paymentId:string;transactionId:string;state:string;amount:number;isCreator:boolean;qrCodePayload?:string|null;qrCodeImageBase64?:string|null;expiresAt?:string|null;hostedPaymentUrl?:string|null};
 type RecoveryContext={transactionId:string;state:string;externalReference:string;providerPaymentId:string|null;providerCustomerId:string|null;providerStatus:string|null;providerAmount:number|null;hostedPaymentUrl:string|null;amount:number};
@@ -118,6 +123,57 @@ export class PaymentService{
     }
     const{data,error}=await this.admin.rpc("process_asaas_webhook",{event_id:event.id,event_type:event.type,provider_payment_id:event.paymentId,provider_status:event.paymentStatus,reported_amount:event.amount,sanitized_payload:sanitized});
     if(error)throw new Error(error.message);return data;
+  }
+
+  async processEfiPixWebhook(events: readonly EfiPixWebhookEvent[]): Promise<EfiPixSettlementResult[]> {
+    return settleEfiPixEvents(events, {
+      settle: async (event, idempotencyKey) => {
+        const { data, error } = await this.admin.rpc("process_efi_pix_webhook", {
+          event_key: idempotencyKey, event_txid: event.txid, event_end_to_end_id: event.endToEndId,
+          event_amount_cents: event.amountCents, event_paid_at: event.paidAt,
+        });
+        if (error) throw rpcError("process_efi_pix_webhook", error.message);
+        const result = data && typeof data === "object" ? (data as { result?: unknown }).result : null;
+        if (!["processed","duplicate","unknown","review","provider_mismatch","already_paid"].includes(String(result))) throw new Error("EFI_INVALID_SETTLEMENT_RESULT");
+        return result as EfiPixSettlementResult;
+      },
+    }, efiPixIdempotencyKey);
+  }
+
+  async createEfiPixPayment(paymentId: string) {
+    const context = await this.efiContext(paymentId);
+    if (context.status !== "PENDING") throw new Error("EFI_PAYMENT_NOT_PENDING");
+    if (context.txid && context.locationId) return this.efiPublicQr(context.amountCents, context.locationId, "PENDING");
+    const cob = await createImmediateEfiPixCob({ amount: context.amountCents / 100 });
+    if (!cob.locationId) throw new Error("EFI_LOCATION_REQUIRED");
+    const { error } = await this.admin.rpc("reserve_efi_pix_reference", { target_payment: paymentId, target_txid: cob.txid, target_location_id: cob.locationId, target_status: cob.status });
+    if (error) throw rpcError("reserve_efi_pix_reference", error.message);
+    return this.efiPublicQr(context.amountCents, cob.locationId, "PENDING");
+  }
+
+  async reconcileEfiPixPayment(paymentId: string) {
+    const context = await this.efiContext(paymentId);
+    if (!context.txid) throw new Error("EFI_REFERENCE_NOT_FOUND");
+    if (context.status === "PAID") return { state: "PAID" as const, amount: context.amountCents / 100, qrCodePayload: null, qrCodeImageBase64: null, expiresAt: null };
+    const snapshot = await getEfiPixCobSnapshot({ txid: context.txid, expectedAmount: context.amountCents / 100 });
+    if (snapshot.paymentState !== "PAID") return { state: snapshot.paymentState as "PENDING" | "EXPIRED" | "CANCELLED", amount: context.amountCents / 100, qrCodePayload: null, qrCodeImageBase64: null, expiresAt: null };
+    if (!snapshot.endToEndId || !snapshot.paidAt || snapshot.paidAmount === null) throw new Error("EFI_INVALID_RESPONSE");
+    await this.processEfiPixWebhook([{ txid: snapshot.txid, endToEndId: snapshot.endToEndId, amountCents: Math.round(snapshot.paidAmount * 100), paidAt: snapshot.paidAt }]);
+    return { state: "PAID" as const, amount: context.amountCents / 100, qrCodePayload: null, qrCodeImageBase64: null, expiresAt: null };
+  }
+
+  private async efiContext(paymentId: string) {
+    const { data, error } = await this.admin.rpc("get_efi_pix_payment_context", { target_payment: paymentId });
+    if (error) throw rpcError("get_efi_pix_payment_context", error.message);
+    const value = data as { status?: unknown; amountCents?: unknown; txid?: unknown; locationId?: unknown };
+    const amountCents = value.amountCents;
+    if (typeof value?.status !== "string" || typeof amountCents !== "number" || !Number.isSafeInteger(amountCents) || amountCents <= 0) throw new Error("EFI_INVALID_PAYMENT_CONTEXT");
+    return { status: value.status, amountCents, txid: typeof value.txid === "string" ? value.txid : null, locationId: typeof value.locationId === "number" ? value.locationId : null };
+  }
+
+  private async efiPublicQr(amountCents: number, locationId: number, state: "PENDING") {
+    const qr = await getEfiPixQrCode(locationId);
+    return { amount: amountCents / 100, state, qrCodePayload: qr.qrPayload, qrCodeImageBase64: qr.qrImageDataUri, expiresAt: null };
   }
 
   private async processCheckoutPaymentWebhook(event:ProviderWebhookEvent,sanitized:Record<string,unknown>){
