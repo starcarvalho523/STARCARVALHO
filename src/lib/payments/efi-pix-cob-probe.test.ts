@@ -78,3 +78,13 @@ test("Pix config stages probe stops at every deterministic validation stage with
     assert.doesNotMatch(JSON.stringify(result.body), /client-value|secret-value|p12|pix-key|probe-token|raw provider detail/i);
   }
 });
+
+test("Pix config stages probe preserves only allowlisted resolver codes", () => {
+  const configured = { ...env, EFI_CLIENT_ID: "client-value", EFI_CLIENT_SECRET: "secret-value", EFI_CERTIFICATE_BASE64: Buffer.from("p12").toString("base64"), EFI_PIX_KEY: "pix-key" } as NodeJS.ProcessEnv;
+  const allowed = ["EFI_DISABLED", "EFI_ENVIRONMENT_NOT_CONFIGURED", "EFI_PRODUCTION_DISABLED", "EFI_CLIENT_ID_MISSING", "EFI_CLIENT_SECRET_MISSING", "EFI_CERTIFICATE_MISSING", "EFI_CERTIFICATE_INVALID", "EFI_PIX_KEY_MISSING"] as const;
+  for (const code of allowed) {
+    const result = runEfiPixConfigStagesProbe(authorization, configured, { resolveConfig: () => { throw new Error(code); } });
+    assert.equal(result.body.stages.at(-1), `EFI_CONFIG_RESOLVER_ERROR:${code}`);
+    assert.doesNotMatch(JSON.stringify(result.body), /client-value|secret-value|p12|pix-key|probe-token/i);
+  }
+});

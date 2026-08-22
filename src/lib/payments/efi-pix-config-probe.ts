@@ -1,11 +1,16 @@
 import { resolveEfiPixRuntimeConfig } from "./efi-config.ts";
 import { isEfiPixProbeAuthorized } from "./efi-pix-probe-auth.ts";
 
-export type EfiPixConfigProbeStage =
+type EfiPixConfigProbeBaseStage =
   | "PROBE_AUTH_OK" | "VERCEL_PREVIEW_OK" | "EFI_ENABLED_OK" | "EFI_ENVIRONMENT_SANDBOX_OK" | "EFI_CLIENT_ID_OK"
   | "EFI_CLIENT_SECRET_OK" | "EFI_CERTIFICATE_BASE64_FORMAT_OK" | "EFI_CERTIFICATE_BUFFER_OK" | "EFI_PIX_KEY_OK" | "CONFIG_CHECK_OK"
   | "PROBE_AUTH_FAILED" | "VERCEL_ENV_INVALID" | "EFI_ENABLED_INVALID" | "EFI_ENVIRONMENT_INVALID" | "EFI_CLIENT_ID_INVALID"
   | "EFI_CLIENT_SECRET_INVALID" | "EFI_CERTIFICATE_BASE64_INVALID" | "EFI_CERTIFICATE_DECODE_INVALID" | "EFI_PIX_KEY_INVALID" | "EFI_CONFIG_RESOLVER_UNKNOWN";
+type EfiResolverErrorCode =
+  | "EFI_DISABLED" | "EFI_ENVIRONMENT_NOT_CONFIGURED" | "EFI_PRODUCTION_DISABLED" | "EFI_CLIENT_ID_MISSING"
+  | "EFI_CLIENT_SECRET_MISSING" | "EFI_CERTIFICATE_MISSING" | "EFI_CERTIFICATE_INVALID" | "EFI_PIX_KEY_MISSING";
+type EfiResolverErrorStage = `EFI_CONFIG_RESOLVER_ERROR:${EfiResolverErrorCode}`;
+export type EfiPixConfigProbeStage = EfiPixConfigProbeBaseStage | EfiResolverErrorStage;
 export type EfiPixConfigStagesProbeResult = { status: number; body: { ok: boolean; stages: EfiPixConfigProbeStage[] } };
 type ConfigProbeDependencies = { decodeCertificate?: (value: string) => Buffer; resolveConfig?: (env: NodeJS.ProcessEnv) => unknown };
 
@@ -15,6 +20,17 @@ function failed(stages: EfiPixConfigProbeStage[], stage: EfiPixConfigProbeStage,
 
 function isBase64(value: string): boolean {
   return value.length > 0 && value.length % 4 === 0 && /^[A-Za-z0-9+/]+={0,2}$/.test(value);
+}
+
+function resolverErrorStage(error: unknown): EfiResolverErrorStage | "EFI_CONFIG_RESOLVER_UNKNOWN" {
+  const code = error instanceof Error ? error.message : "";
+  const allowed: readonly EfiResolverErrorCode[] = [
+    "EFI_DISABLED", "EFI_ENVIRONMENT_NOT_CONFIGURED", "EFI_PRODUCTION_DISABLED", "EFI_CLIENT_ID_MISSING",
+    "EFI_CLIENT_SECRET_MISSING", "EFI_CERTIFICATE_MISSING", "EFI_CERTIFICATE_INVALID", "EFI_PIX_KEY_MISSING",
+  ];
+  return allowed.includes(code as EfiResolverErrorCode)
+    ? `EFI_CONFIG_RESOLVER_ERROR:${code as EfiResolverErrorCode}`
+    : "EFI_CONFIG_RESOLVER_UNKNOWN";
 }
 
 /** Local-only staged configuration check. It never instantiates OAuth, mTLS, or HTTP clients. */
@@ -47,8 +63,8 @@ export function runEfiPixConfigStagesProbe(authorization: string | null, env: No
   stages.push("EFI_PIX_KEY_OK");
   try {
     (dependencies.resolveConfig ?? resolveEfiPixRuntimeConfig)(env);
-  } catch {
-    return failed(stages, "EFI_CONFIG_RESOLVER_UNKNOWN");
+  } catch (error) {
+    return failed(stages, resolverErrorStage(error));
   }
   return { status: 200, body: { ok: true, stages: [...stages, "CONFIG_CHECK_OK"] } };
 }
