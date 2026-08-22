@@ -143,12 +143,12 @@ export class PaymentService{
   async createEfiPixPayment(paymentId: string) {
     const context = await this.efiContext(paymentId);
     if (context.status !== "PENDING") throw new Error("EFI_PAYMENT_NOT_PENDING");
-    if (context.txid && context.locationId) return this.efiPublicQr(paymentId, context.amountCents, context.locationId, "PENDING");
+    if (context.txid && context.locationId) return this.efiPublicQr(context.amountCents, context.locationId, "PENDING");
     const cob = await createImmediateEfiPixCob({ amount: context.amountCents / 100 });
     if (!cob.locationId) throw new Error("EFI_LOCATION_REQUIRED");
     const { error } = await this.admin.rpc("reserve_efi_pix_reference", { target_payment: paymentId, target_txid: cob.txid, target_location_id: cob.locationId, target_status: cob.status });
     if (error) throw rpcError("reserve_efi_pix_reference", error.message);
-    return this.efiPublicQr(paymentId, context.amountCents, cob.locationId, "PENDING");
+    return this.efiPublicQr(context.amountCents, cob.locationId, "PENDING");
   }
 
   async reconcileEfiPixPayment(paymentId: string) {
@@ -171,9 +171,9 @@ export class PaymentService{
     return { status: value.status, amountCents, txid: typeof value.txid === "string" ? value.txid : null, locationId: typeof value.locationId === "number" ? value.locationId : null };
   }
 
-  private async efiPublicQr(paymentId: string, amountCents: number, locationId: number, state: "PENDING") {
+  private async efiPublicQr(amountCents: number, locationId: number, state: "PENDING") {
     const qr = await getEfiPixQrCode(locationId);
-    return { paymentId, amount: amountCents / 100, state, qrCodePayload: qr.qrPayload, qrCodeImageBase64: qr.qrImageDataUri, expiresAt: null };
+    return { amount: amountCents / 100, state, qrCodePayload: qr.qrPayload, qrCodeImageBase64: qr.qrImageDataUri, expiresAt: null };
   }
 
   private async processCheckoutPaymentWebhook(event:ProviderWebhookEvent,sanitized:Record<string,unknown>){
