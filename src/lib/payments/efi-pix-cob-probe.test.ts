@@ -98,6 +98,25 @@ test("Pix config stages probe buckets unknown string and object throws without e
   }
 });
 
+test("Pix config stages probe extracts only allowlisted codes from cross-realm-compatible throws", () => {
+  const configured = { ...env, EFI_CLIENT_ID: "client-value", EFI_CLIENT_SECRET: "secret-value", EFI_CERTIFICATE_BASE64: Buffer.from("p12").toString("base64"), EFI_PIX_KEY: "pix-key" } as NodeJS.ProcessEnv;
+  const nullPrototypeAllowed = Object.create(null) as { message: string }; nullPrototypeAllowed.message = "EFI_CERTIFICATE_INVALID";
+  const cases: readonly [unknown, string][] = [
+    [new Error("EFI_CERTIFICATE_INVALID"), "EFI_CONFIG_RESOLVER_ERROR:EFI_CERTIFICATE_INVALID"],
+    [{ message: "EFI_CERTIFICATE_INVALID" }, "EFI_CONFIG_RESOLVER_ERROR:EFI_CERTIFICATE_INVALID"],
+    [nullPrototypeAllowed, "EFI_CONFIG_RESOLVER_ERROR:EFI_CERTIFICATE_INVALID"],
+    [{ message: "arbitrary secret detail" }, "EFI_RESOLVER_THROW_ERROR_OBJECT"],
+    ["EFI_CERTIFICATE_INVALID", "EFI_CONFIG_RESOLVER_ERROR:EFI_CERTIFICATE_INVALID"],
+    ["arbitrary secret detail", "EFI_RESOLVER_THROW_STRING"],
+    [{ code: "arbitrary secret detail" }, "EFI_RESOLVER_THROW_OTHER"],
+  ];
+  for (const [thrown, expected] of cases) {
+    const result = runEfiPixConfigStagesProbe(authorization, configured, { resolveAuthConfig: () => { throw thrown; } });
+    assert.equal(result.body.stages.at(-1), expected);
+    assert.doesNotMatch(JSON.stringify(result.body), /client-value|secret-value|p12|pix-key|probe-token|arbitrary secret detail/i);
+  }
+});
+
 test("Pix config stages probe isolates successful auth and Pix resolvers", () => {
   const configured = { ...env, EFI_CLIENT_ID: "client-value", EFI_CLIENT_SECRET: "secret-value", EFI_CERTIFICATE_BASE64: Buffer.from("p12").toString("base64"), EFI_PIX_KEY: "pix-key" } as NodeJS.ProcessEnv;
   const auth = { environment: "sandbox", providerEnvironment: "SANDBOX", baseUrl: "https://pix-h.api.efipay.com.br", clientId: "client-value", clientSecret: "secret-value", certificateP12: Buffer.from("p12") };

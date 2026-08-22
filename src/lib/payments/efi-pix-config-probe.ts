@@ -39,11 +39,19 @@ function isBase64(value: string): boolean {
   return value.length > 0 && value.length % 4 === 0 && /^[A-Za-z0-9+/]+={0,2}$/.test(value);
 }
 
+function safeThrownCode(error: unknown): string {
+  if (typeof error === "string") return error;
+  if (error && typeof error === "object" && "message" in error && typeof (error as { message?: unknown }).message === "string") {
+    return (error as { message: string }).message;
+  }
+  return "";
+}
+
 function resolverErrorStage(error: unknown): EfiResolverErrorStage | EfiResolverThrowStage {
-  const code = error instanceof Error ? error.message : typeof error === "string" ? error : "";
+  const code = safeThrownCode(error);
   if (allowedResolverErrors.includes(code as EfiResolverErrorCode)) return `EFI_CONFIG_RESOLVER_ERROR:${code as EfiResolverErrorCode}`;
-  if (error instanceof Error) return "EFI_RESOLVER_THROW_ERROR_OBJECT";
   if (typeof error === "string") return "EFI_RESOLVER_THROW_STRING";
+  if (code) return "EFI_RESOLVER_THROW_ERROR_OBJECT";
   return "EFI_RESOLVER_THROW_OTHER";
 }
 
