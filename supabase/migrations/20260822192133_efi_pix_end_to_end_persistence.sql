@@ -61,7 +61,9 @@ begin
     update private.efi_pix_webhook_events set processing_status='REVIEW',processed_at=clock_timestamp() where id=event_id;
     return jsonb_build_object('result','review');
   end if;
-  update public.payments set status='PAID',paid_at=event_paid_at where id=payment.id;
+  update public.payments
+  set status='PAID', operational_status='APPROVED', settlement_status='SETTLED', paid_at=event_paid_at
+  where id=payment.id;
   update private.efi_pix_payment_references set provider_status='CONCLUIDA',paid_at=event_paid_at,end_to_end_id=event_end_to_end_id,updated_at=clock_timestamp() where payment_id=payment.id;
   update private.efi_pix_webhook_events set processing_status='PROCESSED',processed_at=clock_timestamp() where id=event_id;
   return jsonb_build_object('result',case when payment.status='PAID' then 'already_paid' else 'processed' end);
@@ -153,8 +155,13 @@ begin
   if s.status <> 'PAYMENT_PENDING' or s.payment_status <> 'PENDING' or s.final_amount is null or s.final_amount <= 0 then
     raise exception 'EFI_PAYMENT_NOT_READY' using errcode='22023';
   end if;
-  insert into public.payments(id,unit_id,parking_session_id,amount,method,status,provider,provider_environment,manual_confirmation,idempotency_key)
-  values(new_payment,s.unit_id,s.id,s.final_amount,'PIX','PENDING','EFI','SANDBOX',false,gen_random_uuid());
+  insert into public.payments(
+    id,unit_id,parking_session_id,amount,method,status,provider,provider_environment,
+    payment_channel,operational_status,settlement_status,gross_amount,manual_confirmation,idempotency_key
+  ) values(
+    new_payment,s.unit_id,s.id,s.final_amount,'PIX','PENDING','EFI','SANDBOX',
+    'QR','PENDING','PENDING',s.final_amount,false,gen_random_uuid()
+  );
   return new_payment;
 end $$;
 revoke all on function public.get_or_reserve_efi_pix_payment(uuid) from public, anon, authenticated;
