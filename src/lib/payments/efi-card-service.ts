@@ -41,7 +41,10 @@ export class EfiCardService {
     const context = await this.context(paymentId);
     if (context.status === "PAID") return publicCard("PAID", context.amountCents);
     if (context.status !== "PENDING") throw new Error("EFI_CARD_PAYMENT_NOT_PENDING");
-    if (context.chargeId) return publicCard(context.providerStatus === "PAID" ? "PAID" : "PENDING", context.amountCents);
+    if (context.chargeId) {
+      const state: EfiCardState = context.providerStatus === "PAID" ? "PAID" : context.providerStatus === "FAILED" ? "FAILED" : context.providerStatus === "REVIEW" ? "REVIEW" : "PENDING";
+      return publicCard(state, context.amountCents);
+    }
 
     const charge = await createEfiOneStep({
       paymentToken,
@@ -59,12 +62,12 @@ export class EfiCardService {
     });
     if (reserveError) throw rpcError("reserve_efi_card_reference", reserveError.message);
 
-    if (charge.status === "PAID") {
+    if (charge.status === "PAID" || charge.status === "FAILED") {
       const { data, error } = await this.admin.rpc("process_efi_card_settlement", {
         target_charge_id: charge.chargeId,
         target_custom_id: context.paymentId,
         target_amount_cents: context.amountCents,
-        target_provider_status: "PAID",
+        target_provider_status: charge.status,
       });
       if (error) throw rpcError("process_efi_card_settlement", error.message);
       const result = data && typeof data === "object" ? String((data as { result?: unknown }).result ?? "") : "";
@@ -84,7 +87,7 @@ export class EfiCardService {
     });
     if (error) throw rpcError("process_efi_card_settlement", error.message);
     const result = data && typeof data === "object" ? String((data as { result?: unknown }).result ?? "") : "";
-    if (!["processed", "pending", "duplicate", "unknown", "review", "already_paid"].includes(result)) throw new Error("EFI_CARD_INVALID_SETTLEMENT_RESULT");
+    if (!["processed", "pending", "unknown", "review", "already_paid"].includes(result)) throw new Error("EFI_CARD_INVALID_SETTLEMENT_RESULT");
     return { result };
   }
 }
