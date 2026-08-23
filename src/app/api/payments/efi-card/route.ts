@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { EfiCardService } from "@/lib/payments/efi-card-service";
+import { EfiCardProviderError } from "@/lib/payments/efi-credit-card-client";
 import type { EfiCardPayer } from "@/lib/payments/efi-credit-card-client";
 
 const allowed = new Set(["sessionId", "paymentToken", "payer"]);
@@ -31,7 +32,10 @@ export async function POST(request: Request) {
   try {
     const payment = await new EfiCardService().createPayment(paymentId, body.paymentToken, payer);
     return Response.json({ payment }, { status: 201 });
-  } catch {
+  } catch (cause) {
+    if (cause instanceof EfiCardProviderError) {
+      return Response.json({ error: cause.publicCode }, { status: 502 });
+    }
     return Response.json({ error: "EFI_CARD_CREATE_FAILED" }, { status: 502 });
   }
 }

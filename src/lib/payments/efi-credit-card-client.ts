@@ -6,6 +6,37 @@ export type EfiCardState = "PENDING" | "PAID" | "FAILED" | "REVIEW";
 export type EfiCardCharge = { chargeId: string; status: EfiCardState; brand: string | null; last4: string | null };
 export type EfiCardNotification = { chargeId: string; customId: string | null; amountCents: number | null; status: EfiCardState };
 
+export class EfiCardProviderError extends Error {
+  constructor(
+    readonly publicCode: string,
+    readonly httpStatus: number,
+    readonly providerCode: string | null,
+  ) {
+    super(publicCode);
+  }
+}
+
+function safeProviderCode(payload: unknown): string | null {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return null;
+  const record = payload as Record<string, unknown>;
+  const candidate = record.code ?? record.error_code ?? record.error;
+  if (typeof candidate !== "string") return null;
+  const normalized = candidate.trim().toUpperCase().replace(/[^A-Z0-9_]/g, "_");
+  return /^[A-Z0-9_]{1,80}$/.test(normalized) ? normalized : null;
+}
+
+function providerFailure(status: number, payload: unknown): EfiCardProviderError {
+  const publicCode =
+    status === 400 ? "EFI_CARD_PROVIDER_REJECTED_400" :
+    status === 401 ? "EFI_CARD_PROVIDER_UNAUTHORIZED_401" :
+    status === 403 ? "EFI_CARD_PROVIDER_FORBIDDEN_403" :
+    status === 404 ? "EFI_CARD_PROVIDER_NOT_FOUND_404" :
+    status === 429 ? "EFI_CARD_PROVIDER_RATE_LIMITED_429" :
+    status >= 500 ? "EFI_CARD_PROVIDER_UPSTREAM_5XX" :
+    `EFI_CARD_PROVIDER_HTTP_${status}`;
+  return new EfiCardProviderError(publicCode, status, safeProviderCode(payload));
+}
+
 function mapStatus(value: unknown): EfiCardState {
   if (typeof value !== "string") return "REVIEW";
   const status = value.toLowerCase();
@@ -55,7 +86,10 @@ export async function createEfiOneStep(input: {
     }),
     cache: "no-store",
   });
-  if (!response.ok) throw new Error("EFI_CREDIT_CREATE_FAILED");
+  if (!response.ok) {
+    const payload = await response.json().catch(() => null);
+    throw providerFailure(response.status, payload);
+  }
   const body = (await response.json()) as { data?: { charge_id?: unknown; status?: unknown; payment?: { credit_card?: { brand?: unknown; card_mask?: unknown } } } };
   const data = body.data;
   if (!data || typeof data.charge_id !== "number") throw new Error("EFI_INVALID_RESPONSE");

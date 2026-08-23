@@ -18,3 +18,9 @@ test("Efí card route does not return or persist the browser token", () => {
   assert.doesNotMatch(route, /payment_token/);
   assert.match(route, /new EfiCardService\(\)\.createPayment\(paymentId, body\.paymentToken, payer\)/);
 });
+
+test("Efí card route exposes only a sanitized provider failure class", () => {
+  assert.match(route, /cause instanceof EfiCardProviderError/);
+  assert.match(route, /error: cause\.publicCode/);
+  assert.doesNotMatch(route, /providerCode/);
+});
