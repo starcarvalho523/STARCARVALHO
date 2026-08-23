@@ -27,3 +27,13 @@ export function resolveEfiCreditCardConfig(env: NodeJS.ProcessEnv = process.env)
 
   return { baseUrl: "https://cobrancas-h.api.efipay.com.br", clientId, clientSecret, notificationUrl: parsed.toString() };
 }
+
+/** Server-only readiness check. It deliberately exposes no configuration values. */
+export function isEfiCreditCardConfigured(env: NodeJS.ProcessEnv = process.env): boolean {
+  try {
+    resolveEfiCreditCardConfig(env);
+    return true;
+  } catch {
+    return false;
+  }
+}

@@ -1,6 +1,7 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { isAsaasConfigured } from "./asaas-config";
+import { isEfiCreditCardConfigured } from "./efi-credit-card-config";
 import type { PaymentCapability, PaymentChannel, PaymentMethod, PaymentProviderName } from "./payment-model";
 
 type AvailabilityRow = { payment_method:PaymentMethod; payment_channel:PaymentChannel; payment_provider:PaymentProviderName; enabled:boolean; configuration_state:"READY"|"DISABLED"|"UNCONFIGURED"|"AWAITING_TERMINAL"; legacy:boolean };
@@ -17,5 +18,6 @@ export function canUsePayment(capabilities:PaymentCapability[],method:PaymentMet
 function providerConfigured(provider:PaymentProviderName,channel:PaymentChannel){
   if(provider==="INTERNAL")return channel==="MANUAL";
   if(provider==="ASAAS"&&(channel==="QR"||channel==="HOSTED_CHECKOUT"))return isAsaasConfigured();
+  if(provider==="EFI"&&channel==="TOKENIZED_CHECKOUT")return isEfiCreditCardConfigured();
   return false;
 }

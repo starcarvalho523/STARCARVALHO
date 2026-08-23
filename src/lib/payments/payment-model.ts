@@ -1,5 +1,5 @@
 export type PaymentMethod = "CASH" | "PIX" | "CARD" | "DEBIT_CARD" | "CREDIT_CARD";
-export type PaymentChannel = "MANUAL" | "QR" | "HOSTED_CHECKOUT" | "POINT" | "TAP";
+export type PaymentChannel = "MANUAL" | "QR" | "HOSTED_CHECKOUT" | "TOKENIZED_CHECKOUT" | "POINT" | "TAP";
 export type PaymentProviderName = "INTERNAL" | "ASAAS" | "EFI" | "MERCADO_PAGO";
 export type OperationalPaymentStatus = "PENDING" | "APPROVED" | "FAILED" | "CANCELLED" | "REFUNDED";
 export type SettlementStatus = "PENDING" | "SETTLED" | "FAILED" | "CANCELLED" | "REFUNDED" | "UNKNOWN";
@@ -19,6 +19,6 @@ export type PaymentCapability = {
 export const providerCapabilities = {
   INTERNAL: [{ method: "CASH", channel: "MANUAL" }, { method: "CARD", channel: "MANUAL" }],
   ASAAS: [{ method: "PIX", channel: "QR" }, { method: "CREDIT_CARD", channel: "HOSTED_CHECKOUT" }],
-  EFI: [{ method: "PIX", channel: "QR" }, { method: "CREDIT_CARD", channel: "HOSTED_CHECKOUT" }],
+  EFI: [{ method: "PIX", channel: "QR" }, { method: "CREDIT_CARD", channel: "TOKENIZED_CHECKOUT" }],
   MERCADO_PAGO: [{ method: "DEBIT_CARD", channel: "POINT" }, { method: "CREDIT_CARD", channel: "POINT" }],
 } as const;

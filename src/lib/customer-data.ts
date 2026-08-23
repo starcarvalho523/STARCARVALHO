@@ -35,7 +35,11 @@ export const getCustomerData = cache(async () => {
     if (!error && data) activeCharge = data as CustomerCharge;
   }
   const capabilities=active?await getPaymentAvailability(active.unit_id):[];
-  const activePaymentOptions={pix:canUsePayment(capabilities,"PIX","QR","ASAAS"),credit:canUsePayment(capabilities,"CREDIT_CARD","HOSTED_CHECKOUT","ASAAS")};
+  const activePaymentOptions={
+    pix:canUsePayment(capabilities,"PIX","QR","ASAAS"),
+    credit:canUsePayment(capabilities,"CREDIT_CARD","HOSTED_CHECKOUT","ASAAS"),
+    efiCard:canUsePayment(capabilities,"CREDIT_CARD","TOKENIZED_CHECKOUT","EFI"),
+  };
   const{data:monthlyRows,error:monthlyError}=await supabase.from("monthly_billing_periods").select("id,reference_year,reference_month,due_date,amount,status,parking_units(name,timezone),monthly_subscriptions!inner(plan_name,unit_id,status,parking_units(name,timezone),monthly_subscription_vehicles(vehicle_id,vehicles(plate))),payments(id,amount,method,status,provider,paid_at,created_at)").order("reference_year",{ascending:false}).order("reference_month",{ascending:false}).limit(24);
   if(monthlyError)throw new Error("CUSTOMER_MONTHLY_PERIODS_UNAVAILABLE");
   const monthlyPeriods=(monthlyRows??[]) as unknown as CustomerMonthlyPeriod[];

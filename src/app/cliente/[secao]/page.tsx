@@ -144,7 +144,7 @@ function Stays({
           Filtrar
         </button>
       </form>
-      {selected ? <StayDetail session={selected} paymentOptions={data.active?.id===selected.id?data.activePaymentOptions:{pix:false,credit:false}} /> : null}
+      {selected ? <StayDetail session={selected} paymentOptions={data.active?.id===selected.id?data.activePaymentOptions:{pix:false,credit:false,efiCard:false}} /> : null}
       {rows.length ? (
         <div className="grid gap-3 md:grid-cols-2">
           {rows.map((session) => (
@@ -232,7 +232,7 @@ function StayCard({ session }: { session: CustomerSession }) {
     </article>
   );
 }
-function StayDetail({ session,paymentOptions }: { session: CustomerSession;paymentOptions:{pix:boolean;credit:boolean} }) {
+function StayDetail({ session,paymentOptions }: { session: CustomerSession;paymentOptions:{pix:boolean;credit:boolean;efiCard:boolean} }) {
   const tz = session.parking_units?.timezone ?? "America/Bahia";
   const payment = session.payments.find((row) => row.status === "PAID");
   const monthly = formatSessionFinancialStatus(
