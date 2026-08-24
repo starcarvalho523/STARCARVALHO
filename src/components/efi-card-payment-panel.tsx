@@ -11,7 +11,7 @@ type EfiCardResponse = {
 
 type FieldName = "holderName" | "holderDocument" | "email" | "phone" | "number" | "expirationMonth" | "expirationYear" | "cvv";
 type FieldErrors = Partial<Record<FieldName, string>>;
-type CheckoutStage = "FORM" | "TOKENIZATION" | "BACKEND" | "CONFIRMATION" | "SUCCESS";
+type CheckoutStage = "FORM" | "TOKENIZATION" | "BACKEND" | "CONFIRMATION" | "AWAITING" | "SUCCESS";
 
 const accountIdentifier = process.env.NEXT_PUBLIC_EFI_ACCOUNT_IDENTIFIER;
 
@@ -40,10 +40,12 @@ export function EfiCardPaymentPanel({
   sessionId,
   amountLabel,
   onSuccess,
+  onProcessingChange,
 }: {
   sessionId: string;
   amountLabel?: string;
   onSuccess?: () => void;
+  onProcessingChange?: (processing: boolean) => void;
 }) {
   const [holderName, setHolderName] = useState("");
   const [holderDocument, setHolderDocument] = useState("");
@@ -57,6 +59,7 @@ export function EfiCardPaymentPanel({
   const [stage, setStage] = useState<CheckoutStage>("FORM");
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [generalError, setGeneralError] = useState<string | null>(null);
+  const [awaitingMessage, setAwaitingMessage] = useState<string | null>(null);
 
   const holderNameRef = useRef<HTMLInputElement>(null);
   const holderDocumentRef = useRef<HTMLInputElement>(null);
@@ -146,7 +149,9 @@ export function EfiCardPaymentPanel({
     if (!values) return;
 
     setSubmitting(true);
+    setAwaitingMessage(null);
     setGeneralError(null);
+    onProcessingChange?.(true);
     try {
       setStage("TOKENIZATION");
       const { default: EfiPay } = await import("payment-token-efi");
@@ -193,7 +198,8 @@ export function EfiCardPaymentPanel({
 
       if (!response.ok) {
         if (body.uncertain === true) {
-          setGeneralError("Estamos confirmando o resultado deste pagamento. Não tente pagar novamente agora.");
+          setAwaitingMessage("Estamos confirmando o resultado deste pagamento. Não tente pagar novamente agora.");
+          setStage("AWAITING");
           return;
         }
         const code = typeof body.error === "string" ? body.error : "EFI_CARD_REQUEST_FAILED";
@@ -206,7 +212,8 @@ export function EfiCardPaymentPanel({
         return;
       }
       if (state === "REVIEW" || state === "PENDING") {
-        setGeneralError("Pagamento enviado. Estamos aguardando a confirmação da instituição. Não tente pagar novamente agora.");
+        setAwaitingMessage("Pagamento enviado. Estamos aguardando a confirmação da instituição. Não tente pagar novamente agora.");
+        setStage("AWAITING");
         return;
       }
       throw new Error("EFI_CARD_REQUEST_FAILED");
@@ -223,6 +230,7 @@ export function EfiCardPaymentPanel({
       setNumber("");
       setCvv("");
       setSubmitting(false);
+      onProcessingChange?.(false);
     }
   };
 
@@ -238,6 +246,17 @@ export function EfiCardPaymentPanel({
         {amountLabel ? <p className="mt-2 text-3xl font-black text-emerald-700">{amountLabel}</p> : null}
         <p className="mx-auto mt-3 max-w-sm text-sm text-slate-600">Seu pagamento foi confirmado. A saída será liberada normalmente pelo atendimento do estacionamento.</p>
         <button type="button" onClick={onSuccess} className="mt-6 min-h-11 rounded-xl bg-blue-700 px-6 font-bold text-white">Concluir</button>
+      </div>
+    );
+  }
+
+  if (stage === "AWAITING") {
+    return (
+      <div className="py-8 text-center" aria-live="polite">
+        <span className="mx-auto grid size-16 place-items-center rounded-full bg-amber-100 text-amber-700"><LoaderCircle className="size-9" /></span>
+        <h3 className="mt-4 text-xl font-bold text-slate-950">Pagamento em confirmação</h3>
+        <p className="mx-auto mt-3 max-w-md text-sm text-slate-600">{awaitingMessage}</p>
+        <p className="mx-auto mt-3 max-w-md text-xs font-semibold text-amber-800">Não tente realizar um novo pagamento até a situação ser atualizada.</p>
       </div>
     );
   }
