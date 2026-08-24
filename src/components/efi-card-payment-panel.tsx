@@ -58,21 +58,51 @@ export function EfiCardPaymentPanel({
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [generalError, setGeneralError] = useState<string | null>(null);
 
-  const refs = {
-    holderName: useRef<HTMLInputElement>(null),
-    holderDocument: useRef<HTMLInputElement>(null),
-    email: useRef<HTMLInputElement>(null),
-    phone: useRef<HTMLInputElement>(null),
-    number: useRef<HTMLInputElement>(null),
-    expirationMonth: useRef<HTMLInputElement>(null),
-    expirationYear: useRef<HTMLInputElement>(null),
-    cvv: useRef<HTMLInputElement>(null),
-  };
+  const holderNameRef = useRef<HTMLInputElement>(null);
+  const holderDocumentRef = useRef<HTMLInputElement>(null);
+  const emailRef = useRef<HTMLInputElement>(null);
+  const phoneRef = useRef<HTMLInputElement>(null);
+  const numberRef = useRef<HTMLInputElement>(null);
+  const expirationMonthRef = useRef<HTMLInputElement>(null);
+  const expirationYearRef = useRef<HTMLInputElement>(null);
+  const cvvRef = useRef<HTMLInputElement>(null);
 
   const focusField = (name: FieldName) => {
     requestAnimationFrame(() => {
-      refs[name].current?.scrollIntoView({ behavior: "smooth", block: "center" });
-      refs[name].current?.focus();
+      let element: HTMLInputElement | null = null;
+
+      switch (name) {
+        case "holderName":
+          element = holderNameRef.current;
+          break;
+        case "holderDocument":
+          element = holderDocumentRef.current;
+          break;
+        case "email":
+          element = emailRef.current;
+          break;
+        case "phone":
+          element = phoneRef.current;
+          break;
+        case "number":
+          element = numberRef.current;
+          break;
+        case "expirationMonth":
+          element = expirationMonthRef.current;
+          break;
+        case "expirationYear":
+          element = expirationYearRef.current;
+          break;
+        case "cvv":
+          element = cvvRef.current;
+          break;
+      }
+
+      element?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+      element?.focus();
     });
   };
 
@@ -231,15 +261,15 @@ export function EfiCardPaymentPanel({
       <div className="mb-4 flex items-center gap-2"><ShieldCheck className="size-5 text-blue-700" /><div><h3 className="font-bold text-blue-950">Cartão de crédito</h3><p className="text-xs text-slate-500">Pagamento protegido pela Efí. Os dados completos do cartão não são armazenados pela Star Carvalhos.</p></div></div>
       {generalError ? <div role="alert" className="mb-3 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm font-semibold text-rose-700">{generalError}</div> : null}
       <form onSubmit={submit} className="grid gap-3 text-sm" noValidate>
-        <label className="grid gap-1"><span className="font-semibold text-slate-700">Nome do titular</span><input ref={refs.holderName} value={holderName} onChange={(event) => { setHolderName(event.target.value); setFieldErrors((current) => ({ ...current, holderName: undefined })); }} autoComplete="cc-name" className={inputClass(!!fieldErrors.holderName)} />{fieldErrors.holderName ? <span className="text-xs font-semibold text-rose-600">{fieldErrors.holderName}</span> : null}</label>
-        <label className="grid gap-1"><span className="font-semibold text-slate-700">CPF</span><input ref={refs.holderDocument} value={holderDocument} onChange={(event) => { setHolderDocument(event.target.value); setFieldErrors((current) => ({ ...current, holderDocument: undefined })); }} inputMode="numeric" autoComplete="off" className={inputClass(!!fieldErrors.holderDocument)} />{fieldErrors.holderDocument ? <span className="text-xs font-semibold text-rose-600">{fieldErrors.holderDocument}</span> : null}</label>
-        <label className="grid gap-1"><span className="font-semibold text-slate-700">E-mail</span><input ref={refs.email} type="email" value={email} onChange={(event) => { setEmail(event.target.value); setFieldErrors((current) => ({ ...current, email: undefined })); }} autoComplete="email" className={inputClass(!!fieldErrors.email)} />{fieldErrors.email ? <span className="text-xs font-semibold text-rose-600">{fieldErrors.email}</span> : null}</label>
-        <label className="grid gap-1"><span className="font-semibold text-slate-700">Telefone</span><input ref={refs.phone} value={phone} onChange={(event) => { setPhone(event.target.value); setFieldErrors((current) => ({ ...current, phone: undefined })); }} inputMode="tel" autoComplete="tel" className={inputClass(!!fieldErrors.phone)} />{fieldErrors.phone ? <span className="text-xs font-semibold text-rose-600">{fieldErrors.phone}</span> : null}</label>
-        <label className="grid gap-1"><span className="font-semibold text-slate-700">Número do cartão</span><input ref={refs.number} value={number} onChange={(event) => { setNumber(event.target.value); setFieldErrors((current) => ({ ...current, number: undefined })); }} inputMode="numeric" autoComplete="cc-number" className={inputClass(!!fieldErrors.number)} />{fieldErrors.number ? <span className="text-xs font-semibold text-rose-600">{fieldErrors.number}</span> : null}</label>
+        <label className="grid gap-1"><span className="font-semibold text-slate-700">Nome do titular</span><input ref={holderNameRef} value={holderName} onChange={(event) => { setHolderName(event.target.value); setFieldErrors((current) => ({ ...current, holderName: undefined })); }} autoComplete="cc-name" className={inputClass(!!fieldErrors.holderName)} />{fieldErrors.holderName ? <span className="text-xs font-semibold text-rose-600">{fieldErrors.holderName}</span> : null}</label>
+        <label className="grid gap-1"><span className="font-semibold text-slate-700">CPF</span><input ref={holderDocumentRef} value={holderDocument} onChange={(event) => { setHolderDocument(event.target.value); setFieldErrors((current) => ({ ...current, holderDocument: undefined })); }} inputMode="numeric" autoComplete="off" className={inputClass(!!fieldErrors.holderDocument)} />{fieldErrors.holderDocument ? <span className="text-xs font-semibold text-rose-600">{fieldErrors.holderDocument}</span> : null}</label>
+        <label className="grid gap-1"><span className="font-semibold text-slate-700">E-mail</span><input ref={emailRef} type="email" value={email} onChange={(event) => { setEmail(event.target.value); setFieldErrors((current) => ({ ...current, email: undefined })); }} autoComplete="email" className={inputClass(!!fieldErrors.email)} />{fieldErrors.email ? <span className="text-xs font-semibold text-rose-600">{fieldErrors.email}</span> : null}</label>
+        <label className="grid gap-1"><span className="font-semibold text-slate-700">Telefone</span><input ref={phoneRef} value={phone} onChange={(event) => { setPhone(event.target.value); setFieldErrors((current) => ({ ...current, phone: undefined })); }} inputMode="tel" autoComplete="tel" className={inputClass(!!fieldErrors.phone)} />{fieldErrors.phone ? <span className="text-xs font-semibold text-rose-600">{fieldErrors.phone}</span> : null}</label>
+        <label className="grid gap-1"><span className="font-semibold text-slate-700">Número do cartão</span><input ref={numberRef} value={number} onChange={(event) => { setNumber(event.target.value); setFieldErrors((current) => ({ ...current, number: undefined })); }} inputMode="numeric" autoComplete="cc-number" className={inputClass(!!fieldErrors.number)} />{fieldErrors.number ? <span className="text-xs font-semibold text-rose-600">{fieldErrors.number}</span> : null}</label>
         <div className="grid grid-cols-3 gap-2">
-          <label className="grid gap-1"><span className="font-semibold text-slate-700">Mês</span><input ref={refs.expirationMonth} value={expirationMonth} onChange={(event) => { setExpirationMonth(event.target.value); setFieldErrors((current) => ({ ...current, expirationMonth: undefined })); }} placeholder="MM" inputMode="numeric" autoComplete="cc-exp-month" className={inputClass(!!fieldErrors.expirationMonth)} />{fieldErrors.expirationMonth ? <span className="text-xs font-semibold text-rose-600">{fieldErrors.expirationMonth}</span> : null}</label>
-          <label className="grid gap-1"><span className="font-semibold text-slate-700">Ano</span><input ref={refs.expirationYear} value={expirationYear} onChange={(event) => { setExpirationYear(event.target.value); setFieldErrors((current) => ({ ...current, expirationYear: undefined })); }} placeholder="AAAA" inputMode="numeric" autoComplete="cc-exp-year" className={inputClass(!!fieldErrors.expirationYear)} />{fieldErrors.expirationYear ? <span className="text-xs font-semibold text-rose-600">{fieldErrors.expirationYear}</span> : null}</label>
-          <label className="grid gap-1"><span className="font-semibold text-slate-700">CVV</span><input ref={refs.cvv} value={cvv} onChange={(event) => { setCvv(event.target.value); setFieldErrors((current) => ({ ...current, cvv: undefined })); }} inputMode="numeric" autoComplete="cc-csc" className={inputClass(!!fieldErrors.cvv)} />{fieldErrors.cvv ? <span className="text-xs font-semibold text-rose-600">{fieldErrors.cvv}</span> : null}</label>
+          <label className="grid gap-1"><span className="font-semibold text-slate-700">Mês</span><input ref={expirationMonthRef} value={expirationMonth} onChange={(event) => { setExpirationMonth(event.target.value); setFieldErrors((current) => ({ ...current, expirationMonth: undefined })); }} placeholder="MM" inputMode="numeric" autoComplete="cc-exp-month" className={inputClass(!!fieldErrors.expirationMonth)} />{fieldErrors.expirationMonth ? <span className="text-xs font-semibold text-rose-600">{fieldErrors.expirationMonth}</span> : null}</label>
+          <label className="grid gap-1"><span className="font-semibold text-slate-700">Ano</span><input ref={expirationYearRef} value={expirationYear} onChange={(event) => { setExpirationYear(event.target.value); setFieldErrors((current) => ({ ...current, expirationYear: undefined })); }} placeholder="AAAA" inputMode="numeric" autoComplete="cc-exp-year" className={inputClass(!!fieldErrors.expirationYear)} />{fieldErrors.expirationYear ? <span className="text-xs font-semibold text-rose-600">{fieldErrors.expirationYear}</span> : null}</label>
+          <label className="grid gap-1"><span className="font-semibold text-slate-700">CVV</span><input ref={cvvRef} value={cvv} onChange={(event) => { setCvv(event.target.value); setFieldErrors((current) => ({ ...current, cvv: undefined })); }} inputMode="numeric" autoComplete="cc-csc" className={inputClass(!!fieldErrors.cvv)} />{fieldErrors.cvv ? <span className="text-xs font-semibold text-rose-600">{fieldErrors.cvv}</span> : null}</label>
         </div>
         <button type="submit" disabled={submitting} className="mt-1 flex min-h-12 items-center justify-center gap-2 rounded-xl bg-blue-700 px-4 font-bold text-white disabled:opacity-50">{submitting ? <LoaderCircle className="size-4 animate-spin" /> : null}{amountLabel ? `Pagar ${amountLabel}` : "Pagar com cartão"}</button>
       </form>

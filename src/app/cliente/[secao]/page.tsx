@@ -10,7 +10,7 @@ import {
   WalletCards,
 } from "lucide-react";
 import { CustomerShell } from "@/components/customer-shell";
-import { CasualPaymentActions } from "@/components/casual-payment-actions";
+import { CustomerPaymentTrigger } from "@/components/customer-payment-trigger";
 import { AddCustomerVehicleForm } from "@/components/customer-self-service-forms";
 import {
   findOwnedSession,
@@ -148,7 +148,7 @@ function Stays({
       {rows.length ? (
         <div className="grid gap-3 md:grid-cols-2">
           {rows.map((session) => (
-            <StayCard key={session.id} session={session} />
+            <StayCard key={session.id} session={session} paymentOptions={data.active?.id === session.id ? data.activePaymentOptions : { pix: false, credit: false, efiCard: false }} />
           ))}
         </div>
       ) : (
@@ -160,7 +160,7 @@ function Stays({
     </div>
   );
 }
-function StayCard({ session }: { session: CustomerSession }) {
+function StayCard({ session, paymentOptions }: { session: CustomerSession; paymentOptions: { pix:boolean;credit:boolean;efiCard:boolean } }) {
   const tz = session.parking_units?.timezone ?? "America/Bahia";
   const minutes = session.exited_at
     ? Math.max(
@@ -178,6 +178,9 @@ function StayCard({ session }: { session: CustomerSession }) {
         ),
       );
   const payment = session.payments.find((row) => row.status === "PAID");
+  const paid = !!payment;
+  const amountLabel = formatMoney(session.final_amount ?? session.calculated_amount);
+  const canPay = session.status === "PAYMENT_PENDING" && session.financial_obligation === "REQUIRED" && !paid && (paymentOptions.pix || paymentOptions.credit || paymentOptions.efiCard);
   const monthly = formatSessionFinancialStatus(
     session.entry_mode,
     session.financial_obligation,
@@ -222,12 +225,15 @@ function StayCard({ session }: { session: CustomerSession }) {
             {formatMoney(session.final_amount ?? session.calculated_amount)}
           </p>
         </div>
+        <div className="flex flex-col items-end gap-2">
+        {canPay || paid ? <CustomerPaymentTrigger sessionId={session.id} plate={session.plate_snapshot} unitName={session.parking_units?.name ?? "Star Carvalhos"} amountLabel={amountLabel} options={paymentOptions} paid={paid} compact /> : null}
         <Link
           href={`/cliente/estadias?session=${session.id}`}
           className="text-sm font-bold text-blue-600"
         >
           Ver detalhes
         </Link>
+        </div>
       </div>
     </article>
   );
@@ -312,7 +318,7 @@ function StayDetail({ session,paymentOptions }: { session: CustomerSession;payme
           }
         />
       </dl>
-      {session.status==="PAYMENT_PENDING"&&session.financial_obligation==="REQUIRED"&&session.payment_status!=="PAID"?<CasualPaymentActions sessionId={session.id} {...paymentOptions}/>:null}
+      <CustomerPaymentTrigger sessionId={session.id} plate={session.plate_snapshot} unitName={session.parking_units?.name ?? "Star Carvalhos"} amountLabel={formatMoney(session.final_amount ?? session.calculated_amount)} options={paymentOptions} paid={!!payment}/>
     </section>
   );
 }
