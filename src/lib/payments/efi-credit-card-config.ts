@@ -11,8 +11,11 @@ export function resolveEfiCreditCardConfig(env: NodeJS.ProcessEnv = process.env)
   if (String(env.EFI_ENABLED ?? "").toLowerCase() !== "true") throw new Error("EFI_DISABLED");
   if (String(env.EFI_ENVIRONMENT ?? "").toLowerCase() !== "sandbox") throw new Error("EFI_PRODUCTION_DISABLED");
 
-  const clientId = env.EFI_CLIENT_ID ?? "";
-  const clientSecret = env.EFI_CLIENT_SECRET ?? "";
+  // Card credentials are intentionally distinct from the Pix application.
+  // Do not fall back to EFI_CLIENT_*: a missing dedicated card configuration
+  // must leave this flow unavailable rather than reuse Pix credentials.
+  const clientId = env.EFI_CARD_CLIENT_ID ?? "";
+  const clientSecret = env.EFI_CARD_CLIENT_SECRET ?? "";
   const notificationUrl = env.EFI_CARD_NOTIFICATION_URL ?? "";
   if (!clientId || !clientSecret) throw new Error("EFI_CARD_CREDENTIALS_MISSING");
   if (!notificationUrl) throw new Error("EFI_CARD_NOTIFICATION_URL_MISSING");
