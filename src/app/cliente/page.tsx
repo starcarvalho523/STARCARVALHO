@@ -57,31 +57,14 @@ export default async function Page() {
 
   return (
     <CustomerShell name={data.profile.full_name} active="Início" unreadNotifications={data.unreadNotifications}>
-      <div className="space-y-6">
+      <div className="space-y-4">
         <div>
           <p className="text-sm font-semibold text-blue-600">Olá, {firstName}</p>
-          <h1 className="mt-1 text-2xl font-bold sm:text-3xl">Sua estadia, sem complicação</h1>
-          <p className="mt-1 text-sm text-slate-500">Acompanhe sua estadia, pagamento e liberação de saída em um só lugar.</p>
+          <h1 className="mt-0.5 text-2xl font-bold sm:text-3xl">Sua estadia, sem complicação</h1>
+          <p className="mt-0.5 text-sm text-slate-500">Acompanhe sua estadia, pagamento e liberação de saída em um só lugar.</p>
         </div>
 
         {data.active ? <ActiveStay data={data} /> : <EmptyStay />}
-
-        <section>
-          <h2 className="mb-3 text-lg font-bold">Acesso rápido</h2>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {shortcuts.map(({ title, text, href, icon: Icon }) => (
-              <Link
-                key={href}
-                href={href}
-                className="group rounded-2xl border bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-200"
-              >
-                <Icon className="size-5 text-blue-600" />
-                <p className="mt-4 font-bold">{title}</p>
-                <p className="mt-1 text-xs text-slate-500">{text}</p>
-              </Link>
-            ))}
-          </div>
-        </section>
 
         <p className="flex items-center justify-center gap-2 text-xs text-slate-400">
           <ShieldCheck className="size-4" />
@@ -117,85 +100,127 @@ function ActiveStay({ data }: { data: Awaited<ReturnType<typeof getCustomerData>
     : sessionParkingStatus(session.status, session.entry_mode, session.financial_obligation).label;
 
   return (
-    <section className="overflow-hidden rounded-3xl border bg-white shadow-sm">
-      <div className="border-b bg-blue-50/50 p-5 sm:p-6">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-blue-600">Estadia atual</p>
-            <h2 className="mt-2 text-3xl font-bold tracking-wide">{session.plate_snapshot}</h2>
-            <p className="text-sm text-slate-500">{formatVehicleType(session.vehicle_type)}</p>
-          </div>
-          <span className={`rounded-full px-3 py-1 text-xs font-bold ${paid ? "bg-emerald-100 text-emerald-800" : "bg-amber-50 text-amber-800"}`}>
-            {parkingLabel}
-          </span>
-        </div>
-        <p className="mt-4 font-semibold">{unitName}</p>
-      </div>
-
-      <div className="grid gap-5 p-5 sm:grid-cols-3 sm:p-6">
-        <Info label="Entrada" value={formatDateTime(session.entered_at, timezone)} />
-        <Info label="Permanência" value={formatDuration(duration)} />
-        <Info label="Valor atual" value={amount == null ? "Em cálculo" : amountLabel} emphasis />
-        <Info
-          label="Tarifa"
-          value={String(session.tariff_snapshot?.name ?? charge?.tariff_name ?? "Tarifa da entrada")}
-        />
-        <Info
-          label="Situação financeira"
-          value={monthly ?? (paid ? "Pagamento confirmado" : session.status === "PAYMENT_PENDING" ? "Pagamento pendente" : "Aguardando início da cobrança")}
-        />
-        <Info
-          label="Próximo passo"
-          value={paid ? "Aguardando liberação da saída" : canPay ? "Concluir pagamento" : session.status === "OPEN" ? "Aguardar início da saída" : "Acompanhar atendimento"}
-        />
-      </div>
-
-      {paid || canPay ? (
-        <div className="border-t px-5 py-4 sm:px-6">
-          <div className={`rounded-2xl border p-4 ${paid ? "border-emerald-200 bg-emerald-50/60" : "border-blue-200 bg-blue-50/60"}`}>
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className={`text-xs font-bold uppercase tracking-wide ${paid ? "text-emerald-700" : "text-blue-700"}`}>
-                  {paid ? "Pagamento confirmado" : "Pagamento pendente"}
-                </p>
-                <p className="mt-1 text-2xl font-black text-slate-950">{amountLabel}</p>
-                <p className="mt-1 text-sm text-slate-600">
-                  {paid ? "Pagamento recebido. A saída será liberada pelo atendimento." : "Você já pode concluir o pagamento desta estadia."}
-                </p>
+    <>
+      <section className="overflow-hidden rounded-3xl border bg-white shadow-sm">
+        <div className="border-b bg-blue-50/40 px-5 py-4 sm:px-6">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-blue-600">Estadia atual</p>
+              <div className="mt-1.5 flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                <h2 className="text-3xl font-bold tracking-wide">{session.plate_snapshot}</h2>
+                <span className="text-sm text-slate-500">{formatVehicleType(session.vehicle_type)}</span>
               </div>
-              <CustomerPaymentTrigger
-                sessionId={session.id}
-                plate={session.plate_snapshot}
-                unitName={unitName}
-                amountLabel={amountLabel}
-                options={options}
-                paid={paid}
-                compact
-              />
+              <p className="mt-1.5 font-semibold">{unitName}</p>
+            </div>
+            <span className={`rounded-full px-3 py-1 text-xs font-bold ${paid ? "bg-emerald-100 text-emerald-800" : "bg-amber-50 text-amber-800"}`}>
+              {parkingLabel}
+            </span>
+          </div>
+        </div>
+
+        <div className="grid gap-y-4 border-b px-5 py-4 sm:grid-cols-2 sm:px-6 lg:grid-cols-6 lg:gap-y-0">
+          <Info label="Entrada" value={formatDateTime(session.entered_at, timezone)} compact />
+          <Info label="Permanência" value={formatDuration(duration)} compact />
+          <Info label="Valor atual" value={amount == null ? "Em cálculo" : amountLabel} emphasis compact />
+          <Info
+            label="Tarifa"
+            value={String(session.tariff_snapshot?.name ?? charge?.tariff_name ?? "Tarifa da entrada")}
+            compact
+          />
+          <Info
+            label="Situação financeira"
+            value={monthly ?? (paid ? "Pagamento confirmado" : session.status === "PAYMENT_PENDING" ? "Pagamento pendente" : "Aguardando início da cobrança")}
+            compact
+          />
+          <Info
+            label="Próximo passo"
+            value={paid ? "Aguardando liberação da saída" : canPay ? "Concluir pagamento" : session.status === "OPEN" ? "Aguardar início da saída" : "Acompanhar atendimento"}
+            compact
+          />
+        </div>
+
+        {paid || canPay ? (
+          <div className="px-5 py-3 sm:px-6">
+            <div className={`rounded-2xl border px-4 py-3 ${paid ? "border-emerald-200 bg-emerald-50/60" : "border-blue-200 bg-blue-50/60"}`}>
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                    <p className={`text-xs font-bold uppercase tracking-wide ${paid ? "text-emerald-700" : "text-blue-700"}`}>
+                      {paid ? "Pagamento confirmado" : "Pagamento pendente"}
+                    </p>
+                    <p className="text-xl font-black text-slate-950">{amountLabel}</p>
+                  </div>
+                  <p className="mt-0.5 text-sm text-slate-600">
+                    {paid ? "Pagamento recebido. A saída será liberada pelo atendimento." : "Você já pode concluir o pagamento desta estadia."}
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <CustomerPaymentTrigger
+                    sessionId={session.id}
+                    plate={session.plate_snapshot}
+                    unitName={unitName}
+                    amountLabel={amountLabel}
+                    options={options}
+                    paid={paid}
+                    compact
+                  />
+                  <Link
+                    href={`/cliente/estadias?session=${session.id}`}
+                    className="inline-flex min-h-10 items-center rounded-xl bg-blue-600 px-4 text-sm font-bold text-white transition hover:bg-blue-700"
+                  >
+                    Ver detalhes
+                  </Link>
+                  <Link
+                    href="/cliente/pagamentos"
+                    className="inline-flex min-h-10 items-center rounded-xl px-3 text-sm font-semibold text-blue-700 hover:bg-white/70"
+                  >
+                    Ver pagamentos e recibos
+                  </Link>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-      ) : null}
+        ) : (
+          <div className="flex flex-wrap items-center gap-2 px-5 py-3 sm:px-6">
+            <Link
+              href={`/cliente/estadias?session=${session.id}`}
+              className="inline-flex min-h-10 items-center rounded-xl bg-blue-600 px-4 text-sm font-bold text-white transition hover:bg-blue-700"
+            >
+              Ver detalhes
+            </Link>
+            <Link
+              href="/cliente/pagamentos"
+              className="inline-flex min-h-10 items-center rounded-xl px-3 text-sm font-semibold text-blue-700 hover:bg-blue-50"
+            >
+              Ver pagamentos e recibos
+            </Link>
+          </div>
+        )}
+      </section>
 
-      <div className="border-t px-5 py-4 sm:px-6">
-        <ParkingForecastPanel sessionId={session.id} initialAmount={Number(amount ?? 0)} />
-      </div>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <section className="rounded-2xl border bg-white p-4 shadow-sm">
+          <ParkingForecastPanel sessionId={session.id} initialAmount={Number(amount ?? 0)} />
+        </section>
 
-      <div className="flex flex-wrap items-center gap-3 border-t px-5 py-4 sm:px-6">
-        <Link
-          href={`/cliente/estadias?session=${session.id}`}
-          className="inline-flex min-h-11 items-center rounded-xl border border-slate-200 bg-white px-5 text-sm font-bold text-blue-700 transition hover:border-blue-200 hover:bg-blue-50"
-        >
-          Ver detalhes
-        </Link>
-        <Link
-          href="/cliente/pagamentos"
-          className="inline-flex min-h-11 items-center rounded-xl px-2 text-sm font-semibold text-slate-600 hover:text-blue-700"
-        >
-          Ver pagamentos e recibos
-        </Link>
+        <section className="rounded-2xl border bg-white p-4 shadow-sm">
+          <h2 className="text-sm font-bold uppercase tracking-wide text-blue-600">Acesso rápido</h2>
+          <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+            {shortcuts.map(({ title, text, href, icon: Icon }) => (
+              <Link
+                key={href}
+                href={href}
+                className="group rounded-xl border bg-white p-3 transition hover:-translate-y-0.5 hover:border-blue-200 hover:bg-blue-50/30"
+              >
+                <Icon className="size-5 text-blue-600" />
+                <p className="mt-5 font-bold">{title}</p>
+                <p className="mt-1 text-xs leading-5 text-slate-500">{text}</p>
+              </Link>
+            ))}
+          </div>
+        </section>
       </div>
-    </section>
+    </>
   );
 }
 
@@ -215,11 +240,21 @@ function EmptyStay() {
   );
 }
 
-function Info({ label, value, emphasis = false }: { label: string; value: string; emphasis?: boolean }) {
+function Info({
+  label,
+  value,
+  emphasis = false,
+  compact = false,
+}: {
+  label: string;
+  value: string;
+  emphasis?: boolean;
+  compact?: boolean;
+}) {
   return (
-    <div>
+    <div className={compact ? "min-w-0 lg:border-r lg:border-slate-200 lg:px-4 first:lg:pl-0 last:lg:border-r-0 last:lg:pr-0" : ""}>
       <p className="text-xs text-slate-500">{label}</p>
-      <p className={`mt-1 font-bold ${emphasis ? "text-xl text-emerald-600" : ""}`}>{value}</p>
+      <p className={`mt-1 break-words font-bold ${emphasis ? "text-xl text-emerald-600" : compact ? "text-sm" : ""}`}>{value}</p>
     </div>
   );
 }
