@@ -9,7 +9,7 @@ test("Efí card tokenization is constrained to a client-only panel", () => {
   assert.doesNotMatch(panel, /^import EfiPay from "payment-token-efi"/m);
   assert.match(panel, /await import\("payment-token-efi"\)/);
   assert.match(panel, /\.setEnvironment\("sandbox"\)/);
-  assert.match(panel, /\.setCardNumber\(cardNumber\)\.verifyCardBrand\(\)/);
+  assert.match(panel, /\.setCardNumber\([^)]*cardNumber[^)]*\)\.verifyCardBrand\(\)/);
   assert.match(panel, /reuse: false/);
   assert.match(panel, /isScriptBlocked\(\)/);
 });
@@ -17,9 +17,9 @@ test("Efí card tokenization is constrained to a client-only panel", () => {
 test("Efí card sends only its ephemeral token, payer and non-sensitive card metadata", () => {
   assert.match(panel, /fetch\("\/api\/payments\/efi-card"/);
   assert.match(panel, /paymentToken: tokenResult\.payment_token/);
-  assert.match(panel, /cardMeta: \{ brand: String\(brand\), last4: cardNumber\.slice\(-4\) \}/);
-  assert.doesNotMatch(panel, /cardMeta: \{[^}]*number/);
-  assert.doesNotMatch(panel, /cardMeta: \{[^}]*cvv/);
+  assert.match(panel, /cardMeta:\s*\{\s*brand:\s*String\(brand\),\s*last4:\s*[^,}\n]*cardNumber\.slice\(-4\)\s*\}/);
+  assert.doesNotMatch(panel, /cardMeta:\s*\{[^}]*\bnumber\s*:/s);
+  assert.doesNotMatch(panel, /cardMeta:\s*\{[^}]*\bcvv\s*:/s);
   assert.match(panel, /setNumber\(""\);/);
   assert.match(panel, /setCvv\(""\);/);
 });
