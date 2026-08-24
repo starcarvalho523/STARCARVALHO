@@ -11,13 +11,22 @@ test("Efí card tokenization is constrained to a client-only panel", () => {
   assert.match(panel, /\.setEnvironment\("sandbox"\)/);
   assert.match(panel, /\.setCardNumber\(cardNumber\)\.verifyCardBrand\(\)/);
   assert.match(panel, /reuse: false/);
+  assert.match(panel, /isScriptBlocked\(\)/);
 });
 
-test("Efí card sends only its ephemeral token and payer contract to the backend", () => {
+test("Efí card sends only its ephemeral token, payer and non-sensitive card metadata", () => {
   assert.match(panel, /fetch\("\/api\/payments\/efi-card"/);
   assert.match(panel, /paymentToken: tokenResult\.payment_token/);
-  assert.doesNotMatch(panel, /body: JSON\.stringify\([^)]*number/);
-  assert.doesNotMatch(panel, /body: JSON\.stringify\([^)]*cvv/);
+  assert.match(panel, /cardMeta: \{ brand: String\(brand\), last4: cardNumber\.slice\(-4\) \}/);
+  assert.doesNotMatch(panel, /cardMeta: \{[^}]*number/);
+  assert.doesNotMatch(panel, /cardMeta: \{[^}]*cvv/);
   assert.match(panel, /setNumber\(""\);/);
   assert.match(panel, /setCvv\(""\);/);
+});
+
+test("temporary sanitized browser-stage diagnostics are not shipped", () => {
+  assert.doesNotMatch(panel, /Etapa segura:/);
+  assert.doesNotMatch(panel, /BrowserStage/);
+  assert.doesNotMatch(panel, /browserStage/);
+  assert.doesNotMatch(panel, /browserCode/);
 });
