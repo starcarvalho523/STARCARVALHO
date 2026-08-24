@@ -2,7 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { requireArea } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { canUsePayment,getPaymentAvailability } from "@/lib/payments/payment-availability";
+import { getPaymentAvailability,resolveCustomerPaymentOptions } from "@/lib/payments/payment-availability";
 
 export type CustomerPayment = { id:string; amount:number; method:string; status:string; provider:string|null; paid_at:string|null; created_at:string };
 export type CustomerSession = { id:string; unit_id:string; vehicle_id:string; plate_snapshot:string; vehicle_type:string; status:string; payment_status:string; entry_mode:string; financial_obligation:string; entered_at:string; exited_at:string|null; final_amount:number|null; calculated_amount:number|null; tariff_snapshot:Record<string,unknown>; parking_units:{name:string;timezone:string}|null; payments:CustomerPayment[] };
@@ -35,11 +35,7 @@ export const getCustomerData = cache(async () => {
     if (!error && data) activeCharge = data as CustomerCharge;
   }
   const capabilities=active?await getPaymentAvailability(active.unit_id):[];
-  const activePaymentOptions={
-    pix:canUsePayment(capabilities,"PIX","QR","ASAAS"),
-    credit:canUsePayment(capabilities,"CREDIT_CARD","HOSTED_CHECKOUT","ASAAS"),
-    efiCard:canUsePayment(capabilities,"CREDIT_CARD","TOKENIZED_CHECKOUT","EFI"),
-  };
+  const activePaymentOptions=resolveCustomerPaymentOptions(capabilities);
   const{data:monthlyRows,error:monthlyError}=await supabase.from("monthly_billing_periods").select("id,reference_year,reference_month,due_date,amount,status,parking_units(name,timezone),monthly_subscriptions!inner(plan_name,unit_id,status,parking_units(name,timezone),monthly_subscription_vehicles(vehicle_id,vehicles(plate))),payments(id,amount,method,status,provider,paid_at,created_at)").order("reference_year",{ascending:false}).order("reference_month",{ascending:false}).limit(24);
   if(monthlyError)throw new Error("CUSTOMER_MONTHLY_PERIODS_UNAVAILABLE");
   const monthlyPeriods=(monthlyRows??[]) as unknown as CustomerMonthlyPeriod[];
