@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { EfiCardService } from "@/lib/payments/efi-card-service";
+import { EfiCardService, EfiCardServiceError } from "@/lib/payments/efi-card-service";
 import { EfiCardProviderError } from "@/lib/payments/efi-credit-card-client";
 import type { EfiCardPayer } from "@/lib/payments/efi-credit-card-client";
 
@@ -34,8 +34,21 @@ export async function POST(request: Request) {
     return Response.json({ payment }, { status: 201 });
   } catch (cause) {
     if (cause instanceof EfiCardProviderError) {
-      return Response.json({ error: cause.publicCode }, { status: 502 });
+      console.error("EFI_CARD_PROVIDER_FAILURE", {
+        code: cause.publicCode,
+        stage: cause.stage,
+        providerPostSent: cause.providerPostSent,
+        uncertain: cause.uncertain,
+        httpStatus: cause.httpStatus,
+        providerCode: cause.providerCode,
+      });
+      return Response.json({ error: cause.publicCode, stage: cause.stage, uncertain: cause.uncertain }, { status: 502 });
     }
+    if (cause instanceof EfiCardServiceError) {
+      console.error("EFI_CARD_SERVICE_FAILURE", { code: cause.publicCode, httpStatus: cause.httpStatus });
+      return Response.json({ error: cause.publicCode }, { status: cause.httpStatus });
+    }
+    console.error("EFI_CARD_UNCLASSIFIED_FAILURE");
     return Response.json({ error: "EFI_CARD_CREATE_FAILED" }, { status: 502 });
   }
 }
