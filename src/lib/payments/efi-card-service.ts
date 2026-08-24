@@ -17,7 +17,7 @@ export class EfiCardServiceError extends Error {
   }
 }
 
-function rpcError(name: string, message: string) {
+function rpcError(name: string) {
   return new EfiCardServiceError(`${name.toUpperCase()}_FAILED`, 502);
 }
 
@@ -34,7 +34,7 @@ export class EfiCardService {
 
   private async context(paymentId: string): Promise<CardContext> {
     const { data, error } = await this.admin.rpc("get_efi_card_payment_context", { target_payment: paymentId });
-    if (error) throw rpcError("get_efi_card_payment_context", error.message);
+    if (error) throw rpcError("get_efi_card_payment_context");
     const value = data as Record<string, unknown> | null;
     if (!value || typeof value.paymentId !== "string" || typeof value.status !== "string" || typeof value.amountCents !== "number" || !Number.isSafeInteger(value.amountCents) || value.amountCents <= 0) {
       throw new EfiCardServiceError("EFI_CARD_INVALID_CONTEXT", 502);
@@ -57,7 +57,7 @@ export class EfiCardService {
       target_stage: cause.stage,
       target_provider_code: cause.providerCode,
     });
-    if (error) throw rpcError("mark_efi_card_creation_failure", error.message);
+    if (error) throw rpcError("mark_efi_card_creation_failure");
   }
 
   async createPayment(paymentId: string, paymentToken: string, payer: EfiCardPayer) {
@@ -73,7 +73,7 @@ export class EfiCardService {
     }
 
     const { data: claimData, error: claimError } = await this.admin.rpc("claim_efi_card_creation", { target_payment: context.paymentId });
-    if (claimError) throw rpcError("claim_efi_card_creation", claimError.message);
+    if (claimError) throw rpcError("claim_efi_card_creation");
     const claim = rpcResult(claimData);
     if (claim.result !== "claimed") {
       throw new EfiCardServiceError(`EFI_CARD_CREATION_${String(claim.state ?? "BLOCKED")}`, 409);
@@ -131,7 +131,7 @@ export class EfiCardService {
       target_amount_cents: notification.amountCents,
       target_provider_status: notification.status,
     });
-    if (error) throw rpcError("process_efi_card_settlement", error.message);
+    if (error) throw rpcError("process_efi_card_settlement");
     const result = data && typeof data === "object" ? String((data as { result?: unknown }).result ?? "") : "";
     if (!["processed", "pending", "unknown", "review", "already_paid"].includes(result)) throw new EfiCardServiceError("EFI_CARD_INVALID_SETTLEMENT_RESULT", 502);
     return { result };
