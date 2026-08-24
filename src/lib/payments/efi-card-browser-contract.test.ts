@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const panel = readFileSync(new URL("../../components/efi-card-payment-panel.tsx", import.meta.url), "utf8");
+const modal = readFileSync(new URL("../../components/customer-payment-modal.tsx", import.meta.url), "utf8");
 
 test("Efí card tokenization is constrained to a client-only panel", () => {
   assert.match(panel, /^"use client";/);
@@ -22,6 +23,23 @@ test("Efí card sends only its ephemeral token, payer and non-sensitive card met
   assert.doesNotMatch(panel, /cardMeta:\s*\{[^}]*\bcvv\s*:/);
   assert.match(panel, /setNumber\(""\);/);
   assert.match(panel, /setCvv\(""\);/);
+});
+
+test("uncertain and pending Efí card outcomes leave the spinner and show a terminal confirmation state", () => {
+  assert.match(panel, /"AWAITING"/);
+  assert.match(panel, /body\.uncertain === true[\s\S]*?setStage\("AWAITING"\)/);
+  assert.match(panel, /state === "REVIEW" \|\| state === "PENDING"[\s\S]*?setStage\("AWAITING"\)/);
+  assert.match(panel, /Pagamento em confirmação/);
+  assert.match(panel, /Não tente realizar um novo pagamento/);
+});
+
+test("customer payment modal cannot be dismissed during critical card processing", () => {
+  assert.match(panel, /onProcessingChange\?\.\(true\)/);
+  assert.match(panel, /onProcessingChange\?\.\(false\)/);
+  assert.match(modal, /disabled=\{processing\}/);
+  assert.match(modal, /event\.key === "Escape" && !processing/);
+  assert.match(modal, /if \(!processing\) onClose\(\)/);
+  assert.match(modal, /onProcessingChange=\{setProcessing\}/);
 });
 
 test("temporary sanitized browser-stage diagnostics are not shipped", () => {
