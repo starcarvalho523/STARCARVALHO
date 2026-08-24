@@ -1,12 +1,13 @@
 "use client";
 
-import EfiPay from "payment-token-efi";
 import { LoaderCircle, ShieldCheck } from "lucide-react";
 import { FormEvent, useState } from "react";
 
 type EfiCardResponse = {
   payment?: { state?: unknown };
   error?: unknown;
+  stage?: unknown;
+  uncertain?: unknown;
 };
 
 const accountIdentifier = process.env.NEXT_PUBLIC_EFI_ACCOUNT_IDENTIFIER;
@@ -20,8 +21,9 @@ function errorCode(value: unknown): string {
 }
 
 /**
- * This is the sole client-side boundary for payment-token-efi. PAN and CVV
- * remain local to this component and are cleared immediately after tokenization.
+ * This is the sole client-side boundary for payment-token-efi. The SDK is
+ * dynamically imported only after submit so it is never evaluated during SSR.
+ * PAN and CVV remain local to this component and are cleared after tokenization.
  */
 export function EfiCardPaymentPanel({ sessionId }: { sessionId: string }) {
   const [holderName, setHolderName] = useState("");
@@ -45,6 +47,7 @@ export function EfiCardPaymentPanel({ sessionId }: { sessionId: string }) {
     setSubmitting(true);
     setMessage(null);
     try {
+      const { default: EfiPay } = await import("payment-token-efi");
       const cardNumber = digits(number);
       const brand = await EfiPay.CreditCard.setCardNumber(cardNumber).verifyCardBrand();
       if (!brand || brand === "undefined" || brand === "unsupported") throw new Error("EFI_CARD_BRAND_UNSUPPORTED");
