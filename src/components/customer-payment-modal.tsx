@@ -48,10 +48,6 @@ export function CustomerPaymentModal({
     };
   }, [open, onClose, processing]);
 
-  useEffect(() => {
-    if (!open) setProcessing(false);
-  }, [open]);
-
   if (!open) return null;
 
   const finish = () => {
