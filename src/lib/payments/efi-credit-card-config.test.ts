@@ -4,7 +4,7 @@ import { resolveEfiCreditCardConfig } from "./efi-credit-card-config.ts";
 
 const sandbox = {
   EFI_ENABLED: "true",
-  EFI_ENVIRONMENT: "sandbox",
+  EFI_CARD_ENVIRONMENT: "sandbox",
   EFI_CARD_CLIENT_ID: "card-client",
   EFI_CARD_CLIENT_SECRET: "card-secret",
   EFI_CARD_NOTIFICATION_URL: "https://example.test/api/internal/efi-card-notification",
@@ -14,8 +14,12 @@ test("Efí card stays disabled without explicit enablement", () => {
   assert.throws(() => resolveEfiCreditCardConfig({} as NodeJS.ProcessEnv), /EFI_DISABLED/);
 });
 
-test("Efí card blocks production", () => {
-  assert.throws(() => resolveEfiCreditCardConfig({ ...sandbox, EFI_ENVIRONMENT: "production" }), /EFI_PRODUCTION_DISABLED/);
+test("Efí card blocks production and does not reuse Pix environment", () => {
+  assert.throws(() => resolveEfiCreditCardConfig({ ...sandbox, EFI_CARD_ENVIRONMENT: "production" }), /EFI_CARD_PRODUCTION_DISABLED/);
+  assert.throws(
+    () => resolveEfiCreditCardConfig({ ...sandbox, EFI_CARD_ENVIRONMENT: "", EFI_ENVIRONMENT: "sandbox" }),
+    /EFI_CARD_PRODUCTION_DISABLED/,
+  );
 });
 
 test("Efí card requires server-side credentials", () => {
