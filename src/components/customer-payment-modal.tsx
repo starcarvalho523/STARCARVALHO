@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LockKeyhole, ShieldCheck, X } from "lucide-react";
 import { EfiCardPaymentPanel } from "@/components/efi-card-payment-panel";
@@ -28,12 +28,17 @@ export function CustomerPaymentModal({
 }) {
   const router = useRouter();
   const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const [processing, setProcessing] = useState(false);
+
+  const requestClose = () => {
+    if (!processing) onClose();
+  };
 
   useEffect(() => {
     if (!open) return;
     closeButtonRef.current?.focus();
     const listener = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
+      if (event.key === "Escape" && !processing) onClose();
     };
     document.addEventListener("keydown", listener);
     document.body.style.overflow = "hidden";
@@ -41,24 +46,29 @@ export function CustomerPaymentModal({
       document.removeEventListener("keydown", listener);
       document.body.style.overflow = "";
     };
-  }, [open, onClose]);
+  }, [open, onClose, processing]);
+
+  useEffect(() => {
+    if (!open) setProcessing(false);
+  }, [open]);
 
   if (!open) return null;
 
   const finish = () => {
+    setProcessing(false);
     onClose();
     router.refresh();
   };
 
   return (
-    <div className="fixed inset-0 z-[80] grid place-items-center bg-slate-950/45 p-3 backdrop-blur-sm" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+    <div className="fixed inset-0 z-[80] grid place-items-center bg-slate-950/45 p-3 backdrop-blur-sm" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) requestClose(); }}>
       <section role="dialog" aria-modal="true" aria-labelledby="customer-payment-title" className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-3xl border border-slate-200 bg-white shadow-2xl">
         <header className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b bg-white/95 px-5 py-4 backdrop-blur sm:px-6">
           <div>
             <div className="flex items-center gap-2 text-blue-700"><ShieldCheck className="size-5" /><span className="text-xs font-bold uppercase tracking-wide">Pagamento protegido</span></div>
             <h2 id="customer-payment-title" className="mt-1 text-2xl font-black text-slate-950">Pagamento seguro</h2>
           </div>
-          <button ref={closeButtonRef} type="button" onClick={onClose} aria-label="Fechar pagamento" className="grid size-10 place-items-center rounded-full border border-slate-200 text-slate-500 transition hover:bg-slate-50"><X className="size-5" /></button>
+          <button ref={closeButtonRef} type="button" onClick={requestClose} disabled={processing} aria-label={processing ? "Pagamento em processamento" : "Fechar pagamento"} className="grid size-10 place-items-center rounded-full border border-slate-200 text-slate-500 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"><X className="size-5" /></button>
         </header>
 
         <div className="p-5 sm:p-6">
@@ -80,7 +90,7 @@ export function CustomerPaymentModal({
           </div>
 
           <div className="mt-5 grid gap-4">
-            {options.efiCard ? <EfiCardPaymentPanel sessionId={sessionId} amountLabel={amountLabel} onSuccess={finish} /> : null}
+            {options.efiCard ? <EfiCardPaymentPanel sessionId={sessionId} amountLabel={amountLabel} onSuccess={finish} onProcessingChange={setProcessing} /> : null}
             {options.pix ? <PixPaymentPanel sessionId={sessionId} /> : null}
             {options.credit ? <CreditCheckoutPanel sessionId={sessionId} /> : null}
           </div>
