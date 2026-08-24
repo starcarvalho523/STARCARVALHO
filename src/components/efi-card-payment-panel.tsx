@@ -10,6 +10,8 @@ type EfiCardResponse = {
   uncertain?: unknown;
 };
 
+type BrowserStage = "IDLE" | "SDK_IMPORT" | "BRAND" | "TOKENIZATION" | "BACKEND" | "DONE" | "ERROR";
+
 const accountIdentifier = process.env.NEXT_PUBLIC_EFI_ACCOUNT_IDENTIFIER;
 
 function digits(value: string) {
@@ -18,6 +20,15 @@ function digits(value: string) {
 
 function errorCode(value: unknown): string {
   return typeof value === "string" ? value : "EFI_CARD_REQUEST_FAILED";
+}
+
+function safeSdkError(value: unknown): string {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return value instanceof Error ? value.message : "EFI_CARD_CLIENT_ERROR";
+  const record = value as Record<string, unknown>;
+  const candidate = record.code ?? record.error ?? (value instanceof Error ? value.message : null);
+  if (typeof candidate !== "string" && typeof candidate !== "number") return "EFI_CARD_CLIENT_ERROR";
+  const normalized = String(candidate).trim().toUpperCase().replace(/[^A-Z0-9_]/g, "_");
+  return normalized && normalized.length <= 100 ? normalized : "EFI_CARD_CLIENT_ERROR";
 }
 
 /**
@@ -36,22 +47,31 @@ export function EfiCardPaymentPanel({ sessionId }: { sessionId: string }) {
   const [expirationYear, setExpirationYear] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [browserStage, setBrowserStage] = useState<BrowserStage>("IDLE");
+  const [browserCode, setBrowserCode] = useState<string | null>(null);
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!accountIdentifier) {
+      setBrowserStage("ERROR");
+      setBrowserCode("EFI_CARD_ACCOUNT_IDENTIFIER_MISSING");
       setMessage("EFI_CARD_ACCOUNT_IDENTIFIER_MISSING");
       return;
     }
 
     setSubmitting(true);
     setMessage(null);
+    setBrowserCode(null);
     try {
+      setBrowserStage("SDK_IMPORT");
       const { default: EfiPay } = await import("payment-token-efi");
+
+      setBrowserStage("BRAND");
       const cardNumber = digits(number);
       const brand = await EfiPay.CreditCard.setCardNumber(cardNumber).verifyCardBrand();
       if (!brand || brand === "undefined" || brand === "unsupported") throw new Error("EFI_CARD_BRAND_UNSUPPORTED");
 
+      setBrowserStage("TOKENIZATION");
       const tokenResult = await EfiPay.CreditCard
         .setAccount(accountIdentifier)
         .setEnvironment("sandbox")
@@ -71,6 +91,7 @@ export function EfiCardPaymentPanel({ sessionId }: { sessionId: string }) {
         throw new Error("EFI_CARD_TOKENIZATION_FAILED");
       }
 
+      setBrowserStage("BACKEND");
       const response = await fetch("/api/payments/efi-card", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -81,11 +102,18 @@ export function EfiCardPaymentPanel({ sessionId }: { sessionId: string }) {
         }),
       });
       const body = (await response.json().catch(() => ({}))) as EfiCardResponse;
-      if (!response.ok) throw new Error(errorCode(body.error));
+      if (!response.ok) {
+        setBrowserCode(errorCode(body.error));
+        throw new Error(errorCode(body.error));
+      }
       const state = typeof body.payment === "object" && body.payment ? (body.payment as { state?: unknown }).state : null;
+      setBrowserStage("DONE");
       setMessage(state === "PAID" ? "Pagamento aprovado." : state === "REVIEW" ? "Pagamento em análise." : "Pagamento enviado para confirmação.");
     } catch (cause) {
-      setMessage(cause instanceof Error ? cause.message : "EFI_CARD_REQUEST_FAILED");
+      setBrowserStage("ERROR");
+      const code = browserCode ?? safeSdkError(cause);
+      setBrowserCode(code);
+      setMessage(code);
     } finally {
       setNumber("");
       setCvv("");
@@ -108,6 +136,9 @@ export function EfiCardPaymentPanel({ sessionId }: { sessionId: string }) {
       <div className="grid grid-cols-3 gap-2"><input required value={expirationMonth} onChange={(event) => setExpirationMonth(event.target.value)} placeholder="MM" inputMode="numeric" autoComplete="cc-exp-month" className="min-h-11 rounded-xl border bg-white px-3" /><input required value={expirationYear} onChange={(event) => setExpirationYear(event.target.value)} placeholder="AAAA" inputMode="numeric" autoComplete="cc-exp-year" className="min-h-11 rounded-xl border bg-white px-3" /><input required value={cvv} onChange={(event) => setCvv(event.target.value)} placeholder="CVV" inputMode="numeric" autoComplete="cc-csc" className="min-h-11 rounded-xl border bg-white px-3" /></div>
       <button type="submit" disabled={submitting} className="flex min-h-11 items-center justify-center gap-2 rounded-xl bg-blue-700 px-4 font-bold text-white disabled:opacity-50">{submitting ? <LoaderCircle className="size-4 animate-spin" /> : null}{submitting ? "Processando..." : "Pagar com cartão"}</button>
     </form>
+    <div className="mt-2 rounded-lg border border-slate-200 bg-white/70 px-3 py-2 text-[11px] font-semibold text-slate-600" aria-live="polite">
+      Etapa segura: {browserStage}{browserCode ? ` · ${browserCode}` : ""}
+    </div>
     {message ? <p role="status" className="mt-2 text-xs font-semibold text-slate-700">{message}</p> : null}
   </section>;
 }
