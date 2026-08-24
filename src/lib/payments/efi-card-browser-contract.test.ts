@@ -18,8 +18,8 @@ test("Efí card sends only its ephemeral token, payer and non-sensitive card met
   assert.match(panel, /fetch\("\/api\/payments\/efi-card"/);
   assert.match(panel, /paymentToken: tokenResult\.payment_token/);
   assert.match(panel, /cardMeta:\s*\{\s*brand:\s*String\(brand\),\s*last4:\s*[^,}\n]*cardNumber\.slice\(-4\)\s*\}/);
-  assert.doesNotMatch(panel, /cardMeta:\s*\{[^}]*\bnumber\s*:/s);
-  assert.doesNotMatch(panel, /cardMeta:\s*\{[^}]*\bcvv\s*:/s);
+  assert.doesNotMatch(panel, /cardMeta:\s*\{[\s\S]*?\bnumber\s*:/);
+  assert.doesNotMatch(panel, /cardMeta:\s*\{[\s\S]*?\bcvv\s*:/);
   assert.match(panel, /setNumber\(""\);/);
   assert.match(panel, /setCvv\(""\);/);
 });
