@@ -11,7 +11,7 @@ test("Efí card route accepts only the browser-token plus safe metadata contract
   }
   assert.match(route, /typeof body\.paymentToken !== "string"/);
   assert.match(route, /cardMetaFrom\(body\.cardMeta\)/);
-  assert.match(route, /\^\\d\{4\}\$/.source);
+  assert.ok(route.includes("!/^\\d{4}$/.test(last4)"));
   assert.match(route, /PAYMENT_FORBIDDEN/);
 });
 
