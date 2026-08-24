@@ -43,8 +43,8 @@ function safeRows(value: unknown) {
 async function listCharges(baseUrl: string, token: string, chargeType: string, customId?: string) {
   const params = new URLSearchParams({
     charge_type: chargeType,
-    begin_date: "2026-08-24",
-    end_date: "2026-08-24",
+    begin_date: "2026-08-24T00:00:00.000Z",
+    end_date: "2026-08-24T23:59:59.999Z",
     limit: "100",
     page: "1",
   });
@@ -64,10 +64,7 @@ export async function GET() {
     const authorization = Buffer.from(`${config.clientId}:${config.clientSecret}`).toString("base64");
     const authResponse = await fetch(`${config.baseUrl}/v1/authorize`, {
       method: "POST",
-      headers: {
-        authorization: `Basic ${authorization}`,
-        "content-type": "application/json",
-      },
+      headers: { authorization: `Basic ${authorization}`, "content-type": "application/json" },
       body: JSON.stringify({ grant_type: "client_credentials" }),
       cache: "no-store",
     });
@@ -76,11 +73,13 @@ export async function GET() {
       return NextResponse.json({ oauth: "FAIL", oauthStatus: authResponse.status, listStatus: null, queryValid: false, customIdCount: null, windowCount: null, chargeType: null, matches: [] });
     }
 
-    const candidates = ["one_step", "credit_card", "charge"];
+    const candidates = ["one-step", "one_step", "credit_card", "charge", "charges", "normal"];
     let selected: string | null = null;
     let specific: { status: number; rows: ReturnType<typeof safeRows> } | null = null;
+    let lastStatus: number | null = null;
     for (const chargeType of candidates) {
       const result = await listCharges(config.baseUrl, authPayload.access_token, chargeType, PAYMENT_ID);
+      lastStatus = result.status;
       if (result.status === 200) {
         selected = chargeType;
         specific = result;
@@ -94,12 +93,10 @@ export async function GET() {
     }
 
     if (!specific || specific.status !== 200) {
-      return NextResponse.json({ oauth: "PASS", oauthStatus: authResponse.status, listStatus: specific?.status ?? null, queryValid: false, customIdCount: null, windowCount: null, chargeType: selected, matches: [] });
+      return NextResponse.json({ oauth: "PASS", oauthStatus: authResponse.status, listStatus: specific?.status ?? lastStatus, queryValid: false, customIdCount: null, windowCount: null, chargeType: selected, matches: [] });
     }
 
-    const broad = specific.rows.length === 0 && selected
-      ? await listCharges(config.baseUrl, authPayload.access_token, selected)
-      : null;
+    const broad = specific.rows.length === 0 && selected ? await listCharges(config.baseUrl, authPayload.access_token, selected) : null;
     const broadCandidates = broad?.rows.filter((row) => row.candidate) ?? [];
     const matches = specific.rows.length > 0 ? specific.rows : broadCandidates;
 
