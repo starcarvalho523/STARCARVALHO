@@ -1,16 +1,12 @@
 "use client";
 
 import { LoaderCircle, ShieldCheck } from "lucide-react";
-import { FormEvent, useRef, useState } from "react";
+import { FormEvent, useState } from "react";
 
 type EfiCardResponse = {
   payment?: { state?: unknown };
   error?: unknown;
-  stage?: unknown;
-  uncertain?: unknown;
 };
-
-type BrowserStage = "IDLE" | "SDK_IMPORT" | "SCRIPT_CHECK" | "BRAND" | "TOKENIZATION" | "BACKEND" | "DONE" | "ERROR";
 
 const accountIdentifier = process.env.NEXT_PUBLIC_EFI_ACCOUNT_IDENTIFIER;
 
@@ -27,19 +23,12 @@ function errorCode(value: unknown): string {
   return typeof value === "string" ? value : "EFI_CARD_REQUEST_FAILED";
 }
 
-function safeSdkError(value: unknown): string {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return value instanceof Error ? value.message : "EFI_CARD_CLIENT_ERROR";
-  const record = value as Record<string, unknown>;
-  const candidate = record.code ?? record.error ?? (value instanceof Error ? value.message : null);
-  if (typeof candidate !== "string" && typeof candidate !== "number") return "EFI_CARD_CLIENT_ERROR";
-  const normalized = String(candidate).trim().toUpperCase().replace(/[^A-Z0-9_]/g, "_");
-  return normalized && normalized.length <= 100 ? normalized : "EFI_CARD_CLIENT_ERROR";
-}
-
 /**
  * This is the sole client-side boundary for payment-token-efi. The SDK is
  * dynamically imported only after submit so it is never evaluated during SSR.
  * PAN and CVV remain local to this component and are cleared after tokenization.
+ * Only the ephemeral token plus non-sensitive brand/last4 metadata cross the
+ * browser/backend boundary.
  */
 export function EfiCardPaymentPanel({ sessionId }: { sessionId: string }) {
   const [holderName, setHolderName] = useState("");
@@ -52,50 +41,32 @@ export function EfiCardPaymentPanel({ sessionId }: { sessionId: string }) {
   const [expirationYear, setExpirationYear] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  const [browserStage, setBrowserStage] = useState<BrowserStage>("IDLE");
-  const [browserCode, setBrowserCode] = useState<string | null>(null);
-  const currentStage = useRef<BrowserStage>("IDLE");
-
-  const stage = (next: BrowserStage) => {
-    currentStage.current = next;
-    setBrowserStage(next);
-  };
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!accountIdentifier) {
-      stage("ERROR");
-      setBrowserCode("EFI_CARD_ACCOUNT_IDENTIFIER_MISSING");
-      setMessage("EFI_CARD_ACCOUNT_IDENTIFIER_MISSING");
+      setMessage("Pagamento por cartão indisponível no momento.");
       return;
     }
 
     const month = digits(expirationMonth);
     const year = normalizedExpiryYear(expirationYear);
     if (!/^(0[1-9]|1[0-2])$/.test(month) || !/^20\d{2}$/.test(year)) {
-      stage("ERROR");
-      setBrowserCode("EFI_CARD_EXPIRY_INVALID");
       setMessage("Use validade no formato MM / AAAA.");
       return;
     }
 
     setSubmitting(true);
     setMessage(null);
-    setBrowserCode(null);
     try {
-      stage("SDK_IMPORT");
       const { default: EfiPay } = await import("payment-token-efi");
-
-      stage("SCRIPT_CHECK");
       const scriptBlocked = await EfiPay.CreditCard.isScriptBlocked();
       if (scriptBlocked) throw new Error("EFI_CARD_FINGERPRINT_BLOCKED");
 
-      stage("BRAND");
       const cardNumber = digits(number);
       const brand = await EfiPay.CreditCard.setCardNumber(cardNumber).verifyCardBrand();
       if (!brand || brand === "undefined" || brand === "unsupported") throw new Error("EFI_CARD_BRAND_UNSUPPORTED");
 
-      stage("TOKENIZATION");
       const tokenResult = await EfiPay.CreditCard
         .setAccount(accountIdentifier)
         .setEnvironment("sandbox")
@@ -115,7 +86,6 @@ export function EfiCardPaymentPanel({ sessionId }: { sessionId: string }) {
         throw new Error("EFI_CARD_TOKENIZATION_FAILED");
       }
 
-      stage("BACKEND");
       const response = await fetch("/api/payments/efi-card", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -123,23 +93,15 @@ export function EfiCardPaymentPanel({ sessionId }: { sessionId: string }) {
           sessionId,
           paymentToken: tokenResult.payment_token,
           payer: { name: holderName.trim(), cpf: digits(holderDocument), email: email.trim(), phone: digits(phone) },
+          cardMeta: { brand: String(brand), last4: cardNumber.slice(-4) },
         }),
       });
       const body = (await response.json().catch(() => ({}))) as EfiCardResponse;
-      if (!response.ok) {
-        const backendCode = errorCode(body.error);
-        setBrowserCode(backendCode);
-        throw new Error(backendCode);
-      }
+      if (!response.ok) throw new Error(errorCode(body.error));
       const state = typeof body.payment === "object" && body.payment ? (body.payment as { state?: unknown }).state : null;
-      stage("DONE");
       setMessage(state === "PAID" ? "Pagamento aprovado." : state === "REVIEW" ? "Pagamento em análise." : "Pagamento enviado para confirmação.");
-    } catch (cause) {
-      const failedStage = currentStage.current;
-      const code = safeSdkError(cause);
-      stage("ERROR");
-      setBrowserCode(`${failedStage}_${code}`);
-      setMessage(code);
+    } catch {
+      setMessage("Não foi possível processar o cartão. Tente novamente somente após verificar o status do pagamento.");
     } finally {
       setNumber("");
       setCvv("");
@@ -148,7 +110,7 @@ export function EfiCardPaymentPanel({ sessionId }: { sessionId: string }) {
   };
 
   if (!accountIdentifier) {
-    return <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm font-semibold text-amber-800">EFI_CARD_ACCOUNT_IDENTIFIER_MISSING</p>;
+    return <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm font-semibold text-amber-800">Pagamento por cartão indisponível no momento.</p>;
   }
 
   return <section className="rounded-2xl border border-blue-200 bg-blue-50/50 p-4">
@@ -162,9 +124,6 @@ export function EfiCardPaymentPanel({ sessionId }: { sessionId: string }) {
       <div className="grid grid-cols-3 gap-2"><input required value={expirationMonth} onChange={(event) => setExpirationMonth(event.target.value)} placeholder="MM" inputMode="numeric" autoComplete="cc-exp-month" className="min-h-11 rounded-xl border bg-white px-3" /><input required value={expirationYear} onChange={(event) => setExpirationYear(event.target.value)} placeholder="AAAA" inputMode="numeric" autoComplete="cc-exp-year" className="min-h-11 rounded-xl border bg-white px-3" /><input required value={cvv} onChange={(event) => setCvv(event.target.value)} placeholder="CVV" inputMode="numeric" autoComplete="cc-csc" className="min-h-11 rounded-xl border bg-white px-3" /></div>
       <button type="submit" disabled={submitting} className="flex min-h-11 items-center justify-center gap-2 rounded-xl bg-blue-700 px-4 font-bold text-white disabled:opacity-50">{submitting ? <LoaderCircle className="size-4 animate-spin" /> : null}{submitting ? "Processando..." : "Pagar com cartão"}</button>
     </form>
-    <div className="mt-2 rounded-lg border border-slate-200 bg-white/70 px-3 py-2 text-[11px] font-semibold text-slate-600" aria-live="polite">
-      Etapa segura: {browserStage}{browserCode ? ` · ${browserCode}` : ""}
-    </div>
     {message ? <p role="status" className="mt-2 text-xs font-semibold text-slate-700">{message}</p> : null}
   </section>;
 }
