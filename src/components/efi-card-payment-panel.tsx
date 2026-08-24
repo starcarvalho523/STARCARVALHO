@@ -1,7 +1,7 @@
 "use client";
 
 import { LoaderCircle, ShieldCheck } from "lucide-react";
-import { FormEvent, useState } from "react";
+import { FormEvent, useRef, useState } from "react";
 
 type EfiCardResponse = {
   payment?: { state?: unknown };
@@ -10,12 +10,17 @@ type EfiCardResponse = {
   uncertain?: unknown;
 };
 
-type BrowserStage = "IDLE" | "SDK_IMPORT" | "BRAND" | "TOKENIZATION" | "BACKEND" | "DONE" | "ERROR";
+type BrowserStage = "IDLE" | "SDK_IMPORT" | "SCRIPT_CHECK" | "BRAND" | "TOKENIZATION" | "BACKEND" | "DONE" | "ERROR";
 
 const accountIdentifier = process.env.NEXT_PUBLIC_EFI_ACCOUNT_IDENTIFIER;
 
 function digits(value: string) {
   return value.replace(/\D/g, "");
+}
+
+function normalizedExpiryYear(value: string) {
+  const raw = digits(value);
+  return raw.length === 2 ? `20${raw}` : raw;
 }
 
 function errorCode(value: unknown): string {
@@ -49,13 +54,28 @@ export function EfiCardPaymentPanel({ sessionId }: { sessionId: string }) {
   const [message, setMessage] = useState<string | null>(null);
   const [browserStage, setBrowserStage] = useState<BrowserStage>("IDLE");
   const [browserCode, setBrowserCode] = useState<string | null>(null);
+  const currentStage = useRef<BrowserStage>("IDLE");
+
+  const stage = (next: BrowserStage) => {
+    currentStage.current = next;
+    setBrowserStage(next);
+  };
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!accountIdentifier) {
-      setBrowserStage("ERROR");
+      stage("ERROR");
       setBrowserCode("EFI_CARD_ACCOUNT_IDENTIFIER_MISSING");
       setMessage("EFI_CARD_ACCOUNT_IDENTIFIER_MISSING");
+      return;
+    }
+
+    const month = digits(expirationMonth);
+    const year = normalizedExpiryYear(expirationYear);
+    if (!/^(0[1-9]|1[0-2])$/.test(month) || !/^20\d{2}$/.test(year)) {
+      stage("ERROR");
+      setBrowserCode("EFI_CARD_EXPIRY_INVALID");
+      setMessage("Use validade no formato MM / AAAA.");
       return;
     }
 
@@ -63,15 +83,19 @@ export function EfiCardPaymentPanel({ sessionId }: { sessionId: string }) {
     setMessage(null);
     setBrowserCode(null);
     try {
-      setBrowserStage("SDK_IMPORT");
+      stage("SDK_IMPORT");
       const { default: EfiPay } = await import("payment-token-efi");
 
-      setBrowserStage("BRAND");
+      stage("SCRIPT_CHECK");
+      const scriptBlocked = await EfiPay.CreditCard.isScriptBlocked();
+      if (scriptBlocked) throw new Error("EFI_CARD_FINGERPRINT_BLOCKED");
+
+      stage("BRAND");
       const cardNumber = digits(number);
       const brand = await EfiPay.CreditCard.setCardNumber(cardNumber).verifyCardBrand();
       if (!brand || brand === "undefined" || brand === "unsupported") throw new Error("EFI_CARD_BRAND_UNSUPPORTED");
 
-      setBrowserStage("TOKENIZATION");
+      stage("TOKENIZATION");
       const tokenResult = await EfiPay.CreditCard
         .setAccount(accountIdentifier)
         .setEnvironment("sandbox")
@@ -79,8 +103,8 @@ export function EfiCardPaymentPanel({ sessionId }: { sessionId: string }) {
           brand,
           number: cardNumber,
           cvv: digits(cvv),
-          expirationMonth: digits(expirationMonth),
-          expirationYear: digits(expirationYear),
+          expirationMonth: month,
+          expirationYear: year,
           holderName: holderName.trim(),
           holderDocument: digits(holderDocument),
           reuse: false,
@@ -91,7 +115,7 @@ export function EfiCardPaymentPanel({ sessionId }: { sessionId: string }) {
         throw new Error("EFI_CARD_TOKENIZATION_FAILED");
       }
 
-      setBrowserStage("BACKEND");
+      stage("BACKEND");
       const response = await fetch("/api/payments/efi-card", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -103,16 +127,18 @@ export function EfiCardPaymentPanel({ sessionId }: { sessionId: string }) {
       });
       const body = (await response.json().catch(() => ({}))) as EfiCardResponse;
       if (!response.ok) {
-        setBrowserCode(errorCode(body.error));
-        throw new Error(errorCode(body.error));
+        const backendCode = errorCode(body.error);
+        setBrowserCode(backendCode);
+        throw new Error(backendCode);
       }
       const state = typeof body.payment === "object" && body.payment ? (body.payment as { state?: unknown }).state : null;
-      setBrowserStage("DONE");
+      stage("DONE");
       setMessage(state === "PAID" ? "Pagamento aprovado." : state === "REVIEW" ? "Pagamento em análise." : "Pagamento enviado para confirmação.");
     } catch (cause) {
-      setBrowserStage("ERROR");
-      const code = browserCode ?? safeSdkError(cause);
-      setBrowserCode(code);
+      const failedStage = currentStage.current;
+      const code = safeSdkError(cause);
+      stage("ERROR");
+      setBrowserCode(`${failedStage}_${code}`);
       setMessage(code);
     } finally {
       setNumber("");
