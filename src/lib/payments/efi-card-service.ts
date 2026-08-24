@@ -11,6 +11,11 @@ type CardContext = {
   creationState: string | null;
 };
 
+export type EfiCardMetadata = {
+  brand: string;
+  last4: string;
+};
+
 export class EfiCardServiceError extends Error {
   constructor(readonly publicCode: string, readonly httpStatus: number) {
     super(publicCode);
@@ -60,7 +65,7 @@ export class EfiCardService {
     if (error) throw rpcError("mark_efi_card_creation_failure");
   }
 
-  async createPayment(paymentId: string, paymentToken: string, payer: EfiCardPayer) {
+  async createPayment(paymentId: string, paymentToken: string, payer: EfiCardPayer, cardMeta: EfiCardMetadata) {
     const context = await this.context(paymentId);
     if (context.status === "PAID") return publicCard("PAID", context.amountCents);
     if (context.status !== "PENDING") throw new EfiCardServiceError("EFI_CARD_PAYMENT_NOT_PENDING", 409);
@@ -97,12 +102,14 @@ export class EfiCardService {
       throw unknown;
     }
 
+    const persistedBrand = charge.brand ?? cardMeta.brand;
+    const persistedLast4 = charge.last4 ?? cardMeta.last4;
     const { error: completeError } = await this.admin.rpc("complete_efi_card_creation", {
       target_payment: context.paymentId,
       target_charge_id: charge.chargeId,
       target_status: charge.status,
-      target_brand: charge.brand,
-      target_last4: charge.last4,
+      target_brand: persistedBrand,
+      target_last4: persistedLast4,
     });
     if (completeError) {
       throw new EfiCardServiceError("EFI_CARD_LOCAL_PERSISTENCE_FAILED", 502);
@@ -117,10 +124,10 @@ export class EfiCardService {
       });
       if (error) throw new EfiCardServiceError("EFI_CARD_SETTLEMENT_FAILED", 502);
       const result = data && typeof data === "object" ? String((data as { result?: unknown }).result ?? "") : "";
-      if (!["processed", "already_paid"].includes(result)) return publicCard("REVIEW", context.amountCents, charge.brand, charge.last4);
+      if (!["processed", "already_paid"].includes(result)) return publicCard("REVIEW", context.amountCents, persistedBrand, persistedLast4);
     }
 
-    return publicCard(charge.status, context.amountCents, charge.brand, charge.last4);
+    return publicCard(charge.status, context.amountCents, persistedBrand, persistedLast4);
   }
 
   async processNotification(notificationToken: string) {
