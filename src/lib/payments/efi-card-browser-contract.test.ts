@@ -6,7 +6,8 @@ const panel = readFileSync(new URL("../../components/efi-card-payment-panel.tsx"
 
 test("Efí card tokenization is constrained to a client-only panel", () => {
   assert.match(panel, /^"use client";/);
-  assert.match(panel, /import EfiPay from "payment-token-efi"/);
+  assert.doesNotMatch(panel, /^import EfiPay from "payment-token-efi"/m);
+  assert.match(panel, /await import\("payment-token-efi"\)/);
   assert.match(panel, /\.setEnvironment\("sandbox"\)/);
   assert.match(panel, /\.setCardNumber\(cardNumber\)\.verifyCardBrand\(\)/);
   assert.match(panel, /reuse: false/);
