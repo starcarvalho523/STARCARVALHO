@@ -57,7 +57,7 @@ export default async function Page() {
   const firstName = data.profile.full_name.trim().split(/\s+/)[0] || "Cliente";
 
   return (
-    <CustomerShell name={data.profile.full_name} active="Início" unreadNotifications={data.unreadNotifications}>
+    <CustomerShell name={data.profile.full_name} active="Início" unreadNotifications={data.unreadNotifications} wide>
       <div className="space-y-4">
         <div>
           <p className="text-sm font-semibold text-blue-600">Olá, {firstName}</p>
@@ -103,7 +103,7 @@ function ActiveStay({ data }: { data: Awaited<ReturnType<typeof getCustomerData>
   return (
     <>
       <section className="overflow-hidden rounded-3xl border bg-white shadow-sm">
-        <div className="border-b bg-blue-50/40 px-5 py-4 sm:px-6">
+        <div className="border-b bg-blue-50/40 px-5 py-4 sm:px-7">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-blue-600">Estadia atual</p>
@@ -119,7 +119,7 @@ function ActiveStay({ data }: { data: Awaited<ReturnType<typeof getCustomerData>
           </div>
         </div>
 
-        <div className="grid gap-y-4 border-b px-5 py-4 sm:grid-cols-2 sm:px-6 lg:grid-cols-6 lg:gap-y-0">
+        <div className="grid gap-y-4 border-b px-5 py-4 sm:grid-cols-2 sm:px-7 lg:grid-cols-6 lg:gap-y-0">
           <Info label="Entrada" value={formatDateTime(session.entered_at, timezone)} compact />
           <Info label="Permanência" value={formatDuration(duration)} compact />
           <Info label="Valor atual" value={amount == null ? "Em cálculo" : amountLabel} emphasis compact />
@@ -141,7 +141,7 @@ function ActiveStay({ data }: { data: Awaited<ReturnType<typeof getCustomerData>
         </div>
 
         {paid || canPay ? (
-          <div className="px-5 py-3 sm:px-6">
+          <div className="px-5 py-3 sm:px-7">
             <div className={`rounded-2xl border px-4 py-3 ${paid ? "border-emerald-200 bg-emerald-50/60" : "border-blue-200 bg-blue-50/60"}`}>
               <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                 <div className="min-w-0">
@@ -182,7 +182,7 @@ function ActiveStay({ data }: { data: Awaited<ReturnType<typeof getCustomerData>
             </div>
           </div>
         ) : (
-          <div className="flex flex-wrap items-center gap-2 px-5 py-3 sm:px-6">
+          <div className="flex flex-wrap items-center gap-2 px-5 py-3 sm:px-7">
             <Link
               href={`/cliente/estadias?session=${session.id}`}
               className="inline-flex min-h-10 items-center rounded-xl bg-blue-600 px-4 text-sm font-bold text-white transition hover:bg-blue-700"
@@ -199,24 +199,24 @@ function ActiveStay({ data }: { data: Awaited<ReturnType<typeof getCustomerData>
         )}
       </section>
 
-      <div className="grid items-stretch gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-        <section className="h-full rounded-2xl border bg-white p-3 shadow-sm sm:p-4">
+      <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+        <section className="rounded-2xl border bg-white p-3 shadow-sm sm:p-5">
           <ParkingForecastPanel sessionId={session.id} initialAmount={Number(amount ?? 0)} compact />
         </section>
 
-        <section className="h-full rounded-2xl border bg-white p-3 shadow-sm sm:p-4">
+        <section className="rounded-2xl border bg-white p-3 shadow-sm sm:p-5">
           <h2 className="text-sm font-bold uppercase tracking-wide text-blue-600">Acesso rápido</h2>
-          <div className="mt-3 grid grid-cols-2 gap-2 lg:grid-cols-4 lg:gap-1.5">
+          <div className="mt-3 grid grid-cols-2 gap-2 lg:grid-cols-4 lg:gap-2">
             {shortcuts.map(({ title, text, href, icon: Icon }) => (
               <Link
                 key={href}
                 href={href}
-                className="group relative flex min-w-0 items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50/70 px-2 py-2 transition hover:-translate-y-0.5 hover:border-blue-200 hover:bg-blue-50/50"
+                className="group relative flex min-w-0 items-center gap-2 rounded-xl border border-slate-200 bg-slate-50/70 px-2.5 py-2.5 transition hover:-translate-y-0.5 hover:border-blue-200 hover:bg-blue-50/50"
               >
-                <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-white text-blue-600 shadow-sm">
-                  <Icon className="size-3.5" />
+                <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-white text-blue-600 shadow-sm">
+                  <Icon className="size-4" />
                 </span>
-                <span className="min-w-0 flex-1 pr-1">
+                <span className="min-w-0 flex-1 pr-2">
                   <span className="block whitespace-nowrap text-xs font-bold leading-4">{title}</span>
                   <span className="mt-0.5 line-clamp-2 text-[11px] leading-3.5 text-slate-500">{text}</span>
                 </span>
@@ -258,7 +258,7 @@ function Info({
   compact?: boolean;
 }) {
   return (
-    <div className={compact ? "min-w-0 lg:border-r lg:border-slate-200 lg:px-4 first:lg:pl-0 last:lg:border-r-0 last:lg:pr-0" : ""}>
+    <div className={compact ? "min-w-0 lg:border-r lg:border-slate-200 lg:px-5 first:lg:pl-0 last:lg:border-r-0 last:lg:pr-0" : ""}>
       <p className="text-xs text-slate-500">{label}</p>
       <p className={`mt-1 break-words font-bold ${emphasis ? "text-xl text-emerald-600" : compact ? "text-sm" : ""}`}>{value}</p>
     </div>
