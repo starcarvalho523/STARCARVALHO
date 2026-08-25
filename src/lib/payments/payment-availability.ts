@@ -1,6 +1,7 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { isAsaasConfigured } from "./asaas-config";
+import { isEfiConfigured } from "./efi-config";
 import { isEfiCreditCardConfigured } from "./efi-credit-card-config";
 import type { PaymentCapability, PaymentChannel, PaymentMethod, PaymentProviderName } from "./payment-model";
 
@@ -18,7 +19,7 @@ export function canUsePayment(capabilities:PaymentCapability[],method:PaymentMet
 
 export function resolveCustomerPaymentOptions(capabilities:PaymentCapability[]):CustomerPaymentOptions {
   return {
-    pix:canUsePayment(capabilities,"PIX","QR","ASAAS"),
+    pix:canUsePayment(capabilities,"PIX","QR","EFI"),
     credit:canUsePayment(capabilities,"CREDIT_CARD","HOSTED_CHECKOUT","ASAAS"),
     efiCard:canUsePayment(capabilities,"CREDIT_CARD","TOKENIZED_CHECKOUT","EFI"),
   };
@@ -27,6 +28,7 @@ export function resolveCustomerPaymentOptions(capabilities:PaymentCapability[]):
 function providerConfigured(provider:PaymentProviderName,channel:PaymentChannel){
   if(provider==="INTERNAL")return channel==="MANUAL";
   if(provider==="ASAAS"&&(channel==="QR"||channel==="HOSTED_CHECKOUT"))return isAsaasConfigured();
+  if(provider==="EFI"&&channel==="QR")return isEfiConfigured();
   if(provider==="EFI"&&channel==="TOKENIZED_CHECKOUT")return isEfiCreditCardConfigured();
   return false;
 }
