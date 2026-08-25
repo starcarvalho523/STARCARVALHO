@@ -205,26 +205,28 @@ function ActiveStay({ data }: { data: Awaited<ReturnType<typeof getCustomerData>
         )}
       </section>
 
-      <div className="grid items-stretch gap-5 lg:grid-cols-2">
-        <section className="h-full rounded-2xl border bg-white p-3 shadow-sm sm:p-5">
+      <div className="grid items-stretch gap-4 lg:grid-cols-2">
+        <section className="h-full rounded-2xl border bg-white p-3 shadow-sm">
           <ParkingForecastPanel sessionId={session.id} initialAmount={Number(amount ?? 0)} compact />
         </section>
 
-        <section className="h-full rounded-2xl border bg-white p-3 shadow-sm sm:p-5">
+        <section className="h-full rounded-2xl border bg-white p-3 shadow-sm">
           <h2 className="text-sm font-bold uppercase tracking-wide text-blue-600">Acesso rápido</h2>
-          <div className="mt-4 grid h-[calc(100%-2.25rem)] grid-cols-2 gap-3 lg:grid-cols-4">
+          <div className="mt-2 grid grid-cols-2 gap-2 lg:grid-cols-4">
             {shortcuts.map(({ title, text, href, icon: Icon }) => (
               <Link
                 key={href}
                 href={href}
-                className="group flex min-h-44 min-w-0 flex-col rounded-2xl border border-slate-200 bg-white p-4 transition hover:-translate-y-0.5 hover:border-blue-200 hover:bg-blue-50/40"
+                className="group flex min-h-24 min-w-0 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 transition hover:-translate-y-0.5 hover:border-blue-200 hover:bg-blue-50/40"
               >
-                <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-blue-50 text-blue-600">
-                  <Icon className="size-5" />
+                <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-blue-50 text-blue-600">
+                  <Icon className="size-4.5" />
                 </span>
-                <p className="mt-5 whitespace-nowrap text-sm font-bold">{title}</p>
-                <p className="mt-2 line-clamp-3 text-xs leading-5 text-slate-500">{text}</p>
-                <ChevronRight className="mt-auto size-4 self-end text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-blue-500" />
+                <span className="min-w-0 flex-1">
+                  <span className="block whitespace-nowrap text-sm font-bold">{title}</span>
+                  <span className="mt-1 line-clamp-2 text-xs leading-4 text-slate-500">{text}</span>
+                </span>
+                <ChevronRight className="size-4 shrink-0 text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-blue-500" />
               </Link>
             ))}
           </div>
