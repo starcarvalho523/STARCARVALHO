@@ -123,11 +123,7 @@ function ActiveStay({ data }: { data: Awaited<ReturnType<typeof getCustomerData>
           <Info label="Entrada" value={formatDateTime(session.entered_at, timezone)} compact />
           <Info label="Permanência" value={formatDuration(duration)} compact />
           <Info label="Valor atual" value={amount == null ? "Em cálculo" : amountLabel} emphasis compact />
-          <Info
-            label="Tarifa"
-            value={String(session.tariff_snapshot?.name ?? charge?.tariff_name ?? "Tarifa da entrada")}
-            compact
-          />
+          <Info label="Tarifa" value={String(session.tariff_snapshot?.name ?? charge?.tariff_name ?? "Tarifa da entrada")} compact />
           <Info
             label="Situação financeira"
             value={monthly ?? (paid ? "Pagamento confirmado" : session.status === "PAYMENT_PENDING" ? "Pagamento pendente" : "Aguardando início da cobrança")}
@@ -212,21 +208,25 @@ function ActiveStay({ data }: { data: Awaited<ReturnType<typeof getCustomerData>
 
         <section className="h-full rounded-2xl border bg-white p-3 shadow-sm">
           <h2 className="text-sm font-bold uppercase tracking-wide text-blue-600">Acesso rápido</h2>
-          <div className="mt-2 grid grid-cols-2 gap-2 lg:grid-cols-4">
+          <div className="mt-2 grid h-[calc(100%-1.75rem)] grid-cols-2 gap-2 lg:grid-cols-4">
             {shortcuts.map(({ title, text, href, icon: Icon }) => (
               <Link
                 key={href}
                 href={href}
-                className="group flex min-h-24 min-w-0 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 transition hover:-translate-y-0.5 hover:border-blue-200 hover:bg-blue-50/40"
+                className="group flex min-h-40 min-w-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white transition hover:-translate-y-0.5 hover:border-blue-200 hover:bg-blue-50/40"
               >
-                <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-blue-50 text-blue-600">
-                  <Icon className="size-4.5" />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block whitespace-nowrap text-sm font-bold">{title}</span>
-                  <span className="mt-1 line-clamp-2 text-xs leading-4 text-slate-500">{text}</span>
-                </span>
-                <ChevronRight className="size-4 shrink-0 text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-blue-500" />
+                <div className="flex flex-1 flex-col p-4">
+                  <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-blue-50 text-blue-600">
+                    <Icon className="size-5" />
+                  </span>
+                  <span className="mt-4 whitespace-nowrap text-sm font-bold">{title}</span>
+                  <span className="mt-2 line-clamp-2 text-xs leading-5 text-slate-500">{text}</span>
+                </div>
+                <div className="flex min-h-12 items-center justify-end border-t border-blue-50 bg-blue-50/70 px-3">
+                  <span className="grid size-8 place-items-center rounded-full bg-white text-blue-700 shadow-sm transition group-hover:translate-x-0.5 group-hover:bg-blue-600 group-hover:text-white">
+                    <ChevronRight className="size-4" />
+                  </span>
+                </div>
               </Link>
             ))}
           </div>
