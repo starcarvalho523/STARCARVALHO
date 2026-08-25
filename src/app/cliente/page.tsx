@@ -198,23 +198,24 @@ function ActiveStay({ data }: { data: Awaited<ReturnType<typeof getCustomerData>
         )}
       </section>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <section className="rounded-2xl border bg-white p-4 shadow-sm">
-          <ParkingForecastPanel sessionId={session.id} initialAmount={Number(amount ?? 0)} />
+      <div className="grid items-stretch gap-4 lg:grid-cols-2">
+        <section className="h-full rounded-2xl border bg-white p-3 shadow-sm sm:p-4">
+          <ParkingForecastPanel sessionId={session.id} initialAmount={Number(amount ?? 0)} compact />
         </section>
 
-        <section className="rounded-2xl border bg-white p-4 shadow-sm">
+        <section className="h-full rounded-2xl border bg-white p-3 shadow-sm sm:p-4">
           <h2 className="text-sm font-bold uppercase tracking-wide text-blue-600">Acesso rápido</h2>
-          <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-3 grid grid-cols-2 gap-2 lg:grid-cols-4">
             {shortcuts.map(({ title, text, href, icon: Icon }) => (
               <Link
                 key={href}
                 href={href}
-                className="group rounded-xl border bg-white p-3 transition hover:-translate-y-0.5 hover:border-blue-200 hover:bg-blue-50/30"
+                className="group flex min-h-32 min-w-0 flex-col rounded-xl border bg-white p-3 transition hover:-translate-y-0.5 hover:border-blue-200 hover:bg-blue-50/30 lg:min-h-0"
               >
-                <Icon className="size-5 text-blue-600" />
-                <p className="mt-5 font-bold">{title}</p>
+                <Icon className="size-5 shrink-0 text-blue-600" />
+                <p className="mt-4 break-words font-bold">{title}</p>
                 <p className="mt-1 text-xs leading-5 text-slate-500">{text}</p>
+                <span className="mt-auto self-end pt-2 text-lg text-slate-400 transition group-hover:translate-x-0.5 group-hover:text-blue-600">›</span>
               </Link>
             ))}
           </div>
