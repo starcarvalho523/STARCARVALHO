@@ -22,9 +22,11 @@ type Forecast = {
 export function ParkingForecastPanel({
   sessionId,
   initialAmount,
+  compact = false,
 }: {
   sessionId: string;
   initialAmount: number;
+  compact?: boolean;
 }) {
   const [forecast, setForecast] = useState<Forecast | null>(null);
   const [seconds, setSeconds] = useState<number | null>(null);
@@ -77,17 +79,17 @@ export function ParkingForecastPanel({
   const timeline=useMemo(()=>buildTimeline(forecast),[forecast]);
   if (forecast?.covered)
     return (
-      <section className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+      <section className={`rounded-2xl border border-emerald-200 bg-emerald-50 ${compact ? "p-3" : "p-4"}`}>
         <p className="font-semibold text-emerald-800">Estadia coberta pela mensalidade.</p>
         <p className="mt-1 text-sm text-emerald-700">Nenhuma cobrança avulsa é prevista enquanto a cobertura permanecer válida.</p>
       </section>
     );
   return (
-    <section className="space-y-4 rounded-2xl border border-blue-100 bg-blue-50/50 p-4">
+    <section className={`${compact ? "space-y-2.5 p-3" : "space-y-4 p-4"} rounded-2xl border border-blue-100 bg-blue-50/50`}>
       <div>
         <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">Previsibilidade da estadia</p>
-        <div className="mt-3 grid gap-3 sm:grid-cols-3">
-          <Metric label="Agora" value={money(amount)} />
+        <div className={`${compact ? "mt-2 gap-2" : "mt-3 gap-3"} grid sm:grid-cols-3`}>
+          <Metric label="Agora" value={money(amount)} compact={compact} />
           <Metric
             label="Próxima mudança"
             value={
@@ -97,6 +99,7 @@ export function ParkingForecastPanel({
                   ? "Atualizando..."
                   : shortDuration(seconds)
             }
+            compact={compact}
           />
           <Metric
             label="Estimativa após mudança"
@@ -105,56 +108,66 @@ export function ParkingForecastPanel({
                 ? money(forecast.estimatedNextAmount)
                 : "—"
             }
+            compact={compact}
           />
         </div>
       </div>
 
       {forecast && timeline.length ? (
-        <div className="rounded-xl border border-blue-100 bg-white/80 p-3">
+        <div className={`${compact ? "p-2.5" : "p-3"} rounded-xl border border-blue-100 bg-white/80`}>
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Como a tarifa evolui</p>
-          <div className="mt-3 flex flex-wrap items-stretch gap-2">
+          <div className={`${compact ? "mt-2 gap-1.5 lg:flex-nowrap" : "mt-3 gap-2"} flex flex-wrap items-stretch`}>
             {timeline.map((item,index)=>(
-              <div key={item.label} className="flex min-w-0 items-center gap-2">
-                <div className={`rounded-xl border px-3 py-2 ${item.active?"border-blue-400 bg-blue-50":"bg-white"}`}>
+              <div key={item.label} className={`${compact ? "flex-1" : ""} flex min-w-0 items-center gap-1.5`}>
+                <div className={`${compact ? "w-full px-2.5 py-1.5" : "px-3 py-2"} rounded-xl border ${item.active?"border-blue-400 bg-blue-50":"bg-white"}`}>
                   <p className="text-xs font-bold text-slate-700">{item.label}</p>
                   <p className="mt-0.5 text-xs text-slate-500">{item.detail}</p>
                 </div>
-                {index<timeline.length-1?<span className="text-slate-300">→</span>:null}
+                {index<timeline.length-1?<span className="shrink-0 text-slate-300">→</span>:null}
               </div>
             ))}
           </div>
         </div>
       ) : null}
 
-      {forecast && forecast.graceRemainingSeconds > 0 ? (
-        <p className="text-sm text-blue-800">
-          Você está dentro da tolerância: aproximadamente {shortDuration(forecast.graceRemainingSeconds)} restantes.
-        </p>
-      ) : null}
-      {forecast?.dailyCapReached ? (
-        <p className="text-sm font-semibold text-emerald-800">
-          Você atingiu o valor máximo previsto para esta diária.
-        </p>
-      ) : forecast?.dailyCapAmount ? (
-        <p className="text-sm text-slate-600">
-          Teto da diária: {money(forecast.dailyCapAmount)}.
-        </p>
-      ) : null}
-      {forecast ? (
-        <p className="text-xs text-slate-500">
-          Alerta interno configurado para {forecast.alertMinutes} minutos antes da próxima mudança de valor. Valores futuros são estimativas; o servidor confirma o valor oficial.
+      {compact && forecast ? (
+        <p className="text-xs leading-5 text-slate-500">
+          {forecast.dailyCapAmount ? `Teto da diária: ${money(forecast.dailyCapAmount)}. ` : ""}
+          Alerta interno configurado para {forecast.alertMinutes} minutos antes da próxima mudança. Valores futuros são estimativas; o servidor confirma o valor oficial.
         </p>
       ) : (
-        <p className="text-xs text-slate-500">Valores futuros são estimativas. O servidor confirma o valor oficial.</p>
+        <>
+          {forecast && forecast.graceRemainingSeconds > 0 ? (
+            <p className="text-sm text-blue-800">
+              Você está dentro da tolerância: aproximadamente {shortDuration(forecast.graceRemainingSeconds)} restantes.
+            </p>
+          ) : null}
+          {forecast?.dailyCapReached ? (
+            <p className="text-sm font-semibold text-emerald-800">
+              Você atingiu o valor máximo previsto para esta diária.
+            </p>
+          ) : forecast?.dailyCapAmount ? (
+            <p className="text-sm text-slate-600">
+              Teto da diária: {money(forecast.dailyCapAmount)}.
+            </p>
+          ) : null}
+          {forecast ? (
+            <p className="text-xs text-slate-500">
+              Alerta interno configurado para {forecast.alertMinutes} minutos antes da próxima mudança de valor. Valores futuros são estimativas; o servidor confirma o valor oficial.
+            </p>
+          ) : (
+            <p className="text-xs text-slate-500">Valores futuros são estimativas. O servidor confirma o valor oficial.</p>
+          )}
+        </>
       )}
     </section>
   );
 }
-function Metric({ label, value }: { label: string; value: string }) {
+function Metric({ label, value, compact=false }: { label: string; value: string; compact?:boolean }) {
   return (
-    <div className="rounded-xl bg-white/80 p-3">
+    <div className={`rounded-xl bg-white/80 ${compact ? "p-2.5" : "p-3"}`}>
       <p className="text-xs text-slate-500">{label}</p>
-      <p className="mt-1 text-lg font-bold">{value}</p>
+      <p className={`${compact ? "text-base" : "text-lg"} mt-1 font-bold`}>{value}</p>
     </div>
   );
 }
