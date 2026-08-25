@@ -4,6 +4,7 @@ import Link from "next/link";
 import {
   CalendarDays,
   CarFront,
+  ChevronRight,
   CreditCard,
   ShieldCheck,
   UserRound,
@@ -210,12 +211,16 @@ function ActiveStay({ data }: { data: Awaited<ReturnType<typeof getCustomerData>
               <Link
                 key={href}
                 href={href}
-                className="group flex min-h-32 min-w-0 flex-col rounded-xl border bg-white p-3 transition hover:-translate-y-0.5 hover:border-blue-200 hover:bg-blue-50/30 lg:min-h-0"
+                className="group relative flex min-w-0 items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50/70 px-2 py-2.5 transition hover:-translate-y-0.5 hover:border-blue-200 hover:bg-blue-50/50"
               >
-                <Icon className="size-5 shrink-0 text-blue-600" />
-                <p className="mt-4 break-words font-bold">{title}</p>
-                <p className="mt-1 text-xs leading-5 text-slate-500">{text}</p>
-                <span className="mt-auto self-end pt-2 text-lg text-slate-400 transition group-hover:translate-x-0.5 group-hover:text-blue-600">›</span>
+                <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-white text-blue-600 shadow-sm">
+                  <Icon className="size-3.5" />
+                </span>
+                <span className="min-w-0 flex-1 pr-1">
+                  <span className="block whitespace-nowrap text-xs font-bold leading-4">{title}</span>
+                  <span className="mt-0.5 line-clamp-2 text-[11px] leading-3.5 text-slate-500">{text}</span>
+                </span>
+                <ChevronRight className="absolute bottom-1.5 right-1.5 size-3.5 text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-blue-500" />
               </Link>
             ))}
           </div>
