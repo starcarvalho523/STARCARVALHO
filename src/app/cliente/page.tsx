@@ -143,8 +143,8 @@ function ActiveStay({ data }: { data: Awaited<ReturnType<typeof getCustomerData>
         {paid || canPay ? (
           <div className="px-5 py-3 sm:px-7">
             <div className={`rounded-2xl border px-4 py-3 ${paid ? "border-emerald-200 bg-emerald-50/60" : "border-blue-200 bg-blue-50/60"}`}>
-              <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                <div className="min-w-0">
+              <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] lg:items-center">
+                <div className="min-w-0 lg:justify-self-start">
                   <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
                     <p className={`text-xs font-bold uppercase tracking-wide ${paid ? "text-emerald-700" : "text-blue-700"}`}>
                       {paid ? "Pagamento confirmado" : "Pagamento pendente"}
@@ -155,7 +155,8 @@ function ActiveStay({ data }: { data: Awaited<ReturnType<typeof getCustomerData>
                     {paid ? "Pagamento recebido. A saída será liberada pelo atendimento." : "Você já pode concluir o pagamento desta estadia."}
                   </p>
                 </div>
-                <div className="flex flex-wrap items-center gap-2">
+
+                <div className={`justify-self-center ${canPay ? "motion-safe:animate-pulse" : ""}`}>
                   <CustomerPaymentTrigger
                     sessionId={session.id}
                     plate={session.plate_snapshot}
@@ -165,6 +166,9 @@ function ActiveStay({ data }: { data: Awaited<ReturnType<typeof getCustomerData>
                     paid={paid}
                     compact
                   />
+                </div>
+
+                <div className="flex flex-wrap items-center justify-start gap-2 lg:justify-self-end">
                   <Link
                     href={`/cliente/estadias?session=${session.id}`}
                     className="inline-flex min-h-10 items-center rounded-xl bg-blue-600 px-4 text-sm font-bold text-white transition hover:bg-blue-700"
@@ -173,8 +177,9 @@ function ActiveStay({ data }: { data: Awaited<ReturnType<typeof getCustomerData>
                   </Link>
                   <Link
                     href="/cliente/pagamentos"
-                    className="inline-flex min-h-10 items-center rounded-xl px-3 text-sm font-semibold text-blue-700 hover:bg-white/70"
+                    className={`inline-flex min-h-10 items-center gap-2 rounded-xl bg-blue-600 px-4 text-sm font-bold text-white shadow-[0_8px_24px_rgba(37,99,235,.22)] ring-1 ring-blue-300 transition hover:bg-blue-700 ${paid ? "motion-safe:animate-pulse" : ""}`}
                   >
+                    <CreditCard className="size-4" />
                     Ver pagamentos e recibos
                   </Link>
                 </div>
@@ -191,36 +196,35 @@ function ActiveStay({ data }: { data: Awaited<ReturnType<typeof getCustomerData>
             </Link>
             <Link
               href="/cliente/pagamentos"
-              className="inline-flex min-h-10 items-center rounded-xl px-3 text-sm font-semibold text-blue-700 hover:bg-blue-50"
+              className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-blue-600 px-4 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700"
             >
+              <CreditCard className="size-4" />
               Ver pagamentos e recibos
             </Link>
           </div>
         )}
       </section>
 
-      <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-        <section className="rounded-2xl border bg-white p-3 shadow-sm sm:p-5">
+      <div className="grid items-stretch gap-5 lg:grid-cols-2">
+        <section className="h-full rounded-2xl border bg-white p-3 shadow-sm sm:p-5">
           <ParkingForecastPanel sessionId={session.id} initialAmount={Number(amount ?? 0)} compact />
         </section>
 
-        <section className="rounded-2xl border bg-white p-3 shadow-sm sm:p-5">
+        <section className="h-full rounded-2xl border bg-white p-3 shadow-sm sm:p-5">
           <h2 className="text-sm font-bold uppercase tracking-wide text-blue-600">Acesso rápido</h2>
-          <div className="mt-3 grid grid-cols-2 gap-2 lg:grid-cols-4 lg:gap-2">
+          <div className="mt-4 grid h-[calc(100%-2.25rem)] grid-cols-2 gap-3 lg:grid-cols-4">
             {shortcuts.map(({ title, text, href, icon: Icon }) => (
               <Link
                 key={href}
                 href={href}
-                className="group relative flex min-w-0 items-center gap-2 rounded-xl border border-slate-200 bg-slate-50/70 px-2.5 py-2.5 transition hover:-translate-y-0.5 hover:border-blue-200 hover:bg-blue-50/50"
+                className="group flex min-h-44 min-w-0 flex-col rounded-2xl border border-slate-200 bg-white p-4 transition hover:-translate-y-0.5 hover:border-blue-200 hover:bg-blue-50/40"
               >
-                <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-white text-blue-600 shadow-sm">
-                  <Icon className="size-4" />
+                <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-blue-50 text-blue-600">
+                  <Icon className="size-5" />
                 </span>
-                <span className="min-w-0 flex-1 pr-2">
-                  <span className="block whitespace-nowrap text-xs font-bold leading-4">{title}</span>
-                  <span className="mt-0.5 line-clamp-2 text-[11px] leading-3.5 text-slate-500">{text}</span>
-                </span>
-                <ChevronRight className="absolute bottom-1.5 right-1.5 size-3.5 text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-blue-500" />
+                <p className="mt-5 whitespace-nowrap text-sm font-bold">{title}</p>
+                <p className="mt-2 line-clamp-3 text-xs leading-5 text-slate-500">{text}</p>
+                <ChevronRight className="mt-auto size-4 self-end text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-blue-500" />
               </Link>
             ))}
           </div>
