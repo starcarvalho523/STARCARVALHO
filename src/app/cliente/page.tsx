@@ -199,19 +199,19 @@ function ActiveStay({ data }: { data: Awaited<ReturnType<typeof getCustomerData>
         )}
       </section>
 
-      <div className="grid items-stretch gap-4 lg:grid-cols-2">
+      <div className="grid items-stretch gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
         <section className="h-full rounded-2xl border bg-white p-3 shadow-sm sm:p-4">
           <ParkingForecastPanel sessionId={session.id} initialAmount={Number(amount ?? 0)} compact />
         </section>
 
         <section className="h-full rounded-2xl border bg-white p-3 shadow-sm sm:p-4">
           <h2 className="text-sm font-bold uppercase tracking-wide text-blue-600">Acesso rápido</h2>
-          <div className="mt-3 grid grid-cols-2 gap-2 lg:grid-cols-4">
+          <div className="mt-3 grid grid-cols-2 gap-2 lg:grid-cols-4 lg:gap-1.5">
             {shortcuts.map(({ title, text, href, icon: Icon }) => (
               <Link
                 key={href}
                 href={href}
-                className="group relative flex min-w-0 items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50/70 px-2 py-2.5 transition hover:-translate-y-0.5 hover:border-blue-200 hover:bg-blue-50/50"
+                className="group relative flex min-w-0 items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50/70 px-2 py-2 transition hover:-translate-y-0.5 hover:border-blue-200 hover:bg-blue-50/50"
               >
                 <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-white text-blue-600 shadow-sm">
                   <Icon className="size-3.5" />
