@@ -15,6 +15,13 @@ test("gets a QR code using the fixed Efí sandbox host, GET, and Bearer", async 
   assert.equal(config.baseUrl, "https://pix-h.api.efipay.com.br"); assert.equal(transport.last?.method, "GET"); assert.equal(transport.last?.path, "/v2/loc/42/qrcode"); assert.equal(transport.last?.headers.authorization, "Bearer access-token-secret");
 });
 
+test("preserves an Efí QR image that already arrives as a data URI", async () => {
+  const image = "data:image/png;base64,already-prefixed";
+  const transport = new FakeTransport({ status: 200, body: JSON.stringify({ qrcode: "payload", imagemQrcode: image }) });
+  const result = await new EfiPixQrClient(config, { oauth, transport }).getQrCode(42);
+  assert.equal(result.qrImageDataUri, image);
+});
+
 test("rejects invalid location ids before OAuth or HTTP", async () => {
   for (const locationId of [0, -1, Number.NaN, Number.POSITIVE_INFINITY, 1.5]) {
     let oauthCalled = false; const transport = new FakeTransport({ status: 200, body: "{}" });
