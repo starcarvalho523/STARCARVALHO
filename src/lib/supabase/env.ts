@@ -1,5 +1,6 @@
 const PRODUCTION_VERCEL_HOST = "starcarvalho.vercel.app";
 const EFI_CARD_QA_PREVIEW_BRANCH = "feat/efi-credit-card-sandbox";
+const EFI_CARD_PRODUCTION_BRANCH = "main";
 const QA_SUPABASE_URL = "https://hqdaqijgloeiqrljulqx.supabase.co";
 // Supabase publishable keys are intentionally public client credentials; RLS remains the security boundary.
 const QA_SUPABASE_PUBLISHABLE_KEY = "sb_publishable_VjQXDvN3oA0F1PHQKmzLkA_8GFzFT45";
@@ -24,6 +25,21 @@ export function isEfiCardQaPreviewRuntime(
   return (
     environment.VERCEL_ENV === "preview" &&
     environment.VERCEL_GIT_COMMIT_REF === EFI_CARD_QA_PREVIEW_BRANCH
+  );
+}
+
+/**
+ * Production card runtime gate. This is deliberately not wired into the active
+ * payment routes yet. A future rollout must satisfy all three conditions and
+ * separately pass provider configuration + database capability checks.
+ */
+export function isEfiCardProductionRuntimeEnabled(
+  environment: NodeJS.ProcessEnv = process.env,
+) {
+  return (
+    environment.VERCEL_ENV === "production" &&
+    environment.VERCEL_GIT_COMMIT_REF === EFI_CARD_PRODUCTION_BRANCH &&
+    environment.EFI_CARD_PRODUCTION_ENABLED === "true"
   );
 }
 
