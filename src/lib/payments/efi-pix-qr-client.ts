@@ -53,5 +53,8 @@ function parseQrCode(body: string): EfiPixQrCode {
   let parsed: unknown; try { parsed = JSON.parse(body); } catch { throw new Error("EFI_INVALID_RESPONSE"); }
   if (!parsed || typeof parsed !== "object" || typeof (parsed as Record<string, unknown>).qrcode !== "string" || !(parsed as Record<string, unknown>).qrcode) throw new Error("EFI_INVALID_RESPONSE");
   const image = (parsed as Record<string, unknown>).imagemQrcode;
-  return { qrPayload: (parsed as Record<string, string>).qrcode, qrImageDataUri: typeof image === "string" && image ? `data:image/png;base64,${image}` : null };
+  const normalizedImage = typeof image === "string" && image
+    ? image.startsWith("data:image/") ? image : `data:image/png;base64,${image}`
+    : null;
+  return { qrPayload: (parsed as Record<string, string>).qrcode, qrImageDataUri: normalizedImage };
 }
