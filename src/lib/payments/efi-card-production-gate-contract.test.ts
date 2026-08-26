@@ -32,3 +32,16 @@ test("QA gate is pinned to Vercel Preview and the dedicated Sandbox branch", () 
   assert.match(supabaseEnv, /EFI_CARD_QA_PREVIEW_BRANCH = "feat\/efi-credit-card-sandbox"/);
   assert.match(supabaseEnv, /VERCEL_GIT_COMMIT_REF === EFI_CARD_QA_PREVIEW_BRANCH/);
 });
+
+test("Production gate requires Vercel Production, main and an explicit opt-in flag", () => {
+  assert.match(supabaseEnv, /EFI_CARD_PRODUCTION_BRANCH = "main"/);
+  assert.match(supabaseEnv, /environment\.VERCEL_ENV === "production"/);
+  assert.match(supabaseEnv, /environment\.VERCEL_GIT_COMMIT_REF === EFI_CARD_PRODUCTION_BRANCH/);
+  assert.match(supabaseEnv, /environment\.EFI_CARD_PRODUCTION_ENABLED === "true"/);
+});
+
+test("Production gate remains unused by active card routes and availability", () => {
+  assert.doesNotMatch(availability, /isEfiCardProductionRuntimeEnabled/);
+  assert.doesNotMatch(paymentRoute, /isEfiCardProductionRuntimeEnabled/);
+  assert.doesNotMatch(notificationRoute, /isEfiCardProductionRuntimeEnabled/);
+});
