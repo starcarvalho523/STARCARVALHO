@@ -1,6 +1,9 @@
 import { EfiCardService } from "@/lib/payments/efi-card-service";
+import { isEfiCardQaPreviewRuntime } from "@/lib/supabase/env";
 
 export async function POST(request: Request) {
+  if (!isEfiCardQaPreviewRuntime()) return Response.json({ error: "EFI_CARD_NOTIFICATION_NOT_AVAILABLE" }, { status: 404 });
+
   const contentLength = Number(request.headers.get("content-length") ?? "0");
   if (Number.isFinite(contentLength) && contentLength > 8192) return Response.json({ error: "EFI_CARD_NOTIFICATION_INVALID" }, { status: 413 });
 
