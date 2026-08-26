@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { isEfiCardQaPreviewRuntime } from "@/lib/supabase/env";
 import { EfiCardService, EfiCardServiceError } from "@/lib/payments/efi-card-service";
 import { EfiCardProviderError } from "@/lib/payments/efi-credit-card-client";
 import type { EfiCardPayer } from "@/lib/payments/efi-credit-card-client";
@@ -28,6 +29,8 @@ function cardMetaFrom(value: unknown): EfiCardMetadata | null {
 }
 
 export async function POST(request: Request) {
+  if (!isEfiCardQaPreviewRuntime()) return Response.json({ error: "EFI_CARD_NOT_AVAILABLE" }, { status: 404 });
+
   const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
   if (!body || Object.keys(body).some((key) => forbidden.has(key) || !allowed.has(key))) return Response.json({ error: "EFI_CARD_INVALID_REQUEST" }, { status: 400 });
   if (typeof body.sessionId !== "string" || typeof body.paymentToken !== "string" || body.paymentToken.length < 8 || body.paymentToken.length > 4096) return Response.json({ error: "EFI_CARD_INVALID_REQUEST" }, { status: 400 });
