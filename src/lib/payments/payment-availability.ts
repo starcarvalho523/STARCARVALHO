@@ -1,5 +1,6 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
+import { isEfiCardQaPreviewRuntime } from "@/lib/supabase/env";
 import { isAsaasConfigured } from "./asaas-config";
 import { isEfiConfigured } from "./efi-config";
 import { isEfiCreditCardConfigured } from "./efi-credit-card-config";
@@ -21,7 +22,7 @@ export function resolveCustomerPaymentOptions(capabilities:PaymentCapability[]):
   return {
     pix:canUsePayment(capabilities,"PIX","QR","EFI"),
     credit:canUsePayment(capabilities,"CREDIT_CARD","HOSTED_CHECKOUT","ASAAS"),
-    efiCard:canUsePayment(capabilities,"CREDIT_CARD","TOKENIZED_CHECKOUT","EFI"),
+    efiCard:isEfiCardQaPreviewRuntime()&&canUsePayment(capabilities,"CREDIT_CARD","TOKENIZED_CHECKOUT","EFI"),
   };
 }
 
@@ -29,6 +30,6 @@ function providerConfigured(provider:PaymentProviderName,channel:PaymentChannel)
   if(provider==="INTERNAL")return channel==="MANUAL";
   if(provider==="ASAAS"&&(channel==="QR"||channel==="HOSTED_CHECKOUT"))return isAsaasConfigured();
   if(provider==="EFI"&&channel==="QR")return isEfiConfigured();
-  if(provider==="EFI"&&channel==="TOKENIZED_CHECKOUT")return isEfiCreditCardConfigured();
+  if(provider==="EFI"&&channel==="TOKENIZED_CHECKOUT")return isEfiCardQaPreviewRuntime()&&isEfiCreditCardConfigured();
   return false;
 }
