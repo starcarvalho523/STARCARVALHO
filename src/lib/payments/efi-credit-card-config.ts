@@ -1,5 +1,7 @@
 import "server-only";
 
+export type EfiCardProviderEnvironment = "SANDBOX" | "PRODUCTION";
+
 export type EfiCreditCardConfig = {
   baseUrl: "https://cobrancas-h.api.efipay.com.br" | "https://cobrancas.api.efipay.com.br";
   clientId: string;
@@ -71,6 +73,15 @@ export function resolveEfiCreditCardProductionConfig(
       "EFI_CARD_PRODUCTION_NOTIFICATION_URL_INVALID",
     ),
   };
+}
+
+export function resolveEfiCreditCardConfigForEnvironment(
+  environment: EfiCardProviderEnvironment,
+  env: NodeJS.ProcessEnv = process.env,
+): EfiCreditCardConfig {
+  return environment === "PRODUCTION"
+    ? resolveEfiCreditCardProductionConfig(env)
+    : resolveEfiCreditCardConfig(env);
 }
 
 /** Server-only readiness check. It deliberately exposes no configuration values. */
