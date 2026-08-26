@@ -20,11 +20,16 @@ test("Efí card payment route fails closed before reading payment input outside 
   assert.match(paymentRoute, /EFI_CARD_NOT_AVAILABLE/);
 });
 
-test("Efí card notification route fails closed before parsing provider input outside QA preview", () => {
-  const gate = notificationRoute.indexOf("if (!isEfiCardQaPreviewRuntime())");
+test("Efí card notification route allows only QA or the explicit Production runtime gate", () => {
+  const qaGate = notificationRoute.indexOf("isEfiCardQaPreviewRuntime()");
+  const productionGate = notificationRoute.indexOf("isEfiCardProductionRuntimeEnabled()");
+  const failClosed = notificationRoute.indexOf("if (!isQa && !isProduction)");
   const form = notificationRoute.indexOf("request.formData()");
-  assert.ok(gate >= 0 && form > gate);
+
+  assert.ok(qaGate >= 0 && productionGate >= 0 && failClosed >= 0 && form > failClosed);
   assert.match(notificationRoute, /EFI_CARD_NOTIFICATION_NOT_AVAILABLE/);
+  assert.match(notificationRoute, /isProduction \? "PRODUCTION" : "SANDBOX"/);
+  assert.match(notificationRoute, /new EfiCardService\(undefined, environment\)/);
 });
 
 test("QA gate is pinned to Vercel Preview and the dedicated Sandbox branch", () => {
@@ -40,8 +45,8 @@ test("Production gate requires Vercel Production, main and an explicit opt-in fl
   assert.match(supabaseEnv, /environment\.EFI_CARD_PRODUCTION_ENABLED === "true"/);
 });
 
-test("Production gate remains unused by active card routes and availability", () => {
+test("Production remains unavailable to customers until later activation", () => {
   assert.doesNotMatch(availability, /isEfiCardProductionRuntimeEnabled/);
   assert.doesNotMatch(paymentRoute, /isEfiCardProductionRuntimeEnabled/);
-  assert.doesNotMatch(notificationRoute, /isEfiCardProductionRuntimeEnabled/);
+  assert.match(notificationRoute, /isEfiCardProductionRuntimeEnabled/);
 });
