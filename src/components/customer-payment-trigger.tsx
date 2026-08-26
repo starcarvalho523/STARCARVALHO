@@ -3,8 +3,9 @@
 import { useState } from "react";
 import { CheckCircle2, CreditCard } from "lucide-react";
 import { CustomerPaymentModal } from "@/components/customer-payment-modal";
+import type { EfiCardBrowserEnvironment } from "@/lib/payments/payment-availability";
 
-type PaymentOptions = { pix: boolean; credit: boolean; efiCard: boolean };
+type PaymentOptions = { pix: boolean; credit: boolean; efiCard: boolean; efiCardEnvironment?: EfiCardBrowserEnvironment | null };
 
 export function CustomerPaymentTrigger({
   sessionId,

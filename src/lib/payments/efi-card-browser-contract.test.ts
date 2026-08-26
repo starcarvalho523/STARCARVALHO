@@ -9,10 +9,20 @@ test("Efí card tokenization is constrained to a client-only panel", () => {
   assert.match(panel, /^"use client";/);
   assert.doesNotMatch(panel, /^import EfiPay from "payment-token-efi"/m);
   assert.match(panel, /await import\("payment-token-efi"\)/);
-  assert.match(panel, /\.setEnvironment\("sandbox"\)/);
+  assert.match(panel, /\.setEnvironment\(environment\)/);
+  assert.match(panel, /NEXT_PUBLIC_EFI_ACCOUNT_IDENTIFIER/);
+  assert.match(panel, /NEXT_PUBLIC_EFI_PRODUCTION_ACCOUNT_IDENTIFIER/);
+  assert.match(panel, /environment === "production"/);
   assert.match(panel, /\.setCardNumber\([^)]*cardNumber[^)]*\)\.verifyCardBrand\(\)/);
   assert.match(panel, /reuse: false/);
   assert.match(panel, /isScriptBlocked\(\)/);
+});
+
+test("Efí card browser environment is supplied by the server-rendered payment option", () => {
+  assert.match(modal, /options\.efiCard && options\.efiCardEnvironment/);
+  assert.match(modal, /environment=\{options\.efiCardEnvironment\}/);
+  assert.doesNotMatch(panel, /VERCEL_ENV/);
+  assert.doesNotMatch(panel, /EFI_CARD_PRODUCTION_ENABLED/);
 });
 
 test("Efí card sends only its ephemeral token, payer and non-sensitive card metadata", () => {

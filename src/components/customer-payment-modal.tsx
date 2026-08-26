@@ -6,8 +6,9 @@ import { LockKeyhole, ShieldCheck, X } from "lucide-react";
 import { EfiCardPaymentPanel } from "@/components/efi-card-payment-panel";
 import { PixPaymentPanel } from "@/components/pix-payment-panel";
 import { CreditCheckoutPanel } from "@/components/credit-checkout-panel";
+import type { EfiCardBrowserEnvironment } from "@/lib/payments/payment-availability";
 
-type PaymentOptions = { pix: boolean; credit: boolean; efiCard: boolean };
+type PaymentOptions = { pix: boolean; credit: boolean; efiCard: boolean; efiCardEnvironment?: EfiCardBrowserEnvironment | null };
 
 export function CustomerPaymentModal({
   open,
@@ -86,7 +87,7 @@ export function CustomerPaymentModal({
           </div>
 
           <div className="mt-5 grid gap-4">
-            {options.efiCard ? <EfiCardPaymentPanel sessionId={sessionId} amountLabel={amountLabel} onSuccess={finish} onProcessingChange={setProcessing} /> : null}
+            {options.efiCard && options.efiCardEnvironment ? <EfiCardPaymentPanel sessionId={sessionId} amountLabel={amountLabel} environment={options.efiCardEnvironment} onSuccess={finish} onProcessingChange={setProcessing} /> : null}
             {options.pix ? <PixPaymentPanel sessionId={sessionId} /> : null}
             {options.credit ? <CreditCheckoutPanel sessionId={sessionId} /> : null}
           </div>

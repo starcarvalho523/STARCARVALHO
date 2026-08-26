@@ -1,9 +1,14 @@
 import { createClient } from "@/lib/supabase/server";
-import { isEfiCardQaPreviewRuntime } from "@/lib/supabase/env";
+import { createAdminClient } from "@/lib/supabase/admin";
+import {
+  isEfiCardProductionRuntimeEnabled,
+  isEfiCardQaPreviewRuntime,
+} from "@/lib/supabase/env";
 import { EfiCardService, EfiCardServiceError } from "@/lib/payments/efi-card-service";
 import { EfiCardProviderError } from "@/lib/payments/efi-credit-card-client";
 import type { EfiCardPayer } from "@/lib/payments/efi-credit-card-client";
 import type { EfiCardMetadata } from "@/lib/payments/efi-card-service";
+import type { EfiCardProviderEnvironment } from "@/lib/payments/efi-credit-card-config";
 
 const allowed = new Set(["sessionId", "paymentToken", "payer", "cardMeta"]);
 const forbidden = new Set(["amount", "paymentId", "provider", "cardNumber", "pan", "number", "cvv", "securityCode", "customId", "notificationUrl"]);
@@ -29,7 +34,9 @@ function cardMetaFrom(value: unknown): EfiCardMetadata | null {
 }
 
 export async function POST(request: Request) {
-  if (!isEfiCardQaPreviewRuntime()) return Response.json({ error: "EFI_CARD_NOT_AVAILABLE" }, { status: 404 });
+  const isQa = isEfiCardQaPreviewRuntime();
+  const isProduction = isEfiCardProductionRuntimeEnabled();
+  if (!isQa && !isProduction) return Response.json({ error: "EFI_CARD_NOT_AVAILABLE" }, { status: 404 });
 
   const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
   if (!body || Object.keys(body).some((key) => forbidden.has(key) || !allowed.has(key))) return Response.json({ error: "EFI_CARD_INVALID_REQUEST" }, { status: 400 });
@@ -42,11 +49,17 @@ export async function POST(request: Request) {
   const { data: { user: actor } } = await user.auth.getUser();
   if (!actor) return Response.json({ error: "UNAUTHORIZED" }, { status: 401 });
 
-  const { data: paymentId, error } = await user.rpc("get_or_reserve_efi_card_payment", { target_session: body.sessionId });
+  const environment: EfiCardProviderEnvironment = isProduction ? "PRODUCTION" : "SANDBOX";
+  const admin = createAdminClient();
+  const { data: paymentId, error } = await admin.rpc("get_or_reserve_efi_card_payment_for_actor", {
+    target_session: body.sessionId,
+    target_actor: actor.id,
+    target_environment: environment,
+  });
   if (error || typeof paymentId !== "string") return Response.json({ error: "PAYMENT_FORBIDDEN" }, { status: 403 });
 
   try {
-    const payment = await new EfiCardService().createPayment(paymentId, body.paymentToken, payer, cardMeta);
+    const payment = await new EfiCardService(undefined, environment).createPayment(paymentId, body.paymentToken, payer, cardMeta);
     return Response.json({ payment }, { status: 201 });
   } catch (cause) {
     if (cause instanceof EfiCardProviderError) {
@@ -57,14 +70,15 @@ export async function POST(request: Request) {
         uncertain: cause.uncertain,
         httpStatus: cause.httpStatus,
         providerCode: cause.providerCode,
+        environment,
       });
       return Response.json({ error: cause.publicCode, stage: cause.stage, uncertain: cause.uncertain }, { status: 502 });
     }
     if (cause instanceof EfiCardServiceError) {
-      console.error("EFI_CARD_SERVICE_FAILURE", { code: cause.publicCode, httpStatus: cause.httpStatus });
+      console.error("EFI_CARD_SERVICE_FAILURE", { code: cause.publicCode, httpStatus: cause.httpStatus, environment });
       return Response.json({ error: cause.publicCode }, { status: cause.httpStatus });
     }
-    console.error("EFI_CARD_UNCLASSIFIED_FAILURE");
+    console.error("EFI_CARD_UNCLASSIFIED_FAILURE", { environment });
     return Response.json({ error: "EFI_CARD_CREATE_FAILED" }, { status: 502 });
   }
 }
