@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { LockKeyhole, ShieldCheck, X } from "lucide-react";
 import { EfiCardPaymentPanel } from "@/components/efi-card-payment-panel";
@@ -49,7 +50,7 @@ export function CustomerPaymentModal({
     };
   }, [open, onClose, processing]);
 
-  if (!open) return null;
+  if (!open || typeof document === "undefined") return null;
 
   const finish = () => {
     setProcessing(false);
@@ -57,7 +58,7 @@ export function CustomerPaymentModal({
     router.refresh();
   };
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-[80] grid place-items-center bg-slate-950/45 p-3 backdrop-blur-sm" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) requestClose(); }}>
       <section role="dialog" aria-modal="true" aria-labelledby="customer-payment-title" className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-3xl border border-slate-200 bg-white shadow-2xl">
         <header className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b bg-white/95 px-5 py-4 backdrop-blur sm:px-6">
@@ -93,6 +94,7 @@ export function CustomerPaymentModal({
           </div>
         </div>
       </section>
-    </div>
+    </div>,
+    document.body,
   );
 }
