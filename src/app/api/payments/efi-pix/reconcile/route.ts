@@ -10,7 +10,11 @@ export async function POST(request: Request) {
   const { data: paymentId, error } = await user.rpc("get_efi_pix_payment_for_session", { target_session: body.sessionId });
   if (error || typeof paymentId !== "string") return Response.json({ error: "PIX_PAYMENT_NOT_FOUND" }, { status: 404 });
   try {
-    const payment = await new PaymentService().reconcileEfiPixPayment(paymentId);
+    const service = new PaymentService();
+    const reconciled = await service.reconcileEfiPixPayment(paymentId);
+    const payment = reconciled.state === "PENDING" && (!reconciled.qrCodePayload || !reconciled.qrCodeImageBase64)
+      ? await service.createEfiPixPayment(paymentId)
+      : reconciled;
     return Response.json({ payment }, { headers: { "cache-control": "no-store" } });
   } catch { return Response.json({ error: "EFI_PIX_RECONCILIATION_FAILED" }, { status: 502 }); }
 }
