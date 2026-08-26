@@ -1,11 +1,13 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { EfiCardProviderError, createEfiOneStep, getEfiCardNotification, type EfiCardPayer, type EfiCardState } from "./efi-credit-card-client";
+import type { EfiCardProviderEnvironment } from "./efi-credit-card-config";
 
 type CardContext = {
   paymentId: string;
   status: string;
   amountCents: number;
+  providerEnvironment: EfiCardProviderEnvironment;
   chargeId: string | null;
   providerStatus: string | null;
   creationState: string | null;
@@ -35,7 +37,10 @@ function rpcResult(value: unknown): Record<string, unknown> {
 }
 
 export class EfiCardService {
-  constructor(private readonly admin = createAdminClient()) {}
+  constructor(
+    private readonly admin = createAdminClient(),
+    private readonly environment: EfiCardProviderEnvironment = "SANDBOX",
+  ) {}
 
   private async context(paymentId: string): Promise<CardContext> {
     const { data, error } = await this.admin.rpc("get_efi_card_payment_context", { target_payment: paymentId });
@@ -44,10 +49,23 @@ export class EfiCardService {
     if (!value || typeof value.paymentId !== "string" || typeof value.status !== "string" || typeof value.amountCents !== "number" || !Number.isSafeInteger(value.amountCents) || value.amountCents <= 0) {
       throw new EfiCardServiceError("EFI_CARD_INVALID_CONTEXT", 502);
     }
+
+    const providerEnvironment = value.providerEnvironment;
+    const resolvedEnvironment: EfiCardProviderEnvironment =
+      providerEnvironment === "PRODUCTION" ? "PRODUCTION" : "SANDBOX";
+
+    if (this.environment === "PRODUCTION" && providerEnvironment !== "PRODUCTION") {
+      throw new EfiCardServiceError("EFI_CARD_ENVIRONMENT_MISMATCH", 409);
+    }
+    if (this.environment === "SANDBOX" && providerEnvironment !== undefined && providerEnvironment !== "SANDBOX") {
+      throw new EfiCardServiceError("EFI_CARD_ENVIRONMENT_MISMATCH", 409);
+    }
+
     return {
       paymentId: value.paymentId,
       status: value.status,
       amountCents: value.amountCents,
+      providerEnvironment: resolvedEnvironment,
       chargeId: typeof value.chargeId === "string" ? value.chargeId : null,
       providerStatus: typeof value.providerStatus === "string" ? value.providerStatus : null,
       creationState: typeof value.creationState === "string" ? value.creationState : null,
@@ -65,8 +83,28 @@ export class EfiCardService {
     if (error) throw rpcError("mark_efi_card_creation_failure");
   }
 
+  private async settle(chargeId: string, paymentId: string, amountCents: number | null, providerStatus: EfiCardState) {
+    if (this.environment === "PRODUCTION") {
+      return this.admin.rpc("process_efi_card_settlement_for_environment", {
+        target_environment: "PRODUCTION",
+        target_charge_id: chargeId,
+        target_custom_id: paymentId,
+        target_amount_cents: amountCents,
+        target_provider_status: providerStatus,
+      });
+    }
+
+    return this.admin.rpc("process_efi_card_settlement", {
+      target_charge_id: chargeId,
+      target_custom_id: paymentId,
+      target_amount_cents: amountCents,
+      target_provider_status: providerStatus,
+    });
+  }
+
   async createPayment(paymentId: string, paymentToken: string, payer: EfiCardPayer, cardMeta: EfiCardMetadata) {
     const context = await this.context(paymentId);
+    if (context.providerEnvironment !== this.environment) throw new EfiCardServiceError("EFI_CARD_ENVIRONMENT_MISMATCH", 409);
     if (context.status === "PAID") return publicCard("PAID", context.amountCents);
     if (context.status !== "PENDING") throw new EfiCardServiceError("EFI_CARD_PAYMENT_NOT_PENDING", 409);
     if (context.chargeId) {
@@ -91,7 +129,7 @@ export class EfiCardService {
         amountCents: context.amountCents,
         payer,
         externalReference: context.paymentId,
-      });
+      }, this.environment);
     } catch (cause) {
       if (cause instanceof EfiCardProviderError) {
         await this.markFailure(context.paymentId, cause);
@@ -116,12 +154,7 @@ export class EfiCardService {
     }
 
     if (charge.status === "PAID" || charge.status === "FAILED") {
-      const { data, error } = await this.admin.rpc("process_efi_card_settlement", {
-        target_charge_id: charge.chargeId,
-        target_custom_id: context.paymentId,
-        target_amount_cents: context.amountCents,
-        target_provider_status: charge.status,
-      });
+      const { data, error } = await this.settle(charge.chargeId, context.paymentId, context.amountCents, charge.status);
       if (error) throw new EfiCardServiceError("EFI_CARD_SETTLEMENT_FAILED", 502);
       const result = data && typeof data === "object" ? String((data as { result?: unknown }).result ?? "") : "";
       if (!["processed", "already_paid"].includes(result)) return publicCard("REVIEW", context.amountCents, persistedBrand, persistedLast4);
@@ -131,13 +164,13 @@ export class EfiCardService {
   }
 
   async processNotification(notificationToken: string) {
-    const notification = await getEfiCardNotification(notificationToken);
-    const { data, error } = await this.admin.rpc("process_efi_card_settlement", {
-      target_charge_id: notification.chargeId,
-      target_custom_id: notification.customId,
-      target_amount_cents: notification.amountCents,
-      target_provider_status: notification.status,
-    });
+    const notification = await getEfiCardNotification(notificationToken, this.environment);
+    const { data, error } = await this.settle(
+      notification.chargeId,
+      notification.customId ?? "",
+      notification.amountCents,
+      notification.status,
+    );
     if (error) throw rpcError("process_efi_card_settlement");
     const result = data && typeof data === "object" ? String((data as { result?: unknown }).result ?? "") : "";
     if (!["processed", "pending", "unknown", "review", "already_paid"].includes(result)) throw new EfiCardServiceError("EFI_CARD_INVALID_SETTLEMENT_RESULT", 502);

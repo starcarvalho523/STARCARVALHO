@@ -1,5 +1,8 @@
 import "server-only";
-import { resolveEfiCreditCardConfig } from "./efi-credit-card-config";
+import {
+  resolveEfiCreditCardConfigForEnvironment,
+  type EfiCardProviderEnvironment,
+} from "./efi-credit-card-config";
 
 export type EfiCardPayer = { name: string; cpf: string; email: string; phone: string };
 export type EfiCardState = "PENDING" | "PAID" | "FAILED" | "REVIEW";
@@ -51,8 +54,10 @@ function mapStatus(value: unknown): EfiCardState {
   return "REVIEW";
 }
 
-async function getAccessToken(): Promise<{ baseUrl: string; token: string }> {
-  const config = resolveEfiCreditCardConfig();
+async function getAccessToken(
+  environment: EfiCardProviderEnvironment = "SANDBOX",
+): Promise<{ baseUrl: string; token: string }> {
+  const config = resolveEfiCreditCardConfigForEnvironment(environment);
   const authorization = Buffer.from(`${config.clientId}:${config.clientSecret}`).toString("base64");
   let response: Response;
   try {
@@ -82,12 +87,12 @@ export async function createEfiOneStep(input: {
   amountCents: number;
   payer: EfiCardPayer;
   externalReference: string;
-}): Promise<EfiCardCharge> {
+}, environment: EfiCardProviderEnvironment = "SANDBOX"): Promise<EfiCardCharge> {
   if (!input.paymentToken || !Number.isSafeInteger(input.amountCents) || input.amountCents <= 0) {
     throw new EfiCardProviderError("EFI_CARD_INVALID_CREATE_INPUT", 0, null, "INPUT", false, false);
   }
-  const config = resolveEfiCreditCardConfig();
-  const auth = await getAccessToken();
+  const config = resolveEfiCreditCardConfigForEnvironment(environment);
+  const auth = await getAccessToken(environment);
   let response: Response;
   try {
     response = await fetch(`${auth.baseUrl}/v1/charge/one-step`, {
@@ -126,9 +131,12 @@ export async function createEfiOneStep(input: {
   };
 }
 
-export async function getEfiCardNotification(notificationToken: string): Promise<EfiCardNotification> {
+export async function getEfiCardNotification(
+  notificationToken: string,
+  environment: EfiCardProviderEnvironment = "SANDBOX",
+): Promise<EfiCardNotification> {
   if (!notificationToken || notificationToken.length > 512) throw new Error("EFI_NOTIFICATION_INVALID");
-  const auth = await getAccessToken();
+  const auth = await getAccessToken(environment);
   const response = await fetch(`${auth.baseUrl}/v1/notification/${encodeURIComponent(notificationToken)}`, {
     headers: { authorization: `Bearer ${auth.token}` },
     cache: "no-store",
