@@ -1,4 +1,5 @@
 const PRODUCTION_VERCEL_HOST = "starcarvalho.vercel.app";
+const EFI_CARD_QA_PREVIEW_BRANCH = "feat/efi-credit-card-sandbox";
 const QA_SUPABASE_URL = "https://hqdaqijgloeiqrljulqx.supabase.co";
 // Supabase publishable keys are intentionally public client credentials; RLS remains the security boundary.
 const QA_SUPABASE_PUBLISHABLE_KEY = "sb_publishable_VjQXDvN3oA0F1PHQKmzLkA_8GFzFT45";
@@ -15,6 +16,27 @@ function normalizeHostname(hostname?: string | null) {
 export function isVercelPreviewHost(hostname?: string | null) {
   const host = normalizeHostname(hostname);
   return host.endsWith(".vercel.app") && host !== PRODUCTION_VERCEL_HOST;
+}
+
+export function isEfiCardQaPreviewRuntime(
+  environment: NodeJS.ProcessEnv = process.env,
+) {
+  return (
+    environment.VERCEL_ENV === "preview" &&
+    environment.VERCEL_GIT_COMMIT_REF === EFI_CARD_QA_PREVIEW_BRANCH
+  );
+}
+
+export function getServerSupabaseEnvironment() {
+  if (isEfiCardQaPreviewRuntime()) {
+    return {
+      url: QA_SUPABASE_URL,
+      publishableKey: QA_SUPABASE_PUBLISHABLE_KEY,
+      environment: "qa" as const,
+    };
+  }
+
+  return getSupabaseEnvironment();
 }
 
 export function getSupabaseEnvironment(hostname?: string | null) {

@@ -1,9 +1,13 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
+import { isEfiCardQaPreviewRuntime } from "@/lib/supabase/env";
 import { isAsaasConfigured } from "./asaas-config";
+import { isEfiConfigured } from "./efi-config";
+import { isEfiCreditCardConfigured } from "./efi-credit-card-config";
 import type { PaymentCapability, PaymentChannel, PaymentMethod, PaymentProviderName } from "./payment-model";
 
 type AvailabilityRow = { payment_method:PaymentMethod; payment_channel:PaymentChannel; payment_provider:PaymentProviderName; enabled:boolean; configuration_state:"READY"|"DISABLED"|"UNCONFIGURED"|"AWAITING_TERMINAL"; legacy:boolean };
+export type CustomerPaymentOptions = { pix:boolean; credit:boolean; efiCard:boolean };
 
 export async function getPaymentAvailability(unitId:string):Promise<PaymentCapability[]> {
   const supabase=await createClient();
@@ -14,8 +18,18 @@ export async function getPaymentAvailability(unitId:string):Promise<PaymentCapab
 
 export function canUsePayment(capabilities:PaymentCapability[],method:PaymentMethod,channel:PaymentChannel,provider:PaymentProviderName){return capabilities.some(item=>item.method===method&&item.channel===channel&&item.provider===provider&&item.enabled&&item.configured)}
 
+export function resolveCustomerPaymentOptions(capabilities:PaymentCapability[]):CustomerPaymentOptions {
+  return {
+    pix:canUsePayment(capabilities,"PIX","QR","EFI"),
+    credit:canUsePayment(capabilities,"CREDIT_CARD","HOSTED_CHECKOUT","ASAAS"),
+    efiCard:isEfiCardQaPreviewRuntime()&&canUsePayment(capabilities,"CREDIT_CARD","TOKENIZED_CHECKOUT","EFI"),
+  };
+}
+
 function providerConfigured(provider:PaymentProviderName,channel:PaymentChannel){
   if(provider==="INTERNAL")return channel==="MANUAL";
   if(provider==="ASAAS"&&(channel==="QR"||channel==="HOSTED_CHECKOUT"))return isAsaasConfigured();
+  if(provider==="EFI"&&channel==="QR")return isEfiConfigured();
+  if(provider==="EFI"&&channel==="TOKENIZED_CHECKOUT")return isEfiCardQaPreviewRuntime()&&isEfiCreditCardConfigured();
   return false;
 }
