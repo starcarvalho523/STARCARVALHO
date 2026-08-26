@@ -8,7 +8,7 @@ import { PixPaymentPanel } from "@/components/pix-payment-panel";
 import { CreditCheckoutPanel } from "@/components/credit-checkout-panel";
 import type { EfiCardBrowserEnvironment } from "@/lib/payments/payment-availability";
 
-type PaymentOptions = { pix: boolean; credit: boolean; efiCard: boolean; efiCardEnvironment: EfiCardBrowserEnvironment | null };
+type PaymentOptions = { pix: boolean; credit: boolean; efiCard: boolean; efiCardEnvironment?: EfiCardBrowserEnvironment | null };
 
 export function CustomerPaymentModal({
   open,
