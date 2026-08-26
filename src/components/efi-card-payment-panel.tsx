@@ -2,6 +2,7 @@
 
 import { CheckCircle2, LoaderCircle, ShieldCheck } from "lucide-react";
 import { FormEvent, useRef, useState } from "react";
+import type { EfiCardBrowserEnvironment } from "@/lib/payments/payment-availability";
 
 type EfiCardResponse = {
   payment?: { state?: unknown };
@@ -13,7 +14,8 @@ type FieldName = "holderName" | "holderDocument" | "email" | "phone" | "number" 
 type FieldErrors = Partial<Record<FieldName, string>>;
 type CheckoutStage = "FORM" | "TOKENIZATION" | "BACKEND" | "CONFIRMATION" | "AWAITING" | "SUCCESS";
 
-const accountIdentifier = process.env.NEXT_PUBLIC_EFI_ACCOUNT_IDENTIFIER;
+const sandboxAccountIdentifier = process.env.NEXT_PUBLIC_EFI_ACCOUNT_IDENTIFIER;
+const productionAccountIdentifier = process.env.NEXT_PUBLIC_EFI_PRODUCTION_ACCOUNT_IDENTIFIER;
 
 function digits(value: string) {
   return value.replace(/\D/g, "");
@@ -39,14 +41,19 @@ function inputClass(hasError: boolean) {
 export function EfiCardPaymentPanel({
   sessionId,
   amountLabel,
+  environment,
   onSuccess,
   onProcessingChange,
 }: {
   sessionId: string;
   amountLabel?: string;
+  environment: EfiCardBrowserEnvironment;
   onSuccess?: () => void;
   onProcessingChange?: (processing: boolean) => void;
 }) {
+  const accountIdentifier = environment === "production"
+    ? productionAccountIdentifier
+    : sandboxAccountIdentifier;
   const [holderName, setHolderName] = useState("");
   const [holderDocument, setHolderDocument] = useState("");
   const [email, setEmail] = useState("");
@@ -163,7 +170,7 @@ export function EfiCardPaymentPanel({
 
       const tokenResult = await EfiPay.CreditCard
         .setAccount(accountIdentifier)
-        .setEnvironment("sandbox")
+        .setEnvironment(environment)
         .setCreditCardData({
           brand,
           number: values.cardNumber,
