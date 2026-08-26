@@ -33,7 +33,10 @@ function safeProviderCode(payload: unknown): string | null {
   return /^[A-Z0-9_]{1,80}$/.test(normalized) ? normalized : null;
 }
 
+const deterministicProviderRejections = new Set(["4600222"]);
+
 function providerFailure(status: number, payload: unknown): EfiCardProviderError {
+  const providerCode = safeProviderCode(payload);
   const publicCode =
     status === 400 ? "EFI_CARD_PROVIDER_REJECTED_400" :
     status === 401 ? "EFI_CARD_PROVIDER_UNAUTHORIZED_401" :
@@ -42,7 +45,8 @@ function providerFailure(status: number, payload: unknown): EfiCardProviderError
     status === 429 ? "EFI_CARD_PROVIDER_RATE_LIMITED_429" :
     status >= 500 ? "EFI_CARD_PROVIDER_UPSTREAM_5XX" :
     `EFI_CARD_PROVIDER_HTTP_${status}`;
-  return new EfiCardProviderError(publicCode, status, safeProviderCode(payload), "PROVIDER_POST", true, false);
+  const uncertain = status >= 500 && !deterministicProviderRejections.has(providerCode ?? "");
+  return new EfiCardProviderError(publicCode, status, providerCode, "PROVIDER_POST", true, uncertain);
 }
 
 function mapStatus(value: unknown): EfiCardState {
