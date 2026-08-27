@@ -15,11 +15,15 @@ const config: EfiPixRuntimeConfig = {
   payeeCode: null,
 };
 
+function env(values: Record<string, string>): NodeJS.ProcessEnv {
+  return { NODE_ENV: "test", ...values };
+}
+
 test("builds a HTTPS webhook URL with HMAC and Efí /pix compatibility suffix", () => {
-  const value = buildEfiPixServerlessWebhookUrl({
+  const value = buildEfiPixServerlessWebhookUrl(env({
     NEXT_PUBLIC_SITE_URL: "https://starcarvalho.vercel.app/",
     EFI_PIX_WEBHOOK_HMAC_SECRET: "abc123",
-  } as NodeJS.ProcessEnv);
+  }));
   const url = new URL(value);
   assert.equal(url.origin, "https://starcarvalho.vercel.app");
   assert.equal(url.pathname, "/api/webhooks/efi-pix");
@@ -28,13 +32,13 @@ test("builds a HTTPS webhook URL with HMAC and Efí /pix compatibility suffix", 
 });
 
 test("fails closed when webhook URL configuration is incomplete", () => {
-  assert.throws(() => buildEfiPixServerlessWebhookUrl({ NEXT_PUBLIC_SITE_URL: "http://localhost:3000" } as NodeJS.ProcessEnv), /EFI_PIX_WEBHOOK_NOT_CONFIGURED/);
+  assert.throws(() => buildEfiPixServerlessWebhookUrl(env({ NEXT_PUBLIC_SITE_URL: "http://localhost:3000" })), /EFI_PIX_WEBHOOK_NOT_CONFIGURED/);
 });
 
 test("registers webhook with skip-mTLS header and exact production Pix key", async () => {
   let captured: unknown;
   const client = new EfiPixWebhookClient(config, {
-    oauth: { getAccessToken: async () => ({ accessToken: "token", expiresIn: 3600 }) },
+    oauth: { getAccessToken: async () => ({ accessToken: "token", expiresIn: 3600, tokenType: "Bearer", scope: "webhook.write" }) },
     transport: { request: async (request) => { captured = request; return { status: 201, body: "" }; } },
   });
   await client.configureServerlessWebhook("https://starcarvalho.vercel.app/api/webhooks/efi-pix?hmac=abc&ignorar=");
