@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import {
   isEfiCardProductionRuntimeEnabled,
   isEfiCardQaPreviewRuntime,
+  isEfiPixProductionRuntimeEnabled,
 } from "@/lib/supabase/env";
 import { isAsaasConfigured } from "./asaas-config";
 import { isEfiConfigured } from "./efi-config";
@@ -48,7 +49,10 @@ export function resolveCustomerPaymentOptions(
 function providerConfigured(provider:PaymentProviderName,channel:PaymentChannel){
   if(provider==="INTERNAL")return channel==="MANUAL";
   if(provider==="ASAAS"&&(channel==="QR"||channel==="HOSTED_CHECKOUT"))return isAsaasConfigured();
-  if(provider==="EFI"&&channel==="QR")return isEfiConfigured();
+  if(provider==="EFI"&&channel==="QR"){
+    const production=String(process.env.EFI_ENVIRONMENT??"").trim().toLowerCase()==="production";
+    return isEfiConfigured()&&(!production||isEfiPixProductionRuntimeEnabled());
+  }
   if(provider==="EFI"&&channel==="TOKENIZED_CHECKOUT"){
     if(isEfiCardQaPreviewRuntime())return isEfiCreditCardConfigured();
     if(isEfiCardProductionRuntimeEnabled())return isEfiCreditCardProductionConfigured();
