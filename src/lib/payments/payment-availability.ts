@@ -30,16 +30,21 @@ function hasConfiguredCapability(capabilities:PaymentCapability[],method:Payment
 
 export function resolveCustomerPaymentOptions(
   capabilities:PaymentCapability[],
-  options:{efiCardProductionCanary?:boolean}={},
+  options:{efiCardProductionCanary?:boolean;efiPixProductionCanary?:boolean}={},
 ):CustomerPaymentOptions {
   const qaEfiCard=isEfiCardQaPreviewRuntime()&&canUsePayment(capabilities,"CREDIT_CARD","TOKENIZED_CHECKOUT","EFI");
   const productionCanaryEfiCard=
     isEfiCardProductionRuntimeEnabled()&&
     options.efiCardProductionCanary===true&&
     hasConfiguredCapability(capabilities,"CREDIT_CARD","TOKENIZED_CHECKOUT","EFI");
+  const regularEfiPix=canUsePayment(capabilities,"PIX","QR","EFI");
+  const productionCanaryEfiPix=
+    isEfiPixProductionRuntimeEnabled()&&
+    options.efiPixProductionCanary===true&&
+    hasConfiguredCapability(capabilities,"PIX","QR","EFI");
 
   return {
-    pix:canUsePayment(capabilities,"PIX","QR","EFI"),
+    pix:regularEfiPix||productionCanaryEfiPix,
     credit:canUsePayment(capabilities,"CREDIT_CARD","HOSTED_CHECKOUT","ASAAS"),
     efiCard:qaEfiCard||productionCanaryEfiCard,
     efiCardEnvironment:productionCanaryEfiCard?"production":qaEfiCard?"sandbox":null,
