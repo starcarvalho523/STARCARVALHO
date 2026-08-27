@@ -58,6 +58,15 @@ test("registers webhook with skip-mTLS header and exact production Pix key", asy
   });
 });
 
+test("accepts Efí 200 as successful webhook registration", async () => {
+  const client = new EfiPixWebhookClient(config, {
+    oauth: { getAccessToken: async () => ({ accessToken: "token", expiresIn: 3600, tokenType: "Bearer", scope: "webhook.write" }) },
+    transport: { request: async () => ({ status: 200, body: "" }) },
+  });
+
+  await client.configureServerlessWebhook("https://starcarvalho.vercel.app/api/webhooks/efi-pix?hmac=abc&ignorar=");
+});
+
 test("returns only sanitized provider diagnostics on registration failure", async () => {
   const client = new EfiPixWebhookClient(config, {
     oauth: { getAccessToken: async () => ({ accessToken: "token", expiresIn: 3600, tokenType: "Bearer", scope: "webhook.write" }) },
