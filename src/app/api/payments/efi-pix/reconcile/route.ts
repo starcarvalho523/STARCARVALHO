@@ -26,52 +26,45 @@ export async function POST(request: Request) {
   const { data: auth, error: authError } = await user.auth.getUser();
   if (authError || !auth.user) return Response.json({ error: "UNAUTHORIZED" }, { status: 401 });
 
-  let paymentId: string | null = null;
-  const direct = await user.rpc("get_efi_pix_payment_for_session_for_environment", {
-    target_session: body.sessionId,
-    target_environment: providerEnvironment,
-  });
-  if (!direct.error && typeof direct.data === "string") {
-    paymentId = direct.data;
-  } else {
+  const admin = createAdminClient();
+  const { data: session } = await admin
+    .from("parking_sessions")
+    .select("unit_id,customer_owner_id")
+    .eq("id", body.sessionId)
+    .maybeSingle();
+  if (!session) return Response.json({ error: "PIX_PAYMENT_NOT_FOUND" }, { status: 404 });
+
+  let authorized = session.customer_owner_id === auth.user.id;
+  if (!authorized) {
     try {
       const { unitId } = await getOperatorContext();
-      const admin = createAdminClient();
-      const { data: session } = await admin
-        .from("parking_sessions")
-        .select("unit_id")
-        .eq("id", body.sessionId)
-        .maybeSingle();
-      if (!session || session.unit_id !== unitId) {
-        return Response.json({ error: "PIX_PAYMENT_NOT_FOUND" }, { status: 404 });
-      }
-
-      const { data: payment } = await admin
-        .from("payments")
-        .select("id")
-        .eq("parking_session_id", body.sessionId)
-        .eq("provider", "EFI")
-        .eq("method", "PIX")
-        .eq("payment_channel", "QR")
-        .eq("provider_environment", providerEnvironment)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (payment?.id) paymentId = payment.id;
+      authorized = unitId === session.unit_id;
     } catch {
-      return Response.json({ error: "PIX_PAYMENT_NOT_FOUND" }, { status: 404 });
+      authorized = false;
     }
   }
+  if (!authorized) return Response.json({ error: "PIX_PAYMENT_NOT_FOUND" }, { status: 404 });
 
-  if (!paymentId) return Response.json({ error: "PIX_PAYMENT_NOT_FOUND" }, { status: 404 });
+  const { data: payment } = await admin
+    .from("payments")
+    .select("id")
+    .eq("parking_session_id", body.sessionId)
+    .eq("provider", "EFI")
+    .eq("method", "PIX")
+    .eq("payment_channel", "QR")
+    .eq("provider_environment", providerEnvironment)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!payment?.id) return Response.json({ error: "PIX_PAYMENT_NOT_FOUND" }, { status: 404 });
 
   try {
     const service = new PaymentService();
-    const reconciled = await service.reconcileEfiPixPayment(paymentId);
-    const payment = reconciled.state === "PENDING" && (!reconciled.qrCodePayload || !reconciled.qrCodeImageBase64)
-      ? await service.createEfiPixPayment(paymentId)
+    const reconciled = await service.reconcileEfiPixPayment(payment.id);
+    const result = reconciled.state === "PENDING" && (!reconciled.qrCodePayload || !reconciled.qrCodeImageBase64)
+      ? await service.createEfiPixPayment(payment.id)
       : reconciled;
-    return Response.json({ payment }, { headers: { "cache-control": "no-store" } });
+    return Response.json({ payment: result }, { headers: { "cache-control": "no-store" } });
   } catch {
     return Response.json({ error: "EFI_PIX_RECONCILIATION_FAILED" }, { status: 502 });
   }
