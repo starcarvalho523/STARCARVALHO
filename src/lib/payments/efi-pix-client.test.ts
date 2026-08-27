@@ -27,10 +27,10 @@ test("formats only amounts that are already exact positive cent values", async (
     assert.equal(transport.last, undefined);
   }
 });
-test("requires Pix key and keeps production blocked before any request", async () => {
+test("requires Pix key and keeps production fail-closed before any request", async () => {
   const base = { EFI_ENABLED: "true", EFI_ENVIRONMENT: "sandbox", EFI_CLIENT_ID: "client", EFI_CLIENT_SECRET: "secret", EFI_CERTIFICATE_BASE64: Buffer.from("p12").toString("base64") } as unknown as NodeJS.ProcessEnv;
   assert.throws(() => createImmediateEfiPixCob({ amount: 5 }, { env: base }), /EFI_PIX_KEY_MISSING/);
-  assert.throws(() => createImmediateEfiPixCob({ amount: 5 }, { env: { ...base, EFI_ENVIRONMENT: "production", EFI_PIX_KEY: "key" } }), /EFI_PRODUCTION_DISABLED/);
+  assert.throws(() => createImmediateEfiPixCob({ amount: 5 }, { env: { ...base, EFI_ENVIRONMENT: "production", EFI_PIX_KEY: "key" } }), /EFI_PIX_PRODUCTION_DISABLED/);
 });
 test("sanitizes provider failures, timeout, and invalid responses without secrets", async () => {
   for (const response of [{ status: 400, body: JSON.stringify({ detail: "access-token-secret pix-key-secret secret-value" }) }, new Error("EFI_TIMEOUT"), { status: 201, body: "{}" }]) {
