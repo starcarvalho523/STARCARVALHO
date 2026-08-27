@@ -1,5 +1,8 @@
 import { canAccessCeoScope, getAccess } from "@/lib/auth";
-import { configureEfiPixServerlessWebhook } from "@/lib/payments/efi-pix-webhook-client";
+import {
+  configureEfiPixServerlessWebhook,
+  EfiPixWebhookRegistrationError,
+} from "@/lib/payments/efi-pix-webhook-client";
 import { isEfiPixProductionRuntimeEnabled } from "@/lib/supabase/env";
 
 export const runtime = "nodejs";
@@ -22,7 +25,20 @@ export async function POST() {
   try {
     await configureEfiPixServerlessWebhook();
     return Response.json({ ok: true, result: "EFI_PIX_WEBHOOK_REGISTERED" }, { headers: { "cache-control": "no-store" } });
-  } catch {
-    return Response.json({ error: "EFI_PIX_WEBHOOK_REGISTER_FAILED" }, { status: 502 });
+  } catch (error) {
+    if (error instanceof EfiPixWebhookRegistrationError) {
+      console.error("EFI_PIX_WEBHOOK_REGISTER_FAILED", {
+        providerStatus: error.providerStatus,
+        providerMessage: error.providerMessage,
+      });
+      return Response.json({
+        error: "EFI_PIX_WEBHOOK_REGISTER_FAILED",
+        providerStatus: error.providerStatus,
+        providerMessage: error.providerMessage,
+      }, { status: 502, headers: { "cache-control": "no-store" } });
+    }
+
+    console.error("EFI_PIX_WEBHOOK_REGISTER_FAILED", { reason: error instanceof Error ? error.message : "UNKNOWN" });
+    return Response.json({ error: "EFI_PIX_WEBHOOK_REGISTER_FAILED" }, { status: 502, headers: { "cache-control": "no-store" } });
   }
 }
