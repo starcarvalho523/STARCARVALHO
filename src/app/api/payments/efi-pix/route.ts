@@ -3,6 +3,7 @@ import { resolveEfiPixRuntimeConfig } from "@/lib/payments/efi-config";
 import { isEfiPixProductionRuntimeEnabled } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getOperatorContext } from "@/lib/operator-data";
 
 export async function POST(request: Request) {
   const body = await request.json().catch(() => null) as { sessionId?: unknown } | null;
@@ -26,12 +27,41 @@ export async function POST(request: Request) {
   if (authError || !auth.user) return Response.json({ error: "UNAUTHORIZED" }, { status: 401 });
 
   const admin = createAdminClient();
-  const { data: paymentId, error } = await admin.rpc("get_or_reserve_efi_pix_payment_for_actor", {
+  let targetActor = auth.user.id;
+  let reservation = await admin.rpc("get_or_reserve_efi_pix_payment_for_actor", {
     target_session: body.sessionId,
-    target_actor: auth.user.id,
+    target_actor: targetActor,
     target_environment: providerEnvironment,
   });
-  if (error || typeof paymentId !== "string") return Response.json({ error: "PAYMENT_FORBIDDEN" }, { status: 403 });
+
+  if (reservation.error || typeof reservation.data !== "string") {
+    try {
+      const { unitId } = await getOperatorContext();
+      const { data: session } = await admin
+        .from("parking_sessions")
+        .select("unit_id,customer_owner_id")
+        .eq("id", body.sessionId)
+        .maybeSingle();
+
+      if (!session || session.unit_id !== unitId || typeof session.customer_owner_id !== "string") {
+        return Response.json({ error: "PAYMENT_FORBIDDEN" }, { status: 403 });
+      }
+
+      targetActor = session.customer_owner_id;
+      reservation = await admin.rpc("get_or_reserve_efi_pix_payment_for_actor", {
+        target_session: body.sessionId,
+        target_actor: targetActor,
+        target_environment: providerEnvironment,
+      });
+    } catch {
+      return Response.json({ error: "PAYMENT_FORBIDDEN" }, { status: 403 });
+    }
+  }
+
+  const paymentId = reservation.data;
+  if (reservation.error || typeof paymentId !== "string") {
+    return Response.json({ error: "PAYMENT_FORBIDDEN" }, { status: 403 });
+  }
 
   try {
     const payment = await new PaymentService().createEfiPixPayment(paymentId);
