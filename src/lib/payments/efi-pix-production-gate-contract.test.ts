@@ -26,11 +26,13 @@ test("Efí Pix create route fails closed before reserving a Production payment",
   assert.match(createRoute, /EFI_PIX_NOT_AVAILABLE/);
 });
 
-test("Efí Pix reconciliation is scoped to the configured provider environment", () => {
+test("Efí Pix reconciliation is scoped to environment and exact customer or operator unit", () => {
   assert.match(reconcileRoute, /resolveEfiPixRuntimeConfig\(\)/);
   assert.match(reconcileRoute, /isEfiPixProductionRuntimeEnabled\(\)/);
-  assert.match(reconcileRoute, /get_efi_pix_payment_for_session_for_environment/);
-  assert.match(reconcileRoute, /target_environment: providerEnvironment/);
+  assert.match(reconcileRoute, /session\.customer_owner_id === auth\.user\.id/);
+  assert.match(reconcileRoute, /unitId === session\.unit_id/);
+  assert.match(reconcileRoute, /\.eq\("provider_environment", providerEnvironment\)/);
+  assert.match(reconcileRoute, /PIX_PAYMENT_NOT_FOUND/);
 });
 
 test("Efí Pix Production availability also fails closed outside the Production runtime", () => {

@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Check, Copy, LoaderCircle, QrCode, RefreshCw } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 type PixCharge = {
   state: "CREATING" | "RECONCILING" | "PENDING" | "PAID" | "EXPIRED" | "CANCELLED" | "RECONCILIATION_FAILED";
@@ -21,8 +21,9 @@ const errorMessages: Record<string, string> = {
   PAYMENT_REQUEST_FAILED: "Não foi possível solicitar a cobrança PIX. Tente novamente.",
 };
 
-export function PixPaymentPanel({ sessionId, billingPeriodId, resumeExisting=false }: { sessionId?: string; billingPeriodId?: string; resumeExisting?: boolean }) {
+export function PixPaymentPanel({ sessionId, billingPeriodId, resumeExisting=false, onPaid }: { sessionId?: string; billingPeriodId?: string; resumeExisting?: boolean; onPaid?: () => void }) {
   const router = useRouter();
+  const paidHandled = useRef(false);
   const [charge, setCharge] = useState<PixCharge | null>(null);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -39,9 +40,13 @@ export function PixPaymentPanel({ sessionId, billingPeriodId, resumeExisting=fal
     if (!parsed) throw new Error(errorMessages.PAYMENT_REQUEST_FAILED);
     setCharge(parsed);
     setError(null);
-    if (parsed.state === "PAID") router.refresh();
+    if (parsed.state === "PAID" && !paidHandled.current) {
+      paidHandled.current = true;
+      router.refresh();
+      onPaid?.();
+    }
     return parsed;
-  }, [router]);
+  }, [onPaid, router]);
 
   const createCharge = async () => {
     setLoading(true);
@@ -63,12 +68,12 @@ export function PixPaymentPanel({ sessionId, billingPeriodId, resumeExisting=fal
   const refreshCharge = useCallback(async (silent = false) => {
     if (!silent) setRefreshing(true);
     try {
-    const monthly = Boolean(billingPeriodId);
-    if (monthly) {
-      await readResponse(await fetch(`/api/payments/monthly/pix?billingPeriodId=${encodeURIComponent(billingPeriodId ?? "")}`, { cache: "no-store" }));
-    } else {
-      await readResponse(await fetch("/api/payments/efi-pix/reconcile", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ sessionId }) }));
-    }
+      const monthly = Boolean(billingPeriodId);
+      if (monthly) {
+        await readResponse(await fetch(`/api/payments/monthly/pix?billingPeriodId=${encodeURIComponent(billingPeriodId ?? "")}`, { cache: "no-store" }));
+      } else {
+        await readResponse(await fetch("/api/payments/efi-pix/reconcile", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ sessionId }) }));
+      }
     } catch (cause) {
       if (!silent) setError(cause instanceof Error ? cause.message : errorMessages.PAYMENT_REQUEST_FAILED);
     } finally {
