@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { buildEfiPixServerlessWebhookUrl, EfiPixWebhookClient } from "./efi-pix-webhook-client.ts";
+import {
+  buildEfiPixServerlessWebhookUrl,
+  EfiPixWebhookClient,
+  EfiPixWebhookRegistrationError,
+} from "./efi-pix-webhook-client.ts";
 import type { EfiPixRuntimeConfig } from "./efi-config.ts";
 
 const config: EfiPixRuntimeConfig = {
@@ -52,4 +56,24 @@ test("registers webhook with skip-mTLS header and exact production Pix key", asy
     },
     body: JSON.stringify({ webhookUrl: "https://starcarvalho.vercel.app/api/webhooks/efi-pix?hmac=abc&ignorar=" }),
   });
+});
+
+test("returns only sanitized provider diagnostics on registration failure", async () => {
+  const client = new EfiPixWebhookClient(config, {
+    oauth: { getAccessToken: async () => ({ accessToken: "token", expiresIn: 3600, tokenType: "Bearer", scope: "webhook.write" }) },
+    transport: { request: async () => ({
+      status: 400,
+      body: JSON.stringify({ mensagem: "Webhook inválido em https://secret.example/abc?token=abcdefghijklmnopqrstuvwxyz123456" }),
+    }) },
+  });
+
+  await assert.rejects(
+    () => client.configureServerlessWebhook("https://starcarvalho.vercel.app/api/webhooks/efi-pix?hmac=abc&ignorar="),
+    (error: unknown) => {
+      assert.ok(error instanceof EfiPixWebhookRegistrationError);
+      assert.equal(error.providerStatus, 400);
+      assert.equal(error.providerMessage, "Webhook inválido em [url]");
+      return true;
+    },
+  );
 });
