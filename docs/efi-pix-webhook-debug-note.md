@@ -1,0 +1,1 @@
+Temporary diagnostic note for Efí Pix webhook registration response handling.
