@@ -2,6 +2,7 @@ import { PaymentService } from "@/lib/payments/payment-service";
 import { resolveEfiPixRuntimeConfig } from "@/lib/payments/efi-config";
 import { isEfiPixProductionRuntimeEnabled } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function POST(request: Request) {
   const body = await request.json().catch(() => null) as { sessionId?: unknown } | null;
@@ -24,8 +25,10 @@ export async function POST(request: Request) {
   const { data: auth, error: authError } = await user.auth.getUser();
   if (authError || !auth.user) return Response.json({ error: "UNAUTHORIZED" }, { status: 401 });
 
-  const { data: paymentId, error } = await user.rpc("get_or_reserve_efi_pix_payment_for_environment", {
+  const admin = createAdminClient();
+  const { data: paymentId, error } = await admin.rpc("get_or_reserve_efi_pix_payment_for_actor", {
     target_session: body.sessionId,
+    target_actor: auth.user.id,
     target_environment: providerEnvironment,
   });
   if (error || typeof paymentId !== "string") return Response.json({ error: "PAYMENT_FORBIDDEN" }, { status: 403 });
