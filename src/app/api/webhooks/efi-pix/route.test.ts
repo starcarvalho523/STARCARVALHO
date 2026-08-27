@@ -9,7 +9,7 @@ const payload = {
   pix: [{ txid: "B".repeat(26), endToEndId: "E2E123", valor: "5.00", horario: "2026-08-27T12:00:00Z" }],
 };
 
-function req(body: unknown, options: { hmac?: string; sourceIp?: string; contentType?: string } = {}) {
+function req(body: unknown, options: { hmac?: string; sourceIp?: string; contentType?: string; rawBody?: string } = {}) {
   const url = new URL("https://example.test/api/webhooks/efi-pix");
   if (options.hmac !== undefined) url.searchParams.set("hmac", options.hmac);
   return new Request(url, {
@@ -18,7 +18,7 @@ function req(body: unknown, options: { hmac?: string; sourceIp?: string; content
       "content-type": options.contentType ?? "application/json",
       "x-forwarded-for": options.sourceIp ?? ip,
     },
-    body: JSON.stringify(body),
+    body: options.rawBody ?? JSON.stringify(body),
   });
 }
 
@@ -48,8 +48,14 @@ test("accepts Efí registration probe without payment effects", async () => {
     let calls = 0;
     setEfiPixPublicWebhookProcessorForTests(() => ({ processEfiPixWebhook: async () => { calls += 1; return []; } } as never));
 
-    for (const probe of [{}, { evento: "teste_webhook" }]) {
-      const response = await POST(req(probe, { hmac: secret }));
+    const probes = [
+      req({}, { hmac: secret }),
+      req({ evento: "teste_webhook" }, { hmac: secret }),
+      req(null, { hmac: secret, rawBody: "" }),
+    ];
+
+    for (const request of probes) {
+      const response = await POST(request);
       assert.equal(response.status, 200);
       assert.deepEqual(await response.json(), { ok: true, result: "EFI_WEBHOOK_PROBE_ACCEPTED" });
     }
