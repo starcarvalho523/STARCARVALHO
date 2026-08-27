@@ -2,6 +2,8 @@ import { PaymentService } from "@/lib/payments/payment-service";
 import { resolveEfiPixRuntimeConfig } from "@/lib/payments/efi-config";
 import { isEfiPixProductionRuntimeEnabled } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { getOperatorContext } from "@/lib/operator-data";
 
 export async function POST(request: Request) {
   const body = await request.json().catch(() => null) as { sessionId?: unknown } | null;
@@ -24,11 +26,44 @@ export async function POST(request: Request) {
   const { data: auth, error: authError } = await user.auth.getUser();
   if (authError || !auth.user) return Response.json({ error: "UNAUTHORIZED" }, { status: 401 });
 
-  const { data: paymentId, error } = await user.rpc("get_efi_pix_payment_for_session_for_environment", {
+  let paymentId: string | null = null;
+  const direct = await user.rpc("get_efi_pix_payment_for_session_for_environment", {
     target_session: body.sessionId,
     target_environment: providerEnvironment,
   });
-  if (error || typeof paymentId !== "string") return Response.json({ error: "PIX_PAYMENT_NOT_FOUND" }, { status: 404 });
+  if (!direct.error && typeof direct.data === "string") {
+    paymentId = direct.data;
+  } else {
+    try {
+      const { unitId } = await getOperatorContext();
+      const admin = createAdminClient();
+      const { data: session } = await admin
+        .from("parking_sessions")
+        .select("unit_id")
+        .eq("id", body.sessionId)
+        .maybeSingle();
+      if (!session || session.unit_id !== unitId) {
+        return Response.json({ error: "PIX_PAYMENT_NOT_FOUND" }, { status: 404 });
+      }
+
+      const { data: payment } = await admin
+        .from("payments")
+        .select("id")
+        .eq("parking_session_id", body.sessionId)
+        .eq("provider", "EFI")
+        .eq("method", "PIX")
+        .eq("payment_channel", "QR")
+        .eq("provider_environment", providerEnvironment)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (payment?.id) paymentId = payment.id;
+    } catch {
+      return Response.json({ error: "PIX_PAYMENT_NOT_FOUND" }, { status: 404 });
+    }
+  }
+
+  if (!paymentId) return Response.json({ error: "PIX_PAYMENT_NOT_FOUND" }, { status: 404 });
 
   try {
     const service = new PaymentService();
