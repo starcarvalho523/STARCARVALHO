@@ -37,7 +37,7 @@ export class EfiPixWebhookClient {
       },
       body: JSON.stringify({ webhookUrl }),
     });
-    if (response.status !== 201) {
+    if (response.status < 200 || response.status >= 300) {
       throw new EfiPixWebhookRegistrationError(response.status, extractSafeProviderMessage(response.body));
     }
   }
