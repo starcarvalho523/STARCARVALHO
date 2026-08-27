@@ -47,9 +47,12 @@ test("accepts Efí registration probe without payment effects", async () => {
   await withEnv(async () => {
     let calls = 0;
     setEfiPixPublicWebhookProcessorForTests(() => ({ processEfiPixWebhook: async () => { calls += 1; return []; } } as never));
-    const response = await POST(req({}, { hmac: secret }));
-    assert.equal(response.status, 200);
-    assert.deepEqual(await response.json(), { ok: true, result: "EFI_WEBHOOK_PROBE_ACCEPTED" });
+
+    for (const probe of [{}, { evento: "teste_webhook" }]) {
+      const response = await POST(req(probe, { hmac: secret }));
+      assert.equal(response.status, 200);
+      assert.deepEqual(await response.json(), { ok: true, result: "EFI_WEBHOOK_PROBE_ACCEPTED" });
+    }
     assert.equal(calls, 0);
   });
 });

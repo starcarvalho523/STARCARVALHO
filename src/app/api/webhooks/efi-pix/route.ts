@@ -32,11 +32,14 @@ export async function POST(request: Request) {
 
   try {
     const body = await readBodyWithinLimit(request);
-
-    // Efí sends a validation notification when the webhook is registered.
-    // A valid empty JSON object/array is acknowledged without financial effects.
     const parsed = JSON.parse(body);
-    if (isRegistrationProbe(parsed)) {
+
+    // During webhook registration Efí sends a validation POST to the exact URL.
+    // Their reference implementation only requires a 2xx response for this probe;
+    // the probe body is not guaranteed to match a Pix callback payload. Because the
+    // request has already passed both the HMAC and Efí IP checks, acknowledge any
+    // JSON payload that is not a real `pix` callback without financial side effects.
+    if (!hasPixEvents(parsed)) {
       return Response.json({ ok: true, result: "EFI_WEBHOOK_PROBE_ACCEPTED" });
     }
 
@@ -80,9 +83,8 @@ function safeEqual(received: string, expected: string): boolean {
   return left.length === right.length && timingSafeEqual(left, right);
 }
 
-function isRegistrationProbe(payload: unknown): boolean {
-  if (Array.isArray(payload)) return payload.length === 0;
-  return !!payload && typeof payload === "object" && Object.keys(payload as Record<string, unknown>).length === 0;
+function hasPixEvents(payload: unknown): payload is { pix: unknown[] } {
+  return !!payload && typeof payload === "object" && Array.isArray((payload as Record<string, unknown>).pix);
 }
 
 async function readBodyWithinLimit(request: Request): Promise<string> {
