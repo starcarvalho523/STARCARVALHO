@@ -43,7 +43,7 @@ test("normalizes QR responses and sanitizes provider errors", async () => {
   }
 });
 
-test("keeps production blocked before any request", () => {
+test("keeps production fail-closed before any request", () => {
   const env = { EFI_ENABLED: "true", EFI_ENVIRONMENT: "production", EFI_CLIENT_ID: "client", EFI_CLIENT_SECRET: "secret", EFI_CERTIFICATE_BASE64: Buffer.from("p12").toString("base64") } as unknown as NodeJS.ProcessEnv;
-  assert.throws(() => getEfiPixQrCode(1, { env }), /EFI_PRODUCTION_DISABLED/);
+  assert.throws(() => getEfiPixQrCode(1, { env }), /EFI_PIX_PRODUCTION_DISABLED/);
 });
