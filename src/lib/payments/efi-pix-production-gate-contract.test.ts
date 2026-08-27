@@ -19,8 +19,9 @@ test("Efí Pix Production runtime requires Vercel Production, main and explicit 
 test("Efí Pix create route fails closed before reserving a Production payment", () => {
   const config = createRoute.indexOf("resolveEfiPixRuntimeConfig()");
   const runtime = createRoute.indexOf("isEfiPixProductionRuntimeEnabled()");
-  const reserve = createRoute.indexOf("get_or_reserve_efi_pix_payment_for_environment");
+  const reserve = createRoute.indexOf("get_or_reserve_efi_pix_payment_for_actor");
   assert.ok(config >= 0 && runtime > config && reserve > runtime);
+  assert.match(createRoute, /target_actor: auth\.user\.id/);
   assert.match(createRoute, /target_environment: providerEnvironment/);
   assert.match(createRoute, /EFI_PIX_NOT_AVAILABLE/);
 });
