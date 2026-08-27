@@ -32,6 +32,14 @@ export async function POST(request: Request) {
 
   try {
     const body = await readBodyWithinLimit(request);
+
+    // Efí may send the registration validation POST with an empty body. The
+    // request has already passed HMAC + source IP validation, so acknowledge it
+    // without invoking any financial processing.
+    if (body.trim() === "") {
+      return Response.json({ ok: true, result: "EFI_WEBHOOK_PROBE_ACCEPTED" });
+    }
+
     const parsed = JSON.parse(body);
 
     // During webhook registration Efí sends a validation POST to the exact URL.
