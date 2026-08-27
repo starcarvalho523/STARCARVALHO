@@ -89,7 +89,7 @@ export function CustomerPaymentModal({
 
           <div className="mt-5 grid gap-4">
             {options.efiCard && options.efiCardEnvironment ? <EfiCardPaymentPanel sessionId={sessionId} amountLabel={amountLabel} environment={options.efiCardEnvironment} onSuccess={finish} onProcessingChange={setProcessing} /> : null}
-            {options.pix ? <PixPaymentPanel sessionId={sessionId} /> : null}
+            {options.pix ? <PixPaymentPanel sessionId={sessionId} onPaid={finish} /> : null}
             {options.credit ? <CreditCheckoutPanel sessionId={sessionId} /> : null}
           </div>
         </div>
