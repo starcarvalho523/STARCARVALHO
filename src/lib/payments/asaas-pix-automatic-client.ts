@@ -4,6 +4,7 @@ import { AsaasPublicError } from "./asaas-provider";
 import {
   buildPixAutomaticAuthorizationBody,
   buildPixAutomaticChargeBody,
+  isAsaasPixAutomaticEnabled,
   normalizePixAutomaticAuthorization,
   normalizePixAutomaticCharge,
   type CreatePixAutomaticAuthorizationInput,
@@ -18,12 +19,9 @@ export type {
   PixAutomaticAuthorization,
   PixAutomaticCharge,
 } from "./asaas-pix-automatic-core";
+export { isAsaasPixAutomaticEnabled } from "./asaas-pix-automatic-core";
 
 type Fetcher = typeof fetch;
-
-export function isAsaasPixAutomaticEnabled(env: NodeJS.ProcessEnv = process.env) {
-  return String(env.ASAAS_PIX_AUTOMATIC_ENABLED ?? "").trim().toLowerCase() === "true";
-}
 
 export async function createAsaasPixAutomaticAuthorization(
   input: CreatePixAutomaticAuthorizationInput,
