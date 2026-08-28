@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { runMonthlyPixAutomaticRecurringBilling } from "@/lib/payments/monthly-pix-automatic-recurring-billing";
+import { runMonthlyAsaasReconciliation } from "@/lib/payments/monthly-asaas-reconciliation";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +26,12 @@ export async function GET(request: Request) {
     if (generationError) throw generationError;
 
     const pixAutomatic = await runMonthlyPixAutomaticRecurringBilling();
+    const reconciliation = await runMonthlyAsaasReconciliation();
+
+    const { data: notifications, error: notificationError } = await admin.rpc(
+      "run_monthly_customer_notifications_cron",
+    );
+    if (notificationError) throw notificationError;
 
     const { data: statusAutomation, error: statusError } = await admin.rpc(
       "run_monthly_subscription_status_automation_cron",
@@ -32,12 +39,7 @@ export async function GET(request: Request) {
     if (statusError) throw statusError;
 
     return Response.json(
-      {
-        ok: true,
-        generation,
-        pixAutomatic,
-        statusAutomation,
-      },
+      { ok: true, generation, pixAutomatic, reconciliation, notifications, statusAutomation },
       { headers: { "cache-control": "no-store" } },
     );
   } catch (error) {
