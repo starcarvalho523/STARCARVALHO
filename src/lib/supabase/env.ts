@@ -1,5 +1,6 @@
 const PRODUCTION_VERCEL_HOST = "starcarvalho.vercel.app";
 const EFI_CARD_QA_PREVIEW_BRANCH = "feat/efi-credit-card-sandbox";
+const MONTHLY_ASAAS_QA_PREVIEW_BRANCH = "feat/monthly-asaas-recurring";
 const EFI_CARD_PRODUCTION_BRANCH = "main";
 const EFI_PIX_PRODUCTION_BRANCH = "main";
 const QA_SUPABASE_URL = "https://hqdaqijgloeiqrljulqx.supabase.co";
@@ -29,6 +30,15 @@ export function isEfiCardQaPreviewRuntime(
   );
 }
 
+export function isMonthlyAsaasQaPreviewRuntime(
+  environment: NodeJS.ProcessEnv = process.env,
+) {
+  return (
+    environment.VERCEL_ENV === "preview" &&
+    environment.VERCEL_GIT_COMMIT_REF === MONTHLY_ASAAS_QA_PREVIEW_BRANCH
+  );
+}
+
 export function isEfiCardProductionRuntimeEnabled(
   environment: NodeJS.ProcessEnv = process.env,
 ) {
@@ -50,7 +60,7 @@ export function isEfiPixProductionRuntimeEnabled(
 }
 
 export function getServerSupabaseEnvironment() {
-  if (isEfiCardQaPreviewRuntime()) {
+  if (isEfiCardQaPreviewRuntime() || isMonthlyAsaasQaPreviewRuntime()) {
     return {
       url: QA_SUPABASE_URL,
       publishableKey: QA_SUPABASE_PUBLISHABLE_KEY,
