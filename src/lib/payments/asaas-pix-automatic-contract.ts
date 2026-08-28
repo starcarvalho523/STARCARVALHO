@@ -26,6 +26,14 @@ function stringOrNull(value: unknown) {
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
+function normalizeAuthorizationStatus(value: unknown): AsaasPixAutomaticAuthorizationStatus | null {
+  const raw = stringOrNull(value)?.toUpperCase() ?? null;
+  if (raw === "CREATED") return "PENDING";
+  return raw && AUTHORIZATION_STATES.has(raw as AsaasPixAutomaticAuthorizationStatus)
+    ? raw as AsaasPixAutomaticAuthorizationStatus
+    : null;
+}
+
 export function parseAsaasPixAutomaticWebhook(input: unknown): AsaasPixAutomaticWebhookEvent {
   if (!input || typeof input !== "object") throw new Error("ASAAS_PIX_AUTOMATIC_INVALID_PAYLOAD");
   const body = input as Record<string, unknown>;
@@ -40,17 +48,12 @@ export function parseAsaasPixAutomaticWebhook(input: unknown): AsaasPixAutomatic
   const event = stringOrNull(body.event);
   if (!id || !event) throw new Error("ASAAS_PIX_AUTOMATIC_EVENT_ID_REQUIRED");
 
-  const rawStatus = stringOrNull(authorization?.status ?? body.status)?.toUpperCase() ?? null;
-  const status = rawStatus && AUTHORIZATION_STATES.has(rawStatus as AsaasPixAutomaticAuthorizationStatus)
-    ? rawStatus as AsaasPixAutomaticAuthorizationStatus
-    : null;
-
   return {
     id,
     event,
     authorizationId: stringOrNull(authorization?.id ?? body.authorizationId),
     subscriptionId: stringOrNull(subscription?.id ?? body.subscriptionId),
-    status,
+    status: normalizeAuthorizationStatus(authorization?.status ?? body.status),
     occurredAt: stringOrNull(body.dateCreated ?? body.occurredAt),
   };
 }
