@@ -89,6 +89,7 @@ export async function createMonthlyPixAutomatic(billingPeriodId: string, userCli
     startDate,
     description: "Mensalidade Star Carvalhos",
   });
+  if (!authorization.conciliationIdentifier) throw new Error("ASAAS_PIX_AUTOMATIC_CONCILIATION_REQUIRED");
 
   const authorizationStatus = normalizeAuthorizationStatus(authorization.status);
   const { error: upsertError } = await admin.rpc("upsert_monthly_recurring_binding", {
@@ -109,6 +110,13 @@ export async function createMonthlyPixAutomatic(billingPeriodId: string, userCli
     qr_expires_at: authorization.expiresAt,
   });
   if (qrError) throw new Error(qrError.message);
+
+  const { error: conciliationError } = await admin.rpc("bind_monthly_pix_automatic_initial_payment", {
+    target_subscription: period.subscription_id,
+    target_billing_period: period.id,
+    target_conciliation_identifier: authorization.conciliationIdentifier,
+  });
+  if (conciliationError) throw new Error(conciliationError.message);
 
   return {
     state: authorizationStatus === "ACTIVE" ? "ACTIVE" : "PENDING",
