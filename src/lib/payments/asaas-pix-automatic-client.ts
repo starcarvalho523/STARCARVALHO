@@ -1,40 +1,23 @@
 import "server-only";
 import { resolveAsaasRuntimeConfig } from "./asaas-config";
 import { AsaasPublicError } from "./asaas-provider";
+import {
+  buildPixAutomaticAuthorizationBody,
+  buildPixAutomaticChargeBody,
+  normalizePixAutomaticAuthorization,
+  normalizePixAutomaticCharge,
+  type CreatePixAutomaticAuthorizationInput,
+  type CreatePixAutomaticChargeInput,
+  type PixAutomaticAuthorization,
+  type PixAutomaticCharge,
+} from "./asaas-pix-automatic-core";
 
-export type CreatePixAutomaticAuthorizationInput = {
-  customerId: string;
-  contractId: string;
-  value: number;
-  startDate: string;
-  description: string;
-};
-
-export type PixAutomaticAuthorization = {
-  id: string;
-  status: string | null;
-  qrCodePayload: string | null;
-  qrCodeImageBase64: string | null;
-  expiresAt: string | null;
-  conciliationIdentifier: string | null;
-};
-
-export type CreatePixAutomaticChargeInput = {
-  customerId: string;
-  authorizationId: string;
-  amount: number;
-  dueDate: string;
-  description: string;
-  externalReference: string;
-};
-
-export type PixAutomaticCharge = {
-  id: string;
-  status: string;
-  customerId: string;
-  amount: number;
-  externalReference: string | null;
-};
+export type {
+  CreatePixAutomaticAuthorizationInput,
+  CreatePixAutomaticChargeInput,
+  PixAutomaticAuthorization,
+  PixAutomaticCharge,
+} from "./asaas-pix-automatic-core";
 
 type Fetcher = typeof fetch;
 
@@ -48,40 +31,17 @@ export async function createAsaasPixAutomaticAuthorization(
 ): Promise<PixAutomaticAuthorization> {
   const env = options.env ?? process.env;
   if (!isAsaasPixAutomaticEnabled(env)) throw new Error("ASAAS_PIX_AUTOMATIC_DISABLED");
-  if (!input.customerId || !input.contractId || !input.startDate) throw new Error("ASAAS_PIX_AUTOMATIC_INVALID_INPUT");
-  if (!Number.isFinite(input.value) || input.value <= 0) throw new Error("ASAAS_PIX_AUTOMATIC_INVALID_VALUE");
-  if (input.contractId.length > 35 || input.description.length > 35) throw new Error("ASAAS_PIX_AUTOMATIC_FIELD_TOO_LONG");
 
   const config = resolveAsaasRuntimeConfig(env);
   const fetcher = options.fetcher ?? fetch;
   const response = await fetcher(`${config.baseUrl}/pix/automatic/authorizations`, {
     method: "POST",
     headers: providerHeaders(config.apiKey, config.providerEnvironment),
-    body: JSON.stringify({
-      frequency: "MONTHLY",
-      contractId: input.contractId,
-      startDate: input.startDate,
-      value: input.value,
-      description: input.description,
-      customerId: input.customerId,
-      immediateQrCode: {},
-      paymentCreationMode: "MANUAL",
-      retryPolicy: "ALLOW_THREE_IN_SEVEN_DAYS",
-    }),
+    body: JSON.stringify(buildPixAutomaticAuthorizationBody(input)),
     cache: "no-store",
   });
 
-  const body = await parseResponse(response);
-  if (!isRecord(body) || typeof body.id !== "string") throw new Error("ASAAS_PIX_AUTOMATIC_INVALID_RESPONSE");
-  const qr = isRecord(body.immediateQrCode) ? body.immediateQrCode : null;
-  return {
-    id: body.id,
-    status: stringOrNull(body.status),
-    qrCodePayload: stringOrNull(qr?.payload),
-    qrCodeImageBase64: stringOrNull(qr?.encodedImage),
-    expiresAt: stringOrNull(qr?.expirationDate),
-    conciliationIdentifier: stringOrNull(qr?.conciliationIdentifier),
-  };
+  return normalizePixAutomaticAuthorization(await parseResponse(response));
 }
 
 export async function createAsaasPixAutomaticCharge(
@@ -90,33 +50,17 @@ export async function createAsaasPixAutomaticCharge(
 ): Promise<PixAutomaticCharge> {
   const env = options.env ?? process.env;
   if (!isAsaasPixAutomaticEnabled(env)) throw new Error("ASAAS_PIX_AUTOMATIC_DISABLED");
-  if (!input.customerId || !input.authorizationId || !input.dueDate || !input.externalReference) throw new Error("ASAAS_PIX_AUTOMATIC_INVALID_INPUT");
-  if (!Number.isFinite(input.amount) || input.amount <= 0) throw new Error("ASAAS_PIX_AUTOMATIC_INVALID_VALUE");
 
   const config = resolveAsaasRuntimeConfig(env);
   const fetcher = options.fetcher ?? fetch;
   const response = await fetcher(`${config.baseUrl}/payments`, {
     method: "POST",
     headers: providerHeaders(config.apiKey, config.providerEnvironment),
-    body: JSON.stringify({
-      customer: input.customerId,
-      billingType: "PIX",
-      value: input.amount,
-      dueDate: input.dueDate,
-      description: input.description,
-      externalReference: input.externalReference,
-      pixAutomaticAuthorizationId: input.authorizationId,
-    }),
+    body: JSON.stringify(buildPixAutomaticChargeBody(input)),
     cache: "no-store",
   });
 
-  const body = await parseResponse(response);
-  if (!isRecord(body) || typeof body.id !== "string" || typeof body.status !== "string" || typeof body.customer !== "string") {
-    throw new Error("ASAAS_PIX_AUTOMATIC_INVALID_CHARGE_RESPONSE");
-  }
-  const amount = numberOrNull(body.value);
-  if (amount === null || Math.abs(amount - input.amount) > 0.0001) throw new Error("ASAAS_PIX_AUTOMATIC_CHARGE_AMOUNT_MISMATCH");
-  return { id: body.id, status: body.status, customerId: body.customer, amount, externalReference: stringOrNull(body.externalReference) };
+  return normalizePixAutomaticCharge(await parseResponse(response), input.amount);
 }
 
 function providerHeaders(apiKey: string, environment: "SANDBOX" | "PRODUCTION") {
@@ -150,11 +94,4 @@ function firstPublicError(body: unknown) {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-function stringOrNull(value: unknown) {
-  return typeof value === "string" && value.trim() ? value : null;
-}
-function numberOrNull(value: unknown) {
-  const number = typeof value === "number" ? value : typeof value === "string" ? Number(value) : NaN;
-  return Number.isFinite(number) ? number : null;
 }
