@@ -13,12 +13,14 @@ export type CreatePixAutomaticAuthorizationInput = {
 export type PixAutomaticAuthorization = {
   id: string;
   status: string | null;
-  immediateQrCode: Record<string, unknown> | null;
+  qrCodePayload: string | null;
+  qrCodeImageBase64: string | null;
+  expiresAt: string | null;
 };
 
 type Fetcher = typeof fetch;
 
-function enabled(env: NodeJS.ProcessEnv) {
+export function isAsaasPixAutomaticEnabled(env: NodeJS.ProcessEnv = process.env) {
   return String(env.ASAAS_PIX_AUTOMATIC_ENABLED ?? "").trim().toLowerCase() === "true";
 }
 
@@ -27,7 +29,7 @@ export async function createAsaasPixAutomaticAuthorization(
   options: { env?: NodeJS.ProcessEnv; fetcher?: Fetcher } = {},
 ): Promise<PixAutomaticAuthorization> {
   const env = options.env ?? process.env;
-  if (!enabled(env)) throw new Error("ASAAS_PIX_AUTOMATIC_DISABLED");
+  if (!isAsaasPixAutomaticEnabled(env)) throw new Error("ASAAS_PIX_AUTOMATIC_DISABLED");
   if (!input.customerId || !input.contractId || !input.startDate) throw new Error("ASAAS_PIX_AUTOMATIC_INVALID_INPUT");
   if (!Number.isFinite(input.value) || input.value <= 0) throw new Error("ASAAS_PIX_AUTOMATIC_INVALID_VALUE");
   if (input.contractId.length > 35 || input.description.length > 35) throw new Error("ASAAS_PIX_AUTOMATIC_FIELD_TOO_LONG");
@@ -61,29 +63,31 @@ export async function createAsaasPixAutomaticAuthorization(
     const detail = firstPublicError(body);
     throw new AsaasPublicError(response.status, detail.code, detail.description);
   }
-  if (!body || typeof body !== "object" || typeof (body as Record<string, unknown>).id !== "string") {
-    throw new Error("ASAAS_PIX_AUTOMATIC_INVALID_RESPONSE");
-  }
-  const value = body as Record<string, unknown>;
-  const qr = value.immediateQrCode && typeof value.immediateQrCode === "object" && !Array.isArray(value.immediateQrCode)
-    ? value.immediateQrCode as Record<string, unknown>
-    : null;
+  if (!isRecord(body) || typeof body.id !== "string") throw new Error("ASAAS_PIX_AUTOMATIC_INVALID_RESPONSE");
+  const qr = isRecord(body.immediateQrCode) ? body.immediateQrCode : null;
   return {
-    id: value.id as string,
-    status: typeof value.status === "string" ? value.status : null,
-    immediateQrCode: qr,
+    id: body.id,
+    status: stringOrNull(body.status),
+    qrCodePayload: stringOrNull(qr?.payload),
+    qrCodeImageBase64: stringOrNull(qr?.encodedImage),
+    expiresAt: stringOrNull(qr?.expirationDate),
   };
 }
 
 function firstPublicError(body: unknown) {
-  if (!body || typeof body !== "object") return { code: null, description: null };
-  const errors = (body as Record<string, unknown>).errors;
-  const first = Array.isArray(errors) && errors[0] && typeof errors[0] === "object"
-    ? errors[0] as Record<string, unknown>
-    : null;
+  if (!isRecord(body)) return { code: null, description: null };
+  const errors = body.errors;
+  const first = Array.isArray(errors) && isRecord(errors[0]) ? errors[0] : null;
   const code = typeof first?.code === "string" ? first.code.slice(0, 64) : null;
   const description = typeof first?.description === "string"
     ? first.description.replace(/[\r\n\t]+/g, " ").trim().slice(0, 160)
     : null;
   return { code, description };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+function stringOrNull(value: unknown) {
+  return typeof value === "string" && value.trim() ? value : null;
 }
