@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createAsaasPixAutomaticAuthorization, createAsaasPixAutomaticCharge } from "./asaas-pix-automatic-client";
-import { parseAsaasPixAutomaticWebhook } from "./asaas-pix-automatic-contract";
+import { createAsaasPixAutomaticAuthorization, createAsaasPixAutomaticCharge } from "./asaas-pix-automatic-client.ts";
+import { parseAsaasPixAutomaticWebhook } from "./asaas-pix-automatic-contract.ts";
 
 function sandboxEnv(): NodeJS.ProcessEnv {
   return {
