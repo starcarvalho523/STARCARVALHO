@@ -43,15 +43,15 @@ revoke all on function public.bind_monthly_pix_automatic_initial_payment(uuid,uu
 grant execute on function public.bind_monthly_pix_automatic_initial_payment(uuid,uuid,text) to service_role;
 
 create or replace function public.process_monthly_pix_automatic_initial_payment(
-  event_id text,
-  event_type text,
-  provider_payment_id text,
-  provider_customer_id text,
-  provider_status text,
-  reported_amount numeric,
-  conciliation_identifier text,
-  provider_environment text,
-  sanitized_payload jsonb default '{}'::jsonb
+  target_event_id text,
+  target_event_type text,
+  target_provider_payment_id text,
+  target_provider_customer_id text,
+  target_provider_status text,
+  target_reported_amount numeric,
+  target_conciliation_identifier text,
+  target_provider_environment text,
+  target_sanitized_payload jsonb default '{}'::jsonb
 ) returns jsonb
 language plpgsql
 security definer
@@ -69,14 +69,14 @@ begin
   if (select auth.role()) <> 'service_role' then
     raise exception 'MONTHLY_RECURRING_SERVICE_ROLE_REQUIRED' using errcode='42501';
   end if;
-  if event_id is null or btrim(event_id)='' or provider_payment_id is null or btrim(provider_payment_id)=''
-     or conciliation_identifier is null or btrim(conciliation_identifier)='' then
+  if target_event_id is null or btrim(target_event_id)='' or target_provider_payment_id is null or btrim(target_provider_payment_id)=''
+     or target_conciliation_identifier is null or btrim(target_conciliation_identifier)='' then
     raise exception 'MONTHLY_RECURRING_INITIAL_EVENT_INVALID';
   end if;
-  if event_type not in ('PAYMENT_CREATED','PAYMENT_CONFIRMED','PAYMENT_RECEIVED','PAYMENT_OVERDUE','PAYMENT_DELETED') then
+  if target_event_type not in ('PAYMENT_CREATED','PAYMENT_CONFIRMED','PAYMENT_RECEIVED','PAYMENT_OVERDUE','PAYMENT_DELETED') then
     raise exception 'MONTHLY_RECURRING_INITIAL_EVENT_UNSUPPORTED';
   end if;
-  if provider_environment not in ('SANDBOX','PRODUCTION') then
+  if target_provider_environment not in ('SANDBOX','PRODUCTION') then
     raise exception 'PAYMENT_PROVIDER_ENVIRONMENT_INVALID';
   end if;
 
@@ -84,12 +84,12 @@ begin
     from public.monthly_recurring_provider_bindings b
    where b.provider='ASAAS'
      and b.method='PIX_AUTOMATIC'
-     and b.initial_conciliation_identifier=conciliation_identifier
+     and b.initial_conciliation_identifier=target_conciliation_identifier
    for update;
   if not found then return jsonb_build_object('result','unknown'); end if;
   if binding.initial_billing_period_id is null then return jsonb_build_object('result','review'); end if;
-  if binding.provider_customer_id is not null and provider_customer_id is not null
-     and binding.provider_customer_id<>provider_customer_id then
+  if binding.provider_customer_id is not null and target_provider_customer_id is not null
+     and binding.provider_customer_id<>target_provider_customer_id then
     return jsonb_build_object('result','provider_mismatch');
   end if;
 
@@ -98,7 +98,7 @@ begin
    where id=binding.initial_billing_period_id
    for update;
   if not found then return jsonb_build_object('result','review'); end if;
-  if reported_amount is null or reported_amount<>period_row.amount then
+  if target_reported_amount is null or target_reported_amount<>period_row.amount then
     update public.monthly_billing_periods set status='MANUAL_REVIEW',updated_at=clock_timestamp()
      where id=period_row.id and status='PENDING';
     return jsonb_build_object('result','review');
@@ -112,20 +112,31 @@ begin
 
   if found then
     if existing_payment.provider<>'ASAAS' or existing_payment.method<>'PIX'
-       or (existing_payment.provider_reference is not null and existing_payment.provider_reference<>provider_payment_id) then
+       or (existing_payment.provider_reference is not null and existing_payment.provider_reference<>target_provider_payment_id) then
       return jsonb_build_object('result','review');
     end if;
     select * into existing_transaction from private.payment_provider_transactions
       where payment_id=existing_payment.id for update;
     if found and existing_transaction.provider_payment_id is null then
       update private.payment_provider_transactions
-         set provider_payment_id=provider_payment_id,
-             provider_customer_id=coalesce(provider_customer_id,provider_customer_id),
-             provider_status=provider_status,
-             environment=provider_environment,
+         set provider_payment_id=target_provider_payment_id,
+             provider_customer_id=coalesce(target_provider_customer_id,existing_transaction.provider_customer_id),
+             provider_status=target_provider_status,
+             environment=target_provider_environment,
              state='PENDING',updated_at=clock_timestamp()
        where id=existing_transaction.id;
-      update public.payments set provider_reference=provider_payment_id,provider_environment=provider_environment
+      update public.payments set provider_reference=target_provider_payment_id,provider_environment=target_provider_environment
+       where id=existing_payment.id;
+    elsif not found then
+      transaction_id:=gen_random_uuid();
+      insert into private.payment_provider_transactions(
+        id,payment_id,provider,environment,state,provider_payment_id,provider_customer_id,
+        provider_status,external_reference,updated_at
+      ) values (
+        transaction_id,existing_payment.id,'ASAAS',target_provider_environment,'PENDING',target_provider_payment_id,target_provider_customer_id,
+        target_provider_status,'starcarvalhos:monthly:auto:'||period_row.id::text,clock_timestamp()
+      );
+      update public.payments set provider_reference=target_provider_payment_id,provider_environment=target_provider_environment
        where id=existing_payment.id;
     end if;
   else
@@ -138,19 +149,19 @@ begin
     ) values (
       new_payment_id,period_row.unit_id,null,period_row.id,'MONTHLY_BILLING_PERIOD',
       period_row.amount,period_row.amount,'PIX','PENDING','ASAAS','QR',false,
-      gen_random_uuid(),provider_payment_id,provider_environment
+      gen_random_uuid(),target_provider_payment_id,target_provider_environment
     );
     insert into private.payment_provider_transactions(
       id,payment_id,provider,environment,state,provider_payment_id,provider_customer_id,
       provider_status,external_reference,updated_at
     ) values (
-      transaction_id,new_payment_id,'ASAAS',provider_environment,'PENDING',provider_payment_id,provider_customer_id,
-      provider_status,'starcarvalhos:monthly:auto:'||period_row.id::text,clock_timestamp()
+      transaction_id,new_payment_id,'ASAAS',target_provider_environment,'PENDING',target_provider_payment_id,target_provider_customer_id,
+      target_provider_status,'starcarvalhos:monthly:auto:'||period_row.id::text,clock_timestamp()
     );
   end if;
 
   result:=private.process_asaas_webhook(
-    event_id,event_type,provider_payment_id,provider_status,reported_amount,coalesce(sanitized_payload,'{}'::jsonb)
+    target_event_id,target_event_type,target_provider_payment_id,target_provider_status,target_reported_amount,coalesce(target_sanitized_payload,'{}'::jsonb)
   );
   return result;
 end;
