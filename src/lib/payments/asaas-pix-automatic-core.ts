@@ -33,7 +33,12 @@ export type PixAutomaticCharge = {
 };
 
 export function isAsaasPixAutomaticEnabled(env: NodeJS.ProcessEnv = process.env) {
-  return String(env.ASAAS_PIX_AUTOMATIC_ENABLED ?? "").trim().toLowerCase() === "true";
+  const explicit = String(env.ASAAS_PIX_AUTOMATIC_ENABLED ?? "").trim().toLowerCase() === "true";
+  if (explicit) return true;
+
+  const isPreview = String(env.VERCEL_ENV ?? "").trim().toLowerCase() === "preview";
+  const isSandbox = String(env.ASAAS_ENVIRONMENT ?? "").trim().toLowerCase() === "sandbox";
+  return isPreview && isSandbox;
 }
 
 export function validatePixAutomaticAuthorizationInput(input: CreatePixAutomaticAuthorizationInput) {
