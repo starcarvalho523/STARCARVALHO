@@ -5,6 +5,7 @@ import { getPaymentProvider } from "./provider-factory";
 
 type Candidate = {
   payment_id: string;
+  unit_id: string;
   provider_payment_id: string;
   provider_status: string | null;
   amount: number | string;
@@ -22,10 +23,15 @@ export async function runMonthlyAsaasReconciliation() {
   let checked=0,processed=0,pending=0,failed=0;
   for (const candidate of candidates) {
     checked++;
+    const incidentKey=`monthly-reconcile:${candidate.payment_id}`;
     try {
       const charge = await provider.getPayment(candidate.provider_payment_id);
       const eventType = reconciliationEventType(charge.providerStatus);
-      if (!eventType) { pending++; continue; }
+      if (!eventType) {
+        pending++;
+        await admin.rpc("resolve_monthly_automation_incident", { target_key:incidentKey });
+        continue;
+      }
       await service.processWebhook({
         id:`reconcile:${candidate.provider_payment_id}:${charge.providerStatus}`,
         type:eventType,
@@ -36,10 +42,19 @@ export async function runMonthlyAsaasReconciliation() {
         billingType:charge.billingType || "PIX",
         checkoutId:null,
       });
+      await admin.rpc("resolve_monthly_automation_incident", { target_key:incidentKey });
       processed++;
     } catch (error) {
       failed++;
-      console.error("MONTHLY_ASAAS_RECONCILIATION_FAILED", publicFailure(error));
+      const message=publicFailure(error);
+      console.error("MONTHLY_ASAAS_RECONCILIATION_FAILED", message);
+      await admin.rpc("record_monthly_automation_incident", {
+        target_unit:candidate.unit_id,
+        target_key:incidentKey,
+        target_code:"ASAAS_RECONCILIATION_FAILED",
+        target_summary:`Falha ao reconciliar uma mensalidade com o Asaas: ${message}`,
+        target_severity:"ATTENTION",
+      });
     }
   }
   return { checked, processed, pending, failed };
