@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { runMonthlyPixAutomaticRecurringBilling } from "@/lib/payments/monthly-pix-automatic-recurring-billing";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +16,8 @@ export async function GET(request: Request) {
     const admin = createAdminClient();
     const { data, error } = await admin.rpc("run_monthly_billing_generation_cron", { dry_run: false });
     if (error) throw error;
-    return Response.json({ result: data }, { headers: { "cache-control": "no-store" } });
+    const pixAutomatic = await runMonthlyPixAutomaticRecurringBilling();
+    return Response.json({ result: data, pixAutomatic }, { headers: { "cache-control": "no-store" } });
   } catch {
     return Response.json({ error: "MONTHLY_BILLING_AUTOMATION_FAILED" }, { status: 500 });
   }
