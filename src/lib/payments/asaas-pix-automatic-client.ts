@@ -16,6 +16,24 @@ export type PixAutomaticAuthorization = {
   qrCodePayload: string | null;
   qrCodeImageBase64: string | null;
   expiresAt: string | null;
+  conciliationIdentifier: string | null;
+};
+
+export type CreatePixAutomaticChargeInput = {
+  customerId: string;
+  authorizationId: string;
+  amount: number;
+  dueDate: string;
+  description: string;
+  externalReference: string;
+};
+
+export type PixAutomaticCharge = {
+  id: string;
+  status: string;
+  customerId: string;
+  amount: number;
+  externalReference: string | null;
 };
 
 type Fetcher = typeof fetch;
@@ -38,12 +56,7 @@ export async function createAsaasPixAutomaticAuthorization(
   const fetcher = options.fetcher ?? fetch;
   const response = await fetcher(`${config.baseUrl}/pix/automatic/authorizations`, {
     method: "POST",
-    headers: {
-      accept: "application/json",
-      "content-type": "application/json",
-      access_token: config.apiKey,
-      "user-agent": `StarCarvalhos-${config.providerEnvironment}/1.0`,
-    },
+    headers: providerHeaders(config.apiKey, config.providerEnvironment),
     body: JSON.stringify({
       frequency: "MONTHLY",
       contractId: input.contractId,
@@ -52,17 +65,13 @@ export async function createAsaasPixAutomaticAuthorization(
       description: input.description,
       customerId: input.customerId,
       immediateQrCode: {},
-      paymentCreationMode: "SUBSCRIPTION",
+      paymentCreationMode: "MANUAL",
       retryPolicy: "ALLOW_THREE_IN_SEVEN_DAYS",
     }),
     cache: "no-store",
   });
 
-  const body = await response.json().catch(() => null);
-  if (!response.ok) {
-    const detail = firstPublicError(body);
-    throw new AsaasPublicError(response.status, detail.code, detail.description);
-  }
+  const body = await parseResponse(response);
   if (!isRecord(body) || typeof body.id !== "string") throw new Error("ASAAS_PIX_AUTOMATIC_INVALID_RESPONSE");
   const qr = isRecord(body.immediateQrCode) ? body.immediateQrCode : null;
   return {
@@ -71,7 +80,61 @@ export async function createAsaasPixAutomaticAuthorization(
     qrCodePayload: stringOrNull(qr?.payload),
     qrCodeImageBase64: stringOrNull(qr?.encodedImage),
     expiresAt: stringOrNull(qr?.expirationDate),
+    conciliationIdentifier: stringOrNull(qr?.conciliationIdentifier),
   };
+}
+
+export async function createAsaasPixAutomaticCharge(
+  input: CreatePixAutomaticChargeInput,
+  options: { env?: NodeJS.ProcessEnv; fetcher?: Fetcher } = {},
+): Promise<PixAutomaticCharge> {
+  const env = options.env ?? process.env;
+  if (!isAsaasPixAutomaticEnabled(env)) throw new Error("ASAAS_PIX_AUTOMATIC_DISABLED");
+  if (!input.customerId || !input.authorizationId || !input.dueDate || !input.externalReference) throw new Error("ASAAS_PIX_AUTOMATIC_INVALID_INPUT");
+  if (!Number.isFinite(input.amount) || input.amount <= 0) throw new Error("ASAAS_PIX_AUTOMATIC_INVALID_VALUE");
+
+  const config = resolveAsaasRuntimeConfig(env);
+  const fetcher = options.fetcher ?? fetch;
+  const response = await fetcher(`${config.baseUrl}/payments`, {
+    method: "POST",
+    headers: providerHeaders(config.apiKey, config.providerEnvironment),
+    body: JSON.stringify({
+      customer: input.customerId,
+      billingType: "PIX",
+      value: input.amount,
+      dueDate: input.dueDate,
+      description: input.description,
+      externalReference: input.externalReference,
+      pixAutomaticAuthorizationId: input.authorizationId,
+    }),
+    cache: "no-store",
+  });
+
+  const body = await parseResponse(response);
+  if (!isRecord(body) || typeof body.id !== "string" || typeof body.status !== "string" || typeof body.customer !== "string") {
+    throw new Error("ASAAS_PIX_AUTOMATIC_INVALID_CHARGE_RESPONSE");
+  }
+  const amount = numberOrNull(body.value);
+  if (amount === null || Math.abs(amount - input.amount) > 0.0001) throw new Error("ASAAS_PIX_AUTOMATIC_CHARGE_AMOUNT_MISMATCH");
+  return { id: body.id, status: body.status, customerId: body.customer, amount, externalReference: stringOrNull(body.externalReference) };
+}
+
+function providerHeaders(apiKey: string, environment: "SANDBOX" | "PRODUCTION") {
+  return {
+    accept: "application/json",
+    "content-type": "application/json",
+    access_token: apiKey,
+    "user-agent": `StarCarvalhos-${environment}/1.0`,
+  };
+}
+
+async function parseResponse(response: Response) {
+  const body = await response.json().catch(() => null);
+  if (!response.ok) {
+    const detail = firstPublicError(body);
+    throw new AsaasPublicError(response.status, detail.code, detail.description);
+  }
+  return body;
 }
 
 function firstPublicError(body: unknown) {
@@ -90,4 +153,8 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 function stringOrNull(value: unknown) {
   return typeof value === "string" && value.trim() ? value : null;
+}
+function numberOrNull(value: unknown) {
+  const number = typeof value === "number" ? value : typeof value === "string" ? Number(value) : NaN;
+  return Number.isFinite(number) ? number : null;
 }
