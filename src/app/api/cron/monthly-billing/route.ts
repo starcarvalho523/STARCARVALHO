@@ -8,17 +8,47 @@ export async function GET(request: Request) {
   if (!secret || request.headers.get("authorization") !== `Bearer ${secret}`) {
     return Response.json({ error: "UNAUTHORIZED" }, { status: 401 });
   }
-  // The schedule is deliberately absent from vercel.json until post-production approval.
+
   if (process.env.MONTHLY_BILLING_AUTOMATION_ENABLED !== "true") {
-    return Response.json({ error: "MONTHLY_BILLING_AUTOMATION_DISABLED" }, { status: 503 });
+    return Response.json(
+      { ok: true, skipped: true, reason: "MONTHLY_BILLING_AUTOMATION_DISABLED" },
+      { headers: { "cache-control": "no-store" } },
+    );
   }
+
   try {
     const admin = createAdminClient();
-    const { data, error } = await admin.rpc("run_monthly_billing_generation_cron", { dry_run: false });
-    if (error) throw error;
+    const { data: generation, error: generationError } = await admin.rpc(
+      "run_monthly_billing_generation_cron",
+      { dry_run: false },
+    );
+    if (generationError) throw generationError;
+
     const pixAutomatic = await runMonthlyPixAutomaticRecurringBilling();
-    return Response.json({ result: data, pixAutomatic }, { headers: { "cache-control": "no-store" } });
-  } catch {
+
+    const { data: statusAutomation, error: statusError } = await admin.rpc(
+      "run_monthly_subscription_status_automation_cron",
+    );
+    if (statusError) throw statusError;
+
+    return Response.json(
+      {
+        ok: true,
+        generation,
+        pixAutomatic,
+        statusAutomation,
+      },
+      { headers: { "cache-control": "no-store" } },
+    );
+  } catch (error) {
+    console.error("MONTHLY_BILLING_AUTOMATION_FAILED", publicFailure(error));
     return Response.json({ error: "MONTHLY_BILLING_AUTOMATION_FAILED" }, { status: 500 });
   }
+}
+
+function publicFailure(error: unknown) {
+  if (!(error instanceof Error)) return "UNKNOWN";
+  return error.message
+    .replace(/(access[_-]?token|api[_-]?key|authorization|secret)\s*[:=]\s*\S+/gi, "[redacted]")
+    .slice(0, 160);
 }
