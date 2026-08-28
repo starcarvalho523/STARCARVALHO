@@ -52,7 +52,7 @@ export async function runMonthlyPixAutomaticRecurringBilling() {
       if (!Number.isFinite(amount) || amount<=0) throw new Error("MONTHLY_PIX_AUTOMATIC_AMOUNT_INVALID");
 
       let charge = await provider.findPaymentByExternalReference(externalReference);
-      let wasRecovered = Boolean(charge);
+      const wasRecovered = Boolean(charge);
       if (charge) {
         if (charge.providerCustomerId!==customerId || charge.externalReference!==externalReference || charge.billingType!=="PIX" || Math.abs(Number(charge.amount)-amount)>0.0001) {
           throw new Error("MONTHLY_PIX_AUTOMATIC_RECOVERY_MISMATCH");
