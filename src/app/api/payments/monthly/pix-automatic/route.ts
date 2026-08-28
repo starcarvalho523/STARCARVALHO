@@ -30,7 +30,15 @@ function failure(error: unknown) {
     : /NOT_FOUND/.test(message) ? 404
     : /NOT_PAYABLE|DISABLED|DOCUMENT_REQUIRED/.test(message) ? 409
     : 503;
+  if (process.env.VERCEL_ENV === "preview") {
+    console.warn("MONTHLY_PIX_AUTOMATIC_FAILED", { code: safeCode(message), status });
+  }
   return Response.json({ error: publicError(message) }, { status });
+}
+
+function safeCode(message: string) {
+  const match = message.toUpperCase().match(/[A-Z][A-Z0-9_]{2,80}/);
+  return match?.[0] ?? "MONTHLY_PIX_AUTOMATIC_ERROR";
 }
 
 function publicError(message: string) {
