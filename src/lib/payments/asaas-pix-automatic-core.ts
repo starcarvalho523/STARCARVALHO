@@ -32,6 +32,10 @@ export type PixAutomaticCharge = {
   externalReference: string | null;
 };
 
+export function isAsaasPixAutomaticEnabled(env: NodeJS.ProcessEnv = process.env) {
+  return String(env.ASAAS_PIX_AUTOMATIC_ENABLED ?? "").trim().toLowerCase() === "true";
+}
+
 export function validatePixAutomaticAuthorizationInput(input: CreatePixAutomaticAuthorizationInput) {
   if (!input.customerId || !input.contractId || !input.startDate) throw new Error("ASAAS_PIX_AUTOMATIC_INVALID_INPUT");
   if (!Number.isFinite(input.value) || input.value <= 0) throw new Error("ASAAS_PIX_AUTOMATIC_INVALID_VALUE");
