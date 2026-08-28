@@ -61,6 +61,7 @@ declare
   binding public.monthly_recurring_provider_bindings;
   period_row public.monthly_billing_periods;
   existing_payment public.payments;
+  existing_transaction private.payment_provider_transactions;
   new_payment_id uuid;
   transaction_id uuid;
   result jsonb;
@@ -68,8 +69,12 @@ begin
   if (select auth.role()) <> 'service_role' then
     raise exception 'MONTHLY_RECURRING_SERVICE_ROLE_REQUIRED' using errcode='42501';
   end if;
-  if event_id is null or provider_payment_id is null or conciliation_identifier is null then
+  if event_id is null or btrim(event_id)='' or provider_payment_id is null or btrim(provider_payment_id)=''
+     or conciliation_identifier is null or btrim(conciliation_identifier)='' then
     raise exception 'MONTHLY_RECURRING_INITIAL_EVENT_INVALID';
+  end if;
+  if event_type not in ('PAYMENT_CREATED','PAYMENT_CONFIRMED','PAYMENT_RECEIVED','PAYMENT_OVERDUE','PAYMENT_DELETED') then
+    raise exception 'MONTHLY_RECURRING_INITIAL_EVENT_UNSUPPORTED';
   end if;
   if provider_environment not in ('SANDBOX','PRODUCTION') then
     raise exception 'PAYMENT_PROVIDER_ENVIRONMENT_INVALID';
@@ -83,6 +88,10 @@ begin
    for update;
   if not found then return jsonb_build_object('result','unknown'); end if;
   if binding.initial_billing_period_id is null then return jsonb_build_object('result','review'); end if;
+  if binding.provider_customer_id is not null and provider_customer_id is not null
+     and binding.provider_customer_id<>provider_customer_id then
+    return jsonb_build_object('result','provider_mismatch');
+  end if;
 
   select * into period_row
     from public.monthly_billing_periods
@@ -102,8 +111,22 @@ begin
    for update;
 
   if found then
-    if existing_payment.provider_reference is not null and existing_payment.provider_reference<>provider_payment_id then
+    if existing_payment.provider<>'ASAAS' or existing_payment.method<>'PIX'
+       or (existing_payment.provider_reference is not null and existing_payment.provider_reference<>provider_payment_id) then
       return jsonb_build_object('result','review');
+    end if;
+    select * into existing_transaction from private.payment_provider_transactions
+      where payment_id=existing_payment.id for update;
+    if found and existing_transaction.provider_payment_id is null then
+      update private.payment_provider_transactions
+         set provider_payment_id=provider_payment_id,
+             provider_customer_id=coalesce(provider_customer_id,provider_customer_id),
+             provider_status=provider_status,
+             environment=provider_environment,
+             state='PENDING',updated_at=clock_timestamp()
+       where id=existing_transaction.id;
+      update public.payments set provider_reference=provider_payment_id,provider_environment=provider_environment
+       where id=existing_payment.id;
     end if;
   else
     new_payment_id:=gen_random_uuid();
