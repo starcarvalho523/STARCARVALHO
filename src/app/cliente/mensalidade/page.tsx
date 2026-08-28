@@ -14,7 +14,8 @@ export default async function Page() {
   const units=[...new Set(data.monthlyPeriods.map(period=>period.monthly_subscriptions?.unit_id).filter((id):id is string=>Boolean(id)))];
   const availabilityByUnit=Object.fromEntries(await Promise.all(units.map(async unitId=>[unitId,await getPaymentAvailability(unitId)])));
   const plans=(planRows??[]) as SelfServicePlan[];
-  const pixAutomaticFeatureEnabled=isAsaasPixAutomaticEnabled();
+  const sandboxPreview=process.env.VERCEL_ENV==="preview"&&String(process.env.ASAAS_ENVIRONMENT??"").trim().toLowerCase()==="sandbox";
+  const pixAutomaticFeatureEnabled=isAsaasPixAutomaticEnabled()||sandboxPreview;
   return (
     <CustomerShell name={data.profile.full_name} active="Mensalidade" unreadNotifications={data.unreadNotifications}>
       <div className="space-y-5">
