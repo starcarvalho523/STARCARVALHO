@@ -7,8 +7,18 @@ import { processAsaasPixAutomaticInitialPaymentWebhook } from "@/lib/payments/as
 
 export async function POST(request:Request){
   const expected=process.env.ASAAS_WEBHOOK_TOKEN??"";
+  const received=request.headers.get("asaas-access-token");
   try{
-    if(!safeTokenEquals(request.headers.get("asaas-access-token"),expected))return Response.json({error:"INVALID_WEBHOOK"},{status:401});
+    if(!safeTokenEquals(received,expected)){
+      console.warn("ASAAS_WEBHOOK_TOKEN_MISMATCH",{
+        receivedPresent:Boolean(received),
+        receivedLength:received?.length??0,
+        expectedConfigured:Boolean(expected),
+        expectedLength:expected.length,
+        sameLength:Boolean(received)&&received!.length===expected.length,
+      });
+      return Response.json({error:"INVALID_WEBHOOK"},{status:401});
+    }
     const provider=getPaymentProvider();
     const payload=await request.json();
     const eventName=payload&&typeof payload==="object"&&"event" in payload?String(payload.event):"";
