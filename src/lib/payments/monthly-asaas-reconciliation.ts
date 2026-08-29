@@ -41,6 +41,7 @@ export async function runMonthlyAsaasReconciliation() {
         externalReference:charge.externalReference || candidate.external_reference,
         billingType:charge.billingType || "PIX",
         checkoutId:null,
+        subscriptionId:null,
       });
       await admin.rpc("resolve_monthly_automation_incident", { target_key:incidentKey });
       processed++;
