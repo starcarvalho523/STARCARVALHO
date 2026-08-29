@@ -82,13 +82,28 @@ export async function createMonthlyPixAutomatic(billingPeriodId: string, userCli
 
   const today = new Date().toISOString().slice(0, 10);
   const startDate = period.due_date > today ? period.due_date : today;
-  const authorization = await createAsaasPixAutomaticAuthorization({
-    customerId: providerCustomerId,
-    contractId: `sc${period.subscription_id.replace(/-/g, "")}`,
-    value: Number(period.amount),
-    startDate,
-    description: "Mensalidade Star Carvalhos",
-  });
+  const incidentKey = `monthly-pix-automatic-authorization:${period.subscription_id}`;
+  let authorization;
+  try {
+    authorization = await createAsaasPixAutomaticAuthorization({
+      customerId: providerCustomerId,
+      contractId: `sc${period.subscription_id.replace(/-/g, "")}`,
+      value: Number(period.amount),
+      startDate,
+      description: "Mensalidade Star Carvalhos",
+    });
+  } catch (error) {
+    await admin.rpc("record_monthly_automation_incident", {
+      target_unit: period.unit_id,
+      target_key: incidentKey,
+      target_code: "ASAAS_PIX_AUTOMATIC_AUTHORIZATION_FAILED",
+      target_summary: `Falha ao criar autorização Pix Automático no Asaas: ${publicFailure(error)}`,
+      target_severity: "ATTENTION",
+    });
+    throw error;
+  }
+  await admin.rpc("resolve_monthly_automation_incident", { target_key: incidentKey });
+
   if (!authorization.conciliationIdentifier) throw new Error("ASAAS_PIX_AUTOMATIC_CONCILIATION_REQUIRED");
 
   const authorizationStatus = normalizeAuthorizationStatus(authorization.status);
@@ -137,11 +152,11 @@ async function authorizeBillingPeriod(billingPeriodId: string, userClient: Supab
 
 async function loadPeriod(admin: ReturnType<typeof createAdminClient>, billingPeriodId: string) {
   const { data, error } = await admin.from("monthly_billing_periods")
-    .select("id,subscription_id,amount,due_date,status")
+    .select("id,subscription_id,unit_id,amount,due_date,status")
     .eq("id", billingPeriodId)
     .single();
   if (error || !data) throw new Error("MONTHLY_BILLING_PERIOD_NOT_FOUND");
-  return data as { id: string; subscription_id: string; amount: number | string; due_date: string; status: string };
+  return data as { id: string; subscription_id: string; unit_id: string; amount: number | string; due_date: string; status: string };
 }
 
 async function loadBinding(admin: ReturnType<typeof createAdminClient>, subscriptionId: string): Promise<BindingRow | null> {
@@ -196,4 +211,11 @@ function publicView(amount: number | string, billingStatus: string, binding: Bin
     qrCodeImageBase64: binding.initial_qr_image_base64,
     expiresAt: binding.initial_qr_expires_at,
   };
+}
+
+function publicFailure(error: unknown) {
+  if (!(error instanceof Error)) return "UNKNOWN";
+  return error.message
+    .replace(/(access[_-]?token|api[_-]?key|authorization|secret)\s*[:=]\s*\S+/gi, "[redacted]")
+    .slice(0, 120);
 }
