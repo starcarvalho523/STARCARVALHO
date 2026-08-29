@@ -1,5 +1,6 @@
 import { CustomerShell } from "@/components/customer-shell";
 import { MonthlyPaymentActions } from "@/components/monthly-payment-actions";
+import { MonthlyRenewalControls } from "@/components/monthly-renewal-controls";
 import { MonthlyEnrollmentForm,type SelfServicePlan } from "@/components/customer-self-service-forms";
 import { getCustomerData } from "@/lib/customer-data";
 import { getPaymentAvailability, canUsePayment } from "@/lib/payments/payment-availability";
@@ -24,16 +25,20 @@ export default async function Page() {
         {data.monthlyPeriods.map((period) => {
           const paid = period.payments.find((p) => p.status === "PAID");
           const pending = period.payments.find((p) => p.status === "PENDING");
-          const subscriptionStatus=period.monthly_subscriptions?.status ?? "";
-          const coveredPlates=(period.monthly_subscriptions?.monthly_subscription_vehicles??[]).map((row)=>row.vehicles?.plate).filter((plate):plate is string=>Boolean(plate));
+          const subscription=period.monthly_subscriptions;
+          const subscriptionStatus=subscription?.status ?? "";
+          const coveredPlates=(subscription?.monthly_subscription_vehicles??[]).map((row)=>row.vehicles?.plate).filter((plate):plate is string=>Boolean(plate));
           const pendingLabel=pending?.method==="PIX"?"PIX":pending?.method==="CREDIT_CARD"||pending?.method==="CARD"?"cartão de crédito":"pagamento";
-          const capabilities=availabilityByUnit[period.monthly_subscriptions?.unit_id ?? ""] ?? [];
+          const capabilities=availabilityByUnit[subscription?.unit_id ?? ""] ?? [];
           const asaasPixEnabled=canUsePayment(capabilities,"PIX","QR","ASAAS");
+          const paidByCard=paid?.method==="CREDIT_CARD"||paid?.method==="CARD";
+          const showCardRenewal=Boolean(paidByCard&&subscription&&(subscription.auto_renew||subscription.renewal_provider==="ASAAS"||subscription.cancel_at_period_end));
           return (
             <article key={period.id} className="rounded-2xl border bg-white p-5">
-              <div className="flex flex-wrap justify-between gap-3"><div><h2 className="font-bold">{period.monthly_subscriptions?.plan_name ?? "Plano mensal"}</h2><p className="text-sm text-slate-500">{period.monthly_subscriptions?.parking_units?.name ?? "Star Carvalhos"} · {String(period.reference_month).padStart(2, "0")}/{period.reference_year}</p><p className="mt-2 text-sm">Vencimento: {new Date(`${period.due_date}T12:00:00`).toLocaleDateString("pt-BR")}</p>{subscriptionStatus==="ACTIVE"?<div className="mt-3 rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-800"><b>Mensalidade ativa.</b>{coveredPlates.length?` Cobertura mensal ativa para ${coveredPlates.join(", ")}.`:" A cobertura mensal está ativa."}</div>:subscriptionStatus==="PENDING_ACTIVATION"?<div className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-800">Aguardando confirmação do primeiro pagamento para ativar a cobertura mensal.</div>:null}</div><div className="text-right"><b className="text-2xl">{formatMoney(period.amount)}</b><p className="text-sm font-semibold">{period.status === "PAID" ? "Pago" : pending ? `Processando via ${pendingLabel}` : new Date(period.due_date) < new Date() ? "Vencido" : "Aguardando"}</p></div></div>
+              <div className="flex flex-wrap justify-between gap-3"><div><h2 className="font-bold">{subscription?.plan_name ?? "Plano mensal"}</h2><p className="text-sm text-slate-500">{subscription?.parking_units?.name ?? "Star Carvalhos"} · {String(period.reference_month).padStart(2, "0")}/{period.reference_year}</p><p className="mt-2 text-sm">Vencimento: {new Date(`${period.due_date}T12:00:00`).toLocaleDateString("pt-BR")}</p>{subscriptionStatus==="ACTIVE"?<div className="mt-3 rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-800"><b>Mensalidade ativa.</b>{coveredPlates.length?` Cobertura mensal ativa para ${coveredPlates.join(", ")}.`:" A cobertura mensal está ativa."}</div>:subscriptionStatus==="PENDING_ACTIVATION"?<div className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-800">Aguardando confirmação do primeiro pagamento para ativar a cobertura mensal.</div>:null}</div><div className="text-right"><b className="text-2xl">{formatMoney(period.amount)}</b><p className="text-sm font-semibold">{period.status === "PAID" ? "Pago" : pending ? `Processando via ${pendingLabel}` : new Date(period.due_date) < new Date() ? "Vencido" : "Aguardando"}</p></div></div>
               {period.status === "PENDING" ? <MonthlyPaymentActions billingPeriodId={period.id} pendingMethod={pending?.method ?? null} pixEnabled={asaasPixEnabled} pixAutomaticEnabled={asaasPixEnabled&&pixAutomaticFeatureEnabled} creditEnabled={canUsePayment(capabilities,"CREDIT_CARD","HOSTED_CHECKOUT","ASAAS")} /> : null}
               {paid ? <div className="mt-4 rounded-xl bg-emerald-50 p-3 text-sm text-emerald-800">{formatPaymentMethod(paid.method)} · {formatPaymentStatus(paid.status)} · {formatDateTime(paid.paid_at ?? paid.created_at)}</div> : pending ? <div className="mt-4 rounded-xl bg-amber-50 p-3 text-sm text-amber-800">Pagamento iniciado via <b>{pendingLabel}</b>. Continue a mesma cobrança acima. Se o provider confirmar expiração ou cancelamento, esta cobrança deixa de ficar pendente e PIX/Crédito voltam a ser liberados automaticamente.</div> : null}
+              {showCardRenewal&&subscription?<MonthlyRenewalControls subscriptionId={subscription.id} autoRenew={subscription.auto_renew} nextBillingDate={subscription.next_billing_date} coverageUntil={period.period_end} cancelAtPeriodEnd={subscription.cancel_at_period_end}/>:null}
             </article>
           );
         })}
