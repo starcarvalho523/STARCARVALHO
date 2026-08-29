@@ -78,11 +78,19 @@ export class AsaasProvider implements PaymentProvider {
   }
 
   async createCreditCardCheckout(input:CreateCheckoutInput):Promise<ProviderCheckout>{
-    const checkout=await this.request<AsaasCheckout>("/checkouts",{method:"POST",body:JSON.stringify({
+    const body=(customerId:string|null|undefined)=>JSON.stringify({
       billingTypes:["CREDIT_CARD"],chargeTypes:["DETACHED"],minutesToExpire:input.expiresInMinutes,
-      externalReference:input.externalReference,callback:input.callback,customer:input.customerId||undefined,
+      externalReference:input.externalReference,callback:input.callback,customer:customerId||undefined,
       items:[{externalReference:"parking-stay",name:"Estadia Star Carvalhos",description:input.description,quantity:1,value:input.amount}]
-    })});
+    });
+    let checkout:AsaasCheckout;
+    try{
+      checkout=await this.request<AsaasCheckout>("/checkouts",{method:"POST",body:body(input.customerId)});
+    }catch(error){
+      const missingCustomerPhone=error instanceof AsaasPublicError&&error.status===400&&error.publicCode==="invalid_object"&&/phone.*customer/i.test(error.publicDescription??"");
+      if(!input.customerId||!missingCustomerPhone)throw error;
+      checkout=await this.request<AsaasCheckout>("/checkouts",{method:"POST",body:body(null)});
+    }
     if(typeof checkout.id!=="string"||typeof checkout.status!=="string"||typeof checkout.link!=="string"||checkout.externalReference!==input.externalReference)throw new Error("INVALID_ASAAS_CHECKOUT");
     return{providerCheckoutId:checkout.id,providerStatus:checkout.status,amount:input.amount,externalReference:input.externalReference,link:checkout.link,expiresAt:new Date(Date.now()+input.expiresInMinutes*60_000).toISOString()};
   }
