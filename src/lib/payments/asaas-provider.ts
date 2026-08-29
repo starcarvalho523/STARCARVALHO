@@ -2,7 +2,7 @@ import { timingSafeEqual } from "node:crypto";
 import type { CreateChargeInput, CreateCheckoutInput, CreateProviderCustomerInput, PaymentProvider, ProviderCharge, ProviderCheckout, ProviderCheckoutPayment, ProviderCustomer, ProviderPaymentState, ProviderPixQrCode, ProviderWebhookEvent, ProviderCheckoutWebhookEvent } from "./payment-provider";
 
 type Fetcher = typeof fetch;
-type AsaasPayment = { id?:unknown; customer?:unknown; status?:unknown; billingType?:unknown; value?:unknown; externalReference?:unknown; invoiceUrl?:unknown; checkoutSession?:unknown };
+type AsaasPayment = { id?:unknown; customer?:unknown; status?:unknown; billingType?:unknown; value?:unknown; externalReference?:unknown; invoiceUrl?:unknown; checkoutSession?:unknown; subscription?:unknown };
 type AsaasCustomer = { id?:unknown; externalReference?:unknown };
 type AsaasQrCode = { payload?:unknown; encodedImage?:unknown; expirationDate?:unknown };
 type AsaasList = { data?:unknown };
@@ -78,10 +78,20 @@ export class AsaasProvider implements PaymentProvider {
   }
 
   async createCreditCardCheckout(input:CreateCheckoutInput):Promise<ProviderCheckout>{
+    const recurring=Boolean(input.recurrence);
     const body=(customerId:string|null|undefined)=>JSON.stringify({
-      billingTypes:["CREDIT_CARD"],chargeTypes:["DETACHED"],minutesToExpire:input.expiresInMinutes,
-      externalReference:input.externalReference,callback:input.callback,customer:customerId||undefined,
-      items:[{externalReference:"parking-stay",name:"Estadia Star Carvalhos",description:input.description,quantity:1,value:input.amount}]
+      billingTypes:["CREDIT_CARD"],
+      chargeTypes:[recurring?"RECURRENT":"DETACHED"],
+      minutesToExpire:input.expiresInMinutes,
+      externalReference:input.externalReference,
+      callback:input.callback,
+      customer:customerId||undefined,
+      items:[{externalReference:recurring?"monthly-membership":"parking-stay",name:recurring?"Mensalidade Star Carvalhos":"Estadia Star Carvalhos",description:input.description,quantity:1,value:input.amount}],
+      subscription:input.recurrence?{
+        cycle:input.recurrence.cycle,
+        nextDueDate:input.recurrence.nextDueDate,
+        ...(input.recurrence.endDate?{endDate:input.recurrence.endDate}:{})
+      }:undefined,
     });
     let checkout:AsaasCheckout;
     try{
@@ -128,7 +138,7 @@ export class AsaasProvider implements PaymentProvider {
   parseWebhook(payload:unknown):ProviderWebhookEvent{
     if(!isRecord(payload)||typeof payload.id!=="string"||typeof payload.event!=="string"||!isRecord(payload.payment)||typeof payload.payment.id!=="string") throw new Error("INVALID_ASAAS_WEBHOOK");
     const id=payload.id;const type=payload.event;const payment=payload.payment;const paymentId=payment.id as string;
-    return{id,type,paymentId,paymentStatus:typeof payment.status==="string"?payment.status:"UNKNOWN",amount:numberOrNull(payment.value),externalReference:stringOrNull(payment.externalReference),billingType:stringOrNull(payment.billingType),checkoutId:stringOrNull(payment.checkoutSession)};
+    return{id,type,paymentId,paymentStatus:typeof payment.status==="string"?payment.status:"UNKNOWN",amount:numberOrNull(payment.value),externalReference:stringOrNull(payment.externalReference),billingType:stringOrNull(payment.billingType),checkoutId:stringOrNull(payment.checkoutSession),subscriptionId:stringOrNull(payment.subscription)};
   }
 
   parseCheckoutWebhook(payload:unknown):ProviderCheckoutWebhookEvent{
