@@ -40,6 +40,11 @@ export type CreateCheckoutInput = {
   externalReference: string;
   expiresInMinutes: number;
   callback: { successUrl: string; cancelUrl: string; expiredUrl: string };
+  recurrence?: {
+    cycle: "MONTHLY";
+    nextDueDate: string;
+    endDate?: string | null;
+  } | null;
 };
 
 export type ProviderCheckout = {
@@ -73,6 +78,8 @@ export type ProviderWebhookEvent = {
   billingType: string | null;
   /** Server-side correlation data supplied by Asaas for Checkout charges. */
   checkoutId: string | null;
+  /** Asaas subscription that originated a recurring charge, when present. */
+  subscriptionId: string | null;
 };
 
 export type ProviderCheckoutWebhookEvent = {
