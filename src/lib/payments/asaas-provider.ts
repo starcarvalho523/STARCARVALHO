@@ -53,9 +53,7 @@ export class AsaasProvider implements PaymentProvider {
     return normalized;
   }
 
-  async createPixPayment(input:CreateChargeInput):Promise<ProviderCharge>{
-    return this.createCharge("PIX",input);
-  }
+  async createPixPayment(input:CreateChargeInput):Promise<ProviderCharge>{return this.createCharge("PIX",input)}
 
   async getPixQrCode(providerPaymentId:string):Promise<ProviderPixQrCode>{
     const qr=await this.request<AsaasQrCode>(`/payments/${encodeURIComponent(providerPaymentId)}/pixQrCode`);
@@ -73,30 +71,19 @@ export class AsaasProvider implements PaymentProvider {
     return matches.length===1?normalizePayment(matches[0]):null;
   }
 
-  async createCreditCardPayment(input:CreateChargeInput):Promise<ProviderCharge>{
-    return this.createCharge("CREDIT_CARD",input);
-  }
+  async createCreditCardPayment(input:CreateChargeInput):Promise<ProviderCharge>{return this.createCharge("CREDIT_CARD",input)}
 
   async createCreditCardCheckout(input:CreateCheckoutInput):Promise<ProviderCheckout>{
     const recurring=Boolean(input.recurrence);
     const body=(customerId:string|null|undefined)=>JSON.stringify({
-      billingTypes:["CREDIT_CARD"],
-      chargeTypes:[recurring?"RECURRENT":"DETACHED"],
-      minutesToExpire:input.expiresInMinutes,
-      externalReference:input.externalReference,
-      callback:input.callback,
-      customer:customerId||undefined,
+      billingTypes:["CREDIT_CARD"],chargeTypes:[recurring?"RECURRENT":"DETACHED"],minutesToExpire:input.expiresInMinutes,
+      externalReference:input.externalReference,callback:input.callback,customer:customerId||undefined,
       items:[{externalReference:recurring?"monthly-membership":"parking-stay",name:recurring?"Mensalidade Star Carvalhos":"Estadia Star Carvalhos",description:input.description,quantity:1,value:input.amount}],
-      subscription:input.recurrence?{
-        cycle:input.recurrence.cycle,
-        nextDueDate:input.recurrence.nextDueDate,
-        ...(input.recurrence.endDate?{endDate:input.recurrence.endDate}:{})
-      }:undefined,
+      subscription:input.recurrence?{cycle:input.recurrence.cycle,nextDueDate:input.recurrence.nextDueDate,...(input.recurrence.endDate?{endDate:input.recurrence.endDate}:{})}:undefined,
     });
     let checkout:AsaasCheckout;
-    try{
-      checkout=await this.request<AsaasCheckout>("/checkouts",{method:"POST",body:body(input.customerId)});
-    }catch(error){
+    try{checkout=await this.request<AsaasCheckout>("/checkouts",{method:"POST",body:body(input.customerId)})}
+    catch(error){
       const missingCustomerPhone=error instanceof AsaasPublicError&&error.status===400&&error.publicCode==="invalid_object"&&/phone.*customer/i.test(error.publicDescription??"");
       if(!input.customerId||!missingCustomerPhone)throw error;
       checkout=await this.request<AsaasCheckout>("/checkouts",{method:"POST",body:body(null)});
@@ -111,8 +98,7 @@ export class AsaasProvider implements PaymentProvider {
     if(!Array.isArray(payments.data))throw new Error("INVALID_ASAAS_PAYMENT_LIST");
     if(payments.data.length===0)throw new Error("ASAAS_CHECKOUT_PAYMENT_NOT_FOUND");
     if(payments.data.length!==1)throw new Error("ASAAS_CHECKOUT_PAYMENT_AMBIGUOUS");
-    const raw=payments.data[0];
-    if(!isRecord(raw))throw new Error("INVALID_ASAAS_PAYMENT");
+    const raw=payments.data[0];if(!isRecord(raw))throw new Error("INVALID_ASAAS_PAYMENT");
     const payment=normalizePayment(raw);
     if(payment.providerPaymentId!==expectedPaymentId)throw new Error("ASAAS_CHECKOUT_PAYMENT_ID_MISMATCH");
     if(payment.billingType!=="CREDIT_CARD")throw new Error("ASAAS_CHECKOUT_PAYMENT_METHOD_MISMATCH");
@@ -121,19 +107,15 @@ export class AsaasProvider implements PaymentProvider {
     return{providerCheckoutId:checkoutId,providerCheckoutStatus:"RESOLVED_BY_PAYMENT_LIST",providerPaymentId:payment.providerPaymentId,providerPaymentStatus:payment.providerStatus,amount:payment.amount,billingType:payment.billingType,externalReference:expectedExternalReference};
   }
 
-  async getPayment(providerPaymentId:string):Promise<ProviderCharge>{
-    return normalizePayment(await this.request<AsaasPayment>(`/payments/${encodeURIComponent(providerPaymentId)}`));
+  async getPayment(providerPaymentId:string):Promise<ProviderCharge>{return normalizePayment(await this.request<AsaasPayment>(`/payments/${encodeURIComponent(providerPaymentId)}`))}
+  async cancelPayment(providerPaymentId:string):Promise<void>{await this.request(`/payments/${encodeURIComponent(providerPaymentId)}`,{method:"DELETE"})}
+  async updateRecurringSubscription(providerSubscriptionId:string,input:{status?:"ACTIVE"|"INACTIVE";nextDueDate?:string}):Promise<void>{
+    const body={...(input.status?{status:input.status}:{}),...(input.nextDueDate?{nextDueDate:input.nextDueDate}:{}),updatePendingPayments:false};
+    await this.request(`/subscriptions/${encodeURIComponent(providerSubscriptionId)}`,{method:"PUT",body:JSON.stringify(body)});
   }
-
-  async cancelPayment(providerPaymentId:string):Promise<void>{
-    await this.request(`/payments/${encodeURIComponent(providerPaymentId)}`,{method:"DELETE"});
-  }
-
+  async cancelRecurringSubscription(providerSubscriptionId:string):Promise<void>{await this.request(`/subscriptions/${encodeURIComponent(providerSubscriptionId)}`,{method:"DELETE"})}
   getHostedPaymentUrl(payment:ProviderCharge){return payment.hostedPaymentUrl}
-
-  validateWebhook(receivedToken:string|null,expectedToken:string){
-    return safeTokenEquals(receivedToken,expectedToken);
-  }
+  validateWebhook(receivedToken:string|null,expectedToken:string){return safeTokenEquals(receivedToken,expectedToken)}
 
   parseWebhook(payload:unknown):ProviderWebhookEvent{
     if(!isRecord(payload)||typeof payload.id!=="string"||typeof payload.event!=="string"||!isRecord(payload.payment)||typeof payload.payment.id!=="string") throw new Error("INVALID_ASAAS_WEBHOOK");
@@ -161,40 +143,13 @@ export class AsaasProvider implements PaymentProvider {
   }
 }
 
-function publicErrorDetail(body:unknown){
-  if(!isRecord(body))return{code:null,description:null};
-  const errors=(body as AsaasErrorBody).errors;
-  const first=Array.isArray(errors)&&isRecord(errors[0])?errors[0]:null;
-  return{code:sanitizeCode(first?.code),description:sanitizeDescription(first?.description)};
-}
+function publicErrorDetail(body:unknown){if(!isRecord(body))return{code:null,description:null};const errors=(body as AsaasErrorBody).errors;const first=Array.isArray(errors)&&isRecord(errors[0])?errors[0]:null;return{code:sanitizeCode(first?.code),description:sanitizeDescription(first?.description)}}
 function sanitizeCode(value:unknown){return typeof value==="string"&&/^[A-Za-z0-9_.-]{1,64}$/.test(value)?value:null}
-function sanitizeDescription(value:unknown){
-  if(typeof value!=="string")return null;
-  return value.replace(/(access[_-]?token|api[_-]?key|authorization|payload|encodedImage)\s*[:=]\s*\S+/gi,"[redacted]").replace(/\b(?:pay|cus)_[A-Za-z0-9_-]+\b/g,"[redacted-id]").replace(/\b[0-9a-f]{8}-[0-9a-f-]{27,}\b/gi,"[redacted-id]").replace(/[\r\n\t]+/g," ").trim().slice(0,160)||null;
-}
-
-export function safeTokenEquals(receivedToken:string|null,expectedToken:string){
-  if(!receivedToken||!expectedToken)return false;
-  const received=Buffer.from(receivedToken);const expected=Buffer.from(expectedToken);
-  return received.length===expected.length&&timingSafeEqual(received,expected);
-}
-
-export function mapAsaasPaymentState(status:string,eventType?:string):ProviderPaymentState{
-  if(eventType==="PAYMENT_RECEIVED"||status==="RECEIVED")return "PAID";
-  if(eventType==="PAYMENT_OVERDUE"||status==="OVERDUE")return "EXPIRED";
-  if(eventType==="PAYMENT_DELETED"||status==="DELETED")return "CANCELLED";
-  if(status==="REFUNDED"||status==="CHARGEBACK_REQUESTED"||status==="CHARGEBACK_DISPUTE")return "REVIEW";
-  return "PENDING";
-}
-
-function normalizeCustomer(value:AsaasCustomer):ProviderCustomer{
-  if(typeof value.id!=="string")throw new Error("INVALID_ASAAS_CUSTOMER");
-  return{providerCustomerId:value.id,externalReference:stringOrNull(value.externalReference)};
-}
-function normalizePayment(value:AsaasPayment):ProviderCharge{
-  if(typeof value.id!=="string"||typeof value.customer!=="string"||typeof value.status!=="string")throw new Error("INVALID_ASAAS_PAYMENT");
-  return{providerPaymentId:value.id,providerCustomerId:value.customer,providerStatus:value.status,billingType:stringOrNull(value.billingType),amount:numberOrNull(value.value)??0,externalReference:stringOrNull(value.externalReference)??"",hostedPaymentUrl:stringOrNull(value.invoiceUrl),qrCodePayload:null,qrCodeImageBase64:null,expiresAt:null};
-}
+function sanitizeDescription(value:unknown){if(typeof value!=="string")return null;return value.replace(/(access[_-]?token|api[_-]?key|authorization|payload|encodedImage)\s*[:=]\s*\S+/gi,"[redacted]").replace(/\b(?:pay|cus)_[A-Za-z0-9_-]+\b/g,"[redacted-id]").replace(/\b[0-9a-f]{8}-[0-9a-f-]{27,}\b/gi,"[redacted-id]").replace(/[\r\n\t]+/g," ").trim().slice(0,160)||null}
+export function safeTokenEquals(receivedToken:string|null,expectedToken:string){if(!receivedToken||!expectedToken)return false;const received=Buffer.from(receivedToken);const expected=Buffer.from(expectedToken);return received.length===expected.length&&timingSafeEqual(received,expected)}
+export function mapAsaasPaymentState(status:string,eventType?:string):ProviderPaymentState{if(eventType==="PAYMENT_RECEIVED"||status==="RECEIVED")return "PAID";if(eventType==="PAYMENT_OVERDUE"||status==="OVERDUE")return "EXPIRED";if(eventType==="PAYMENT_DELETED"||status==="DELETED")return "CANCELLED";if(status==="REFUNDED"||status==="CHARGEBACK_REQUESTED"||status==="CHARGEBACK_DISPUTE")return "REVIEW";return "PENDING"}
+function normalizeCustomer(value:AsaasCustomer):ProviderCustomer{if(typeof value.id!=="string")throw new Error("INVALID_ASAAS_CUSTOMER");return{providerCustomerId:value.id,externalReference:stringOrNull(value.externalReference)}}
+function normalizePayment(value:AsaasPayment):ProviderCharge{if(typeof value.id!=="string"||typeof value.customer!=="string"||typeof value.status!=="string")throw new Error("INVALID_ASAAS_PAYMENT");return{providerPaymentId:value.id,providerCustomerId:value.customer,providerStatus:value.status,billingType:stringOrNull(value.billingType),amount:numberOrNull(value.value)??0,externalReference:stringOrNull(value.externalReference)??"",hostedPaymentUrl:stringOrNull(value.invoiceUrl),qrCodePayload:null,qrCodeImageBase64:null,expiresAt:null}}
 function isRecord(value:unknown):value is Record<string,unknown>{return typeof value==="object"&&value!==null&&!Array.isArray(value)}
 function stringOrNull(value:unknown){return typeof value==="string"?value:null}
 function numberOrNull(value:unknown){const number=typeof value==="number"?value:typeof value==="string"?Number(value):NaN;return Number.isFinite(number)?number:null}
