@@ -29,17 +29,28 @@ export async function POST(request:Request){
     if(context.renewalProvider&&context.renewalProvider!=="ASAAS")return Response.json({error:"RENEWAL_PROVIDER_UNSUPPORTED"},{status:409});
 
     if(action==="ENABLE"){
+      const{data:hasPending,error:pendingError}=await supabase.rpc("has_customer_monthly_pending_manual_payment",{target_subscription:subscriptionId});
+      if(pendingError)throw new Error(pendingError.message);
+      if(hasPending===true)return Response.json({error:"Existe um pagamento manual em andamento. Conclua ou troque essa tentativa antes de reativar a renovação automática."},{status:409});
       if(!context.providerSubscriptionId||!context.nextBillingDate||!provider.updateRecurringSubscription)return Response.json({error:"RENEWAL_NOT_READY"},{status:409});
       await provider.updateRecurringSubscription(context.providerSubscriptionId,{status:"ACTIVE",nextDueDate:context.nextBillingDate});
       const{data:updated,error:updateError}=await supabase.rpc("set_customer_monthly_auto_renew",{target_subscription:subscriptionId,target_enabled:true});
-      if(updateError)throw new Error(updateError.message);
+      if(updateError){
+        try{await provider.updateRecurringSubscription(context.providerSubscriptionId,{status:"INACTIVE"})}catch(rollbackError){console.error("MONTHLY_RENEWAL_ENABLE_ROLLBACK_FAILED",{code:rollbackError instanceof Error?rollbackError.message.slice(0,100):"UNKNOWN"})}
+        throw new Error(updateError.message);
+      }
       return Response.json({renewal:updated});
     }
 
     if(action==="DISABLE"){
       if(context.providerSubscriptionId&&provider.updateRecurringSubscription)await provider.updateRecurringSubscription(context.providerSubscriptionId,{status:"INACTIVE"});
       const{data:updated,error:updateError}=await supabase.rpc("set_customer_monthly_auto_renew",{target_subscription:subscriptionId,target_enabled:false});
-      if(updateError)throw new Error(updateError.message);
+      if(updateError){
+        if(context.providerSubscriptionId&&context.nextBillingDate&&provider.updateRecurringSubscription){
+          try{await provider.updateRecurringSubscription(context.providerSubscriptionId,{status:"ACTIVE",nextDueDate:context.nextBillingDate})}catch(rollbackError){console.error("MONTHLY_RENEWAL_DISABLE_ROLLBACK_FAILED",{code:rollbackError instanceof Error?rollbackError.message.slice(0,100):"UNKNOWN"})}
+        }
+        throw new Error(updateError.message);
+      }
       return Response.json({renewal:updated});
     }
 
