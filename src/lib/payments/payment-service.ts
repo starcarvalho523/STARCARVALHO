@@ -16,6 +16,7 @@ type Reservation={paymentId:string;transactionId:string;state:string;amount:numb
 type RecoveryContext={transactionId:string;state:string;externalReference:string;providerPaymentId:string|null;providerCustomerId:string|null;providerStatus:string|null;providerAmount:number|null;hostedPaymentUrl:string|null;amount:number};
 type StoredCheckoutEvent={id:string;type:string;paymentId:string;paymentStatus:string;amount:number;billingType:string;externalReference:string|null};
 type PaymentCustomerContext={user_id:string;full_name:string;email:string|null;billing_document:string|null;external_reference:string;provider_customer_id:string|null};
+type AsaasSubscriptionWebhook={id:string;event:string;subscription:{id:string;customer:string;value:number;nextDueDate:string|null;cycle:string;billingType:string;status:string;externalReference:string|null}};
 
 export class PaymentService{
   constructor(private readonly provider?:PaymentProvider,private readonly admin=createAdminClient()){}
@@ -111,6 +112,24 @@ export class PaymentService{
     const{data,error}=await this.admin.rpc("process_asaas_webhook",{event_id:event.id,event_type:event.type,provider_payment_id:event.paymentId,provider_status:event.paymentStatus,reported_amount:event.amount,sanitized_payload:sanitized});if(error)throw new Error(error.message);return data;
   }
 
+  async processSubscriptionWebhook(payload:unknown){
+    const event=parseSubscriptionWebhook(payload);
+    if(!event.event.startsWith("SUBSCRIPTION_"))throw new Error("ASAAS_SUBSCRIPTION_INVALID_EVENT");
+    const subscription=event.subscription;
+    const{data,error}=await this.admin.rpc("bind_monthly_card_recurring_from_subscription_event",{
+      target_event_id:event.id,
+      target_event_type:event.event,
+      target_provider_subscription_id:subscription.id,
+      target_provider_customer_id:subscription.customer,
+      target_amount:subscription.value,
+      target_provider_status:subscription.status,
+      target_next_due_date:subscription.nextDueDate,
+      target_external_reference:subscription.externalReference,
+    });
+    if(error)throw rpcError("bind_monthly_card_recurring_from_subscription_event",error.message);
+    return data;
+  }
+
   async processEfiPixWebhook(events: readonly EfiPixWebhookEvent[]): Promise<EfiPixSettlementResult[]> {
     return settleEfiPixEvents(events,{settle:async(event,idempotencyKey)=>{const{data,error}=await this.admin.rpc("process_efi_pix_webhook",{event_key:idempotencyKey,event_txid:event.txid,event_end_to_end_id:event.endToEndId,event_amount_cents:event.amountCents,event_paid_at:event.paidAt});if(error)throw rpcError("process_efi_pix_webhook",error.message);const result=data&&typeof data==="object"?(data as {result?:unknown}).result:null;if(!["processed","duplicate","unknown","review","provider_mismatch","already_paid"].includes(String(result)))throw new Error("EFI_INVALID_SETTLEMENT_RESULT");return result as EfiPixSettlementResult}},efiPixIdempotencyKey);
   }
@@ -157,6 +176,16 @@ export class PaymentService{
   private async markManualReview(transactionId:string){await this.admin.rpc("mark_provider_manual_review",{transaction_id:transactionId,reason_code:"DUPLICATE_EXTERNAL_REFERENCE"})}
 }
 
+function parseSubscriptionWebhook(payload:unknown):AsaasSubscriptionWebhook{
+  if(!isRecord(payload)||typeof payload.id!=="string"||typeof payload.event!=="string"||!isRecord(payload.subscription))throw new Error("ASAAS_SUBSCRIPTION_INVALID_WEBHOOK");
+  const subscription=payload.subscription;
+  const value=numberOrNull(subscription.value);
+  if(typeof subscription.id!=="string"||typeof subscription.customer!=="string"||value===null||typeof subscription.status!=="string"||typeof subscription.cycle!=="string"||typeof subscription.billingType!=="string")throw new Error("ASAAS_SUBSCRIPTION_INVALID_OBJECT");
+  return{id:payload.id,event:payload.event,subscription:{id:subscription.id,customer:subscription.customer,value,nextDueDate:stringOrNull(subscription.nextDueDate),cycle:subscription.cycle,billingType:subscription.billingType,status:subscription.status,externalReference:stringOrNull(subscription.externalReference)}};
+}
+function isRecord(value:unknown):value is Record<string,unknown>{return typeof value==="object"&&value!==null&&!Array.isArray(value)}
+function stringOrNull(value:unknown){return typeof value==="string"?value:null}
+function numberOrNull(value:unknown){const number=typeof value==="number"?value:typeof value==="string"?Number(value):NaN;return Number.isFinite(number)?number:null}
 function paymentDueDate(){return new Intl.DateTimeFormat("en-CA",{timeZone:"America/Bahia",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date())}
 function nextMonthlyDate(date:string){const[y,m,d]=date.split("-").map(Number);const nextMonth=m===12?1:m+1;const nextYear=m===12?y+1:y;const days=new Date(Date.UTC(nextYear,nextMonth,0)).getUTCDate();return`${nextYear}-${String(nextMonth).padStart(2,"0")}-${String(Math.min(d,days)).padStart(2,"0")}`}
 function publicPayment(value:Reservation){return{state:value.state,amount:Number(value.amount),qrCodePayload:value.qrCodePayload??null,qrCodeImageBase64:value.qrCodeImageBase64??null,expiresAt:value.expiresAt??null,hostedPaymentUrl:value.hostedPaymentUrl??null}}
