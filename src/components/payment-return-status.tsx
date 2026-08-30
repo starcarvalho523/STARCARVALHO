@@ -12,6 +12,7 @@ export function PaymentReturnStatus({billingPeriodId}:{billingPeriodId:string}){
   useEffect(()=>{
     let cancelled=false;
     let attempts=0;
+    let timer:number|undefined;
     const check=async()=>{
       attempts+=1;
       try{
@@ -22,11 +23,11 @@ export function PaymentReturnStatus({billingPeriodId}:{billingPeriodId:string}){
         if(response.ok&&checkout?.state==="PAID"){setState("PAID");return}
       }catch{}
       if(cancelled)return;
-      if(attempts>=20){setState("PENDING");return}
-      window.setTimeout(()=>void check(),750);
+      if(attempts>=20)setState("PENDING");
+      timer=window.setTimeout(()=>void check(),attempts<20?750:5000);
     };
     void check();
-    return()=>{cancelled=true};
+    return()=>{cancelled=true;if(timer!==undefined)window.clearTimeout(timer)};
   },[billingPeriodId]);
 
   if(state==="PAID")return <section className="w-full max-w-xl rounded-3xl border border-emerald-200 bg-white p-8 shadow-sm">
@@ -46,8 +47,8 @@ export function PaymentReturnStatus({billingPeriodId}:{billingPeriodId:string}){
   return <section className="w-full max-w-xl rounded-3xl border bg-white p-8 text-center shadow-sm">
     <LoaderCircle className="mx-auto size-8 animate-spin text-blue-600"/>
     <h1 className="mt-4 text-3xl font-bold">{state==="CHECKING"?"Pagamento concluído no Asaas":"Pagamento concluído — sincronizando"}</h1>
-    <p className="mt-3 text-slate-600">{state==="CHECKING"?"Estamos registrando a confirmação na sua mensalidade. Isso normalmente leva poucos segundos.":"Seu pagamento foi concluído no Asaas e a sincronização continua automaticamente. Você não precisa pagar novamente."}</p>
-    {state==="PENDING"?<div className="mt-5 rounded-2xl bg-blue-50 p-4 text-sm text-blue-900"><b>Seu pagamento não foi perdido.</b> Você pode voltar para a mensalidade; a confirmação continuará sendo processada com segurança.</div>:null}
+    <p className="mt-3 text-slate-600">{state==="CHECKING"?"Estamos registrando a confirmação na sua mensalidade. Isso normalmente leva poucos segundos.":"Seu pagamento foi concluído no Asaas e esta página continua verificando a confirmação automaticamente. Você não precisa pagar novamente."}</p>
+    {state==="PENDING"?<div className="mt-5 rounded-2xl bg-blue-50 p-4 text-sm text-blue-900"><b>Seu pagamento não foi perdido.</b> A verificação continua a cada poucos segundos enquanto esta página estiver aberta. Você também pode voltar para a mensalidade sem gerar outra cobrança.</div>:null}
     {state==="PENDING"?<Link href="/cliente/mensalidade" className="mt-6 inline-flex rounded-xl bg-blue-600 px-5 py-3 font-bold text-white">Voltar para minha mensalidade</Link>:null}
   </section>;
 }
