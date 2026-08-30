@@ -114,7 +114,7 @@ export function PixPaymentPanel({ sessionId, billingPeriodId, resumeExisting=fal
   }, [charge?.state, refreshCharge]);
 
   useEffect(()=>{
-    if(!billingPeriodId||charge?.state!=="PENDING"||!charge.expiresAt){setRemainingSeconds(null);return;}
+    if(!billingPeriodId||charge?.state!=="PENDING"||!charge.expiresAt)return;
     const update=()=>{
       const expiresAt=new Date(charge.expiresAt ?? "").getTime();
       if(!Number.isFinite(expiresAt)){setRemainingSeconds(null);return;}
@@ -122,9 +122,9 @@ export function PixPaymentPanel({ sessionId, billingPeriodId, resumeExisting=fal
       setRemainingSeconds(seconds);
       if(seconds===0)void expireMonthlyCharge();
     };
-    update();
+    const initialTimer=window.setTimeout(update,0);
     const timer=window.setInterval(update,1000);
-    return()=>window.clearInterval(timer);
+    return()=>{window.clearTimeout(initialTimer);window.clearInterval(timer);};
   },[billingPeriodId,charge?.expiresAt,charge?.state,expireMonthlyCharge]);
 
   const copyPayload = async () => {
