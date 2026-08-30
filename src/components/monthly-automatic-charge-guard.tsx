@@ -9,7 +9,7 @@ export function MonthlyAutomaticChargeGuard({subscriptionId,nextBillingDate}:{su
   const[loading,setLoading]=useState(false);
   const[error,setError]=useState<string|null>(null);
 
-  const useManualPayment=async()=>{
+  const enableManualPayment=async()=>{
     if(loading)return;
     setLoading(true);setError(null);
     try{
@@ -30,7 +30,7 @@ export function MonthlyAutomaticChargeGuard({subscriptionId,nextBillingDate}:{su
         <p className="mt-1 text-sm text-slate-700">Se preferir PIX ou outro pagamento manual nesta competência, desative primeiro a renovação automática para evitar duas cobranças concorrentes.</p>
       </div>
     </div>
-    <button type="button" disabled={loading} onClick={()=>void useManualPayment()} className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-blue-200 bg-white font-bold text-blue-700 disabled:opacity-50">
+    <button type="button" disabled={loading} onClick={()=>void enableManualPayment()} className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-blue-200 bg-white font-bold text-blue-700 disabled:opacity-50">
       {loading?<LoaderCircle className="size-4 animate-spin"/>:<WalletCards className="size-4"/>}
       {loading?"Liberando pagamento manual...":"Usar pagamento manual"}
     </button>
