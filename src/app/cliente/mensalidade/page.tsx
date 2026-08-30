@@ -1,6 +1,7 @@
 import { CustomerShell } from "@/components/customer-shell";
 import { MonthlyPaymentActions } from "@/components/monthly-payment-actions";
 import { MonthlyRenewalControls } from "@/components/monthly-renewal-controls";
+import { MonthlyAutomaticChargeGuard } from "@/components/monthly-automatic-charge-guard";
 import { MonthlyEnrollmentForm,type SelfServicePlan } from "@/components/customer-self-service-forms";
 import { getCustomerData } from "@/lib/customer-data";
 import { getPaymentAvailability, canUsePayment } from "@/lib/payments/payment-availability";
@@ -40,19 +41,21 @@ export default async function Page() {
           const pendingLabel=pending?.method==="PIX"?"PIX":pending?.method==="CREDIT_CARD"||pending?.method==="CARD"?"cartão de crédito":"pagamento";
           const capabilities=availabilityByUnit[subscription?.unit_id ?? ""] ?? [];
           const asaasPixEnabled=canUsePayment(capabilities,"PIX","QR","ASAAS");
-          const paidByCard=paid?.method==="CREDIT_CARD"||paid?.method==="CARD";
           const latestPaidCoverage=subscription?latestPaidCoverageBySubscription.get(subscription.id)??null:null;
           const isLatestPaidPeriod=Boolean(period.status==="PAID"&&latestPaidCoverage&&period.period_end===latestPaidCoverage);
-          const showCardRenewal=Boolean(isLatestPaidPeriod&&paidByCard&&subscription&&(subscription.auto_renew||subscription.renewal_provider==="ASAAS"||subscription.cancel_at_period_end));
+          const cardAutoRenewActive=Boolean(subscription?.auto_renew&&!subscription.cancel_at_period_end&&subscription.renewal_provider==="ASAAS"&&(subscription.preferred_payment_method==="CREDIT_CARD"||subscription.preferred_payment_method==="CARD"));
+          const showCardRenewal=Boolean(isLatestPaidPeriod&&subscription&&(subscription.auto_renew||subscription.renewal_provider==="ASAAS"||subscription.cancel_at_period_end));
           const statusLabel=period.status==="PAID"
             ? "Pago"
             : pending
               ? `Processando via ${pendingLabel}`
-              : subscriptionStatus==="ACTIVE"&&latestPaidCoverage
-                ? "Próxima mensalidade"
-                : new Date(`${period.due_date}T23:59:59`) < new Date()
-                  ? "Vencido"
-                  : "Aguardando";
+              : cardAutoRenewActive
+                ? "Cobrança automática programada"
+                : subscriptionStatus==="ACTIVE"&&latestPaidCoverage
+                  ? "Próxima mensalidade"
+                  : new Date(`${period.due_date}T23:59:59`) < new Date()
+                    ? "Vencido"
+                    : "Aguardando";
 
           return (
             <article key={period.id} className="rounded-2xl border bg-white p-5">
@@ -67,7 +70,12 @@ export default async function Page() {
                 </div>
                 <div className="text-right"><b className="text-2xl">{formatMoney(period.amount)}</b><p className="text-sm font-semibold">{statusLabel}</p></div>
               </div>
-              {period.status === "PENDING" ? <MonthlyPaymentActions billingPeriodId={period.id} pendingMethod={pending?.method ?? null} pixEnabled={asaasPixEnabled} pixAutomaticEnabled={asaasPixEnabled&&pixAutomaticFeatureEnabled} creditEnabled={canUsePayment(capabilities,"CREDIT_CARD","HOSTED_CHECKOUT","ASAAS")} /> : null}
+              {period.status === "PENDING" ? pending
+                ? <MonthlyPaymentActions billingPeriodId={period.id} pendingMethod={pending.method} pixEnabled={asaasPixEnabled} pixAutomaticEnabled={asaasPixEnabled&&pixAutomaticFeatureEnabled} creditEnabled={canUsePayment(capabilities,"CREDIT_CARD","HOSTED_CHECKOUT","ASAAS")} />
+                : cardAutoRenewActive&&subscription
+                  ? <MonthlyAutomaticChargeGuard subscriptionId={subscription.id} nextBillingDate={subscription.next_billing_date}/>
+                  : <MonthlyPaymentActions billingPeriodId={period.id} pendingMethod={null} pixEnabled={asaasPixEnabled} pixAutomaticEnabled={asaasPixEnabled&&pixAutomaticFeatureEnabled} creditEnabled={canUsePayment(capabilities,"CREDIT_CARD","HOSTED_CHECKOUT","ASAAS")} />
+              : null}
               {paid ? <div className="mt-4 rounded-xl bg-emerald-50 p-3 text-sm text-emerald-800">{formatPaymentMethod(paid.method)} · {formatPaymentStatus(paid.status)} · {formatDateTime(paid.paid_at ?? paid.created_at)}</div> : pending ? <div className="mt-4 rounded-xl bg-amber-50 p-3 text-sm text-amber-800">Pagamento iniciado via <b>{pendingLabel}</b>. Você pode continuar neste método ou escolher outro acima. Ao trocar, a tentativa anterior é encerrada automaticamente e deixa de ficar aberta em segundo plano.</div> : null}
               {showCardRenewal&&subscription?<MonthlyRenewalControls subscriptionId={subscription.id} autoRenew={subscription.auto_renew} nextBillingDate={subscription.next_billing_date} coverageUntil={latestPaidCoverage} cancelAtPeriodEnd={subscription.cancel_at_period_end}/>:null}
             </article>
