@@ -45,6 +45,7 @@ export default async function Page() {
           const isLatestPaidPeriod=Boolean(period.status==="PAID"&&latestPaidCoverage&&period.period_end===latestPaidCoverage);
           const cardAutoRenewActive=Boolean(subscription?.auto_renew&&!subscription.cancel_at_period_end&&subscription.renewal_provider==="ASAAS"&&(subscription.preferred_payment_method==="CREDIT_CARD"||subscription.preferred_payment_method==="CARD"));
           const showCardRenewal=Boolean(isLatestPaidPeriod&&subscription&&(subscription.auto_renew||subscription.renewal_provider==="ASAAS"||subscription.cancel_at_period_end));
+          const unitTimezone=period.parking_units?.timezone??subscription?.parking_units?.timezone??"America/Bahia";
           const statusLabel=period.status==="PAID"
             ? "Pago"
             : pending
@@ -53,7 +54,7 @@ export default async function Page() {
                 ? "Cobrança automática programada"
                 : subscriptionStatus==="ACTIVE"&&latestPaidCoverage
                   ? "Próxima mensalidade"
-                  : new Date(`${period.due_date}T23:59:59`) < new Date()
+                  : isPastDue(period.due_date,unitTimezone)
                     ? "Vencido"
                     : "Aguardando";
 
@@ -88,3 +89,4 @@ export default async function Page() {
 }
 
 function date(value:string){return new Date(`${value}T12:00:00`).toLocaleDateString("pt-BR")}
+function isPastDue(value:string,timeZone:string){try{const parts=new Intl.DateTimeFormat("pt-BR",{timeZone,year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date());const part=(type:string)=>parts.find(item=>item.type===type)?.value??"";const today=`${part("year")}-${part("month")}-${part("day")}`;return Boolean(today)&&value<today}catch{return value<new Date().toISOString().slice(0,10)}}
