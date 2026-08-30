@@ -42,7 +42,6 @@ export function PixPaymentPanel({ sessionId, billingPeriodId, resumeExisting=fal
     if (billingPeriodId && (body.payment === null || body.payment === undefined)) {
       setCharge(null);
       setError(null);
-      router.refresh();
       return null;
     }
     const parsed = parseCharge(body.payment);
@@ -63,17 +62,18 @@ export function PixPaymentPanel({ sessionId, billingPeriodId, resumeExisting=fal
     expiring.current=false;
     try {
       const monthly=Boolean(billingPeriodId);
-      await readResponse(await fetch(monthly?"/api/payments/monthly/pix":"/api/payments/efi-pix", {
+      const parsed=await readResponse(await fetch(monthly?"/api/payments/monthly/pix":"/api/payments/efi-pix", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(monthly?{billingPeriodId}:{sessionId}),
       }));
+      if(monthly&&parsed)router.refresh();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : errorMessages.PAYMENT_REQUEST_FAILED);
     } finally {
       setLoading(false);
     }
-  },[billingPeriodId,readResponse,sessionId]);
+  },[billingPeriodId,readResponse,router,sessionId]);
 
   const refreshCharge = useCallback(async (silent = false) => {
     if (!silent) setRefreshing(true);
@@ -150,7 +150,7 @@ export function PixPaymentPanel({ sessionId, billingPeriodId, resumeExisting=fal
     return <div>
       <button type="button" onClick={resumeExisting?()=>void refreshCharge():()=>void createCharge()} disabled={loading||refreshing} className="flex h-16 w-full items-center justify-center gap-2 rounded-xl border border-emerald-200 font-bold text-emerald-700 hover:bg-emerald-50 disabled:opacity-50">
         {loading||refreshing ? <LoaderCircle className="size-5 animate-spin" /> : <QrCode className="size-5" />}
-        {loading||refreshing ? "Carregando cobrança..." : resumeExisting ? "Continuar PIX" : "PIX"}
+        {loading||refreshing ? "Trocando para PIX..." : resumeExisting ? "Continuar PIX" : "PIX"}
       </button>
       {error ? <p role="alert" className="mt-2 text-xs font-semibold text-red-600">{error}</p> : null}
     </div>;
