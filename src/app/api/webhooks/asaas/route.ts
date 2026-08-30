@@ -28,7 +28,8 @@ export async function POST(request: Request) {
     const relevantEvent =
       isAsaasPixAutomaticEvent(eventName) ||
       eventName.startsWith("CHECKOUT_") ||
-      eventName.startsWith("PAYMENT_");
+      eventName.startsWith("PAYMENT_") ||
+      eventName.startsWith("SUBSCRIPTION_");
 
     if (!relevantEvent) {
       console.info("ASAAS_WEBHOOK_IGNORED", { eventName });
@@ -40,6 +41,8 @@ export async function POST(request: Request) {
       await processAsaasPixAutomaticWebhook(payload);
     } else if (eventName.startsWith("CHECKOUT_")) {
       await service.processCheckoutWebhook(provider.parseCheckoutWebhook(payload));
+    } else if (eventName.startsWith("SUBSCRIPTION_")) {
+      await service.processSubscriptionWebhook(payload);
     } else {
       const initial = await processAsaasPixAutomaticInitialPaymentWebhook(payload, provider.environment);
       if (!initial.handled) await service.processWebhook(provider.parseWebhook(payload));
@@ -51,6 +54,7 @@ export async function POST(request: Request) {
     const invalid =
       error instanceof Error &&
       (error.message === "INVALID_ASAAS_WEBHOOK" ||
+        error.message.startsWith("ASAAS_SUBSCRIPTION_INVALID_") ||
         error.message.startsWith("ASAAS_PIX_AUTOMATIC_INVALID_") ||
         error.message.includes("EVENT_ID_REQUIRED"));
 
