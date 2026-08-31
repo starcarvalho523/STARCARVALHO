@@ -34,7 +34,7 @@ export default async function MonthlyAutomationPage() {
   return (
     <DashboardShell nav={ceoNav} active="Mensalistas" role="CEO">
       <div className="mx-auto max-w-6xl space-y-5">
-        <CeoPageHeader title="Automação de mensalidades" description="Geração, Pix Automático, reconciliação, avisos, carência, suspensão e reativação em um único fluxo diário.">
+        <CeoPageHeader title="Automação de mensalidades" description="Geração, pagamentos, reconciliação, avisos, carência, suspensão e reativação em um único fluxo diário.">
           <Link href="/ceo/mensalistas" className="rounded-xl border px-4 py-2 text-sm font-semibold text-blue-700">Voltar aos mensalistas</Link>
         </CeoPageHeader>
 
