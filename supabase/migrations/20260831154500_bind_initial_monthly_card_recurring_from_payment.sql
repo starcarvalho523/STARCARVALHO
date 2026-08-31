@@ -16,11 +16,10 @@ declare
   target_transaction_id uuid;
   target_period public.monthly_billing_periods;
   target_subscription public.monthly_subscriptions;
+  next_month date;
   calculated_next_due date;
 begin
-  if coalesce(btrim(target_event_id),'')='' or coalesce(btrim(target_provider_payment_id),'')='' or coalesce(btrim(target_provider_subscription_id),'')='' or coalesce(btrim(target_provider_customer_id),'')='' or coalesce(btrim(target_provider_checkout_id),'')='' then
-    raise exception 'MONTHLY_CARD_INITIAL_BIND_INPUT_REQUIRED';
-  end if;
+  if coalesce(btrim(target_event_id),'')='' or coalesce(btrim(target_provider_payment_id),'')='' or coalesce(btrim(target_provider_subscription_id),'')='' or coalesce(btrim(target_provider_customer_id),'')='' or coalesce(btrim(target_provider_checkout_id),'')='' then raise exception 'MONTHLY_CARD_INITIAL_BIND_INPUT_REQUIRED'; end if;
   if target_amount is null or target_amount <= 0 then raise exception 'MONTHLY_CARD_INITIAL_BIND_AMOUNT_INVALID'; end if;
 
   select count(*) into candidate_count
@@ -57,7 +56,8 @@ begin
   join public.payments p on p.monthly_billing_period_id=bp.id
   where p.id=target_payment_id;
   select * into target_subscription from public.monthly_subscriptions where id=target_period.subscription_id;
-  calculated_next_due := private.monthly_due_date((date_trunc('month',target_period.due_date::timestamp)+interval '1 month')::date, target_subscription.due_day);
+  next_month := (date_trunc('month',target_period.due_date::timestamp)+interval '1 month')::date;
+  calculated_next_due := private.monthly_due_date(extract(year from next_month)::int,extract(month from next_month)::int,target_subscription.due_day::int);
 
   update private.payment_provider_transactions
   set provider_payment_id=coalesce(provider_payment_id,target_provider_payment_id),
@@ -66,9 +66,7 @@ begin
       updated_at=clock_timestamp()
   where id=target_transaction_id;
 
-  update public.payments
-  set provider_reference=coalesce(provider_reference,target_provider_payment_id)
-  where id=target_payment_id;
+  update public.payments set provider_reference=coalesce(provider_reference,target_provider_payment_id) where id=target_payment_id;
 
   insert into public.monthly_recurring_provider_bindings(subscription_id,provider,method,provider_customer_id,provider_subscription_id,authorization_status,initial_billing_period_id,last_provider_event_id,last_provider_event_at,updated_at)
   values(target_subscription.id,'ASAAS','CREDIT_CARD',target_provider_customer_id,target_provider_subscription_id,'ACTIVE',target_period.id,target_event_id,clock_timestamp(),clock_timestamp())
