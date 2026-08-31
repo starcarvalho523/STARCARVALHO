@@ -50,7 +50,12 @@ export async function POST(request: Request) {
       if (!initial.handled) {
         const event = provider.parseWebhook(payload);
         const recurringHandled = await tryProcessMonthlyRecurringCardPayment(event, provider);
-        if (!recurringHandled) await service.processWebhook(event);
+        if (!recurringHandled) {
+          await service.processWebhook(event);
+          if (event.type === "PAYMENT_CONFIRMED" && event.subscriptionId) {
+            await bindInitialMonthlyRecurringCardFromPayment(event, provider);
+          }
+        }
       }
     }
 
@@ -125,4 +130,42 @@ async function tryProcessMonthlyRecurringCardPayment(event: ProviderWebhookEvent
   if (error) throw new Error(`ASAAS_RECURRING_WEBHOOK_RPC_${error.message}`);
 
   return String(data ?? "") !== "NOT_BOUND";
+}
+
+async function bindInitialMonthlyRecurringCardFromPayment(event: ProviderWebhookEvent, provider: PaymentProvider) {
+  if (!event.subscriptionId) return;
+  const snapshot = await provider.getPayment(event.paymentId);
+  if (
+    snapshot.providerPaymentId !== event.paymentId ||
+    snapshot.subscriptionId !== event.subscriptionId ||
+    snapshot.billingType !== "CREDIT_CARD" ||
+    !snapshot.checkoutId ||
+    !snapshot.providerCustomerId ||
+    Number(snapshot.amount) <= 0
+  ) {
+    throw new Error("ASAAS_INITIAL_RECURRING_BIND_CORRELATION_MISMATCH");
+  }
+
+  const admin = createAdminClient();
+  const { data, error } = await admin.rpc("bind_initial_monthly_card_recurring_from_payment", {
+    target_event_id: `${event.id}:payment-fallback`,
+    target_provider_payment_id: event.paymentId,
+    target_provider_subscription_id: event.subscriptionId,
+    target_provider_customer_id: snapshot.providerCustomerId,
+    target_provider_checkout_id: snapshot.checkoutId,
+    target_amount: snapshot.amount,
+  });
+  if (error) throw new Error(`ASAAS_INITIAL_RECURRING_BIND_RPC_${error.message}`);
+
+  const result = data && typeof data === "object" ? data as { result?: unknown; nextBillingDate?: unknown } : null;
+  if (result?.result !== "bound" || typeof result.nextBillingDate !== "string") {
+    throw new Error("ASAAS_INITIAL_RECURRING_BIND_UNRESOLVED");
+  }
+
+  if (provider.updateRecurringSubscription) {
+    await provider.updateRecurringSubscription(event.subscriptionId, {
+      status: "ACTIVE",
+      nextDueDate: result.nextBillingDate,
+    });
+  }
 }
