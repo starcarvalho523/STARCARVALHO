@@ -29,7 +29,7 @@ export default async function Page() {
   return (
     <CustomerShell name={data.profile.full_name} active="Mensalidade" unreadNotifications={data.unreadNotifications}>
       <div className="space-y-5">
-        <div><h1 className="text-3xl font-bold">Minha mensalidade</h1><p className="text-sm text-slate-500">Competências e pagamentos vinculados exclusivamente à sua conta.</p></div>
+        <div><h1 className="text-3xl font-bold">Minha mensalidade</h1><p className="text-sm text-slate-500">Cada pagamento corresponde a um ciclo de 30 dias corridos. A data de renovação acompanha esses ciclos.</p></div>
         {!data.monthlyPeriods.length?<MonthlyEnrollmentForm plans={plans} vehicles={data.vehicles}/>:null}
         {data.monthlyPeriods.map((period) => {
           const paid=period.payments.find((p)=>p.status==="PAID");
@@ -46,46 +46,27 @@ export default async function Page() {
           const showCardRenewal=Boolean(isLatestPaidPeriod&&subscription&&(subscription.auto_renew||subscription.renewal_provider==="ASAAS"||subscription.cancel_at_period_end));
           const unitTimezone=period.parking_units?.timezone??subscription?.parking_units?.timezone??"America/Bahia";
           const phase=billingPhase(period.due_date,period.grace_until,unitTimezone);
-          const statusLabel=period.status==="PAID"
-            ?"Pago"
-            :pending
-              ?`Processando via ${pendingLabel}`
-              :cardAutoRenewActive
-                ?"Cobrança automática programada"
-                :subscriptionStatus==="SUSPENDED"
-                  ?"Assinatura suspensa"
-                  :phase==="GRACE"
-                    ?"Em carência"
-                    :phase==="OVERDUE"
-                      ?"Vencida"
-                      :subscriptionStatus==="ACTIVE"&&latestPaidCoverage
-                        ?"Próxima mensalidade"
-                        :"Aguardando";
+          const statusLabel=period.status==="PAID"?"Pago":pending?`Processando via ${pendingLabel}`:cardAutoRenewActive?"Cobrança automática programada":subscriptionStatus==="SUSPENDED"?"Assinatura suspensa":phase==="GRACE"?"Em carência":phase==="OVERDUE"?"Vencida":subscriptionStatus==="ACTIVE"&&latestPaidCoverage?"Próximo ciclo":"Aguardando";
 
           return <article key={period.id} className="rounded-2xl border bg-white p-5">
             <div className="flex flex-wrap justify-between gap-3">
               <div>
                 <h2 className="font-bold">{subscription?.plan_name??"Plano mensal"}</h2>
-                <p className="text-sm text-slate-500">{subscription?.parking_units?.name??"Star Carvalhos"} · {String(period.reference_month).padStart(2,"0")}/{period.reference_year}</p>
-                <p className="mt-2 text-sm">Vencimento: {date(period.due_date)}</p>
-                {subscriptionStatus==="ACTIVE"&&period.status==="PAID"?<div className="mt-3 rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-800"><b>Mensalidade ativa.</b>{coveredPlates.length?` Cobertura deste período ativa para ${coveredPlates.join(", ")} até ${date(period.period_end)}.`:` Cobertura deste período válida até ${date(period.period_end)}.`}</div>:null}
-                {period.status!=="PAID"&&subscriptionStatus==="SUSPENDED"?<div className="mt-3 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-800"><b>Assinatura suspensa por pendência.</b> Regularize esta mensalidade para que a reativação seja processada. Você ainda pode pagar pelos métodos disponíveis abaixo.</div>:null}
-                {period.status!=="PAID"&&subscriptionStatus==="ACTIVE"&&latestPaidCoverage?(cardAutoRenewActive?<div className="mt-3 rounded-xl bg-blue-50 px-3 py-2 text-sm text-blue-800"><b>Assinatura ativa.</b> Sua cobertura já paga vai até <b>{date(latestPaidCoverage)}</b>. A próxima cobrança será feita automaticamente no cartão em <b>{date(subscription?.next_billing_date??period.due_date)}</b>.</div>:phase==="GRACE"?<div className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-900"><b>Período de carência.</b> O vencimento foi em {date(period.due_date)}. Regularize até <b>{date(period.grace_until)}</b> para evitar a suspensão da assinatura.</div>:phase==="OVERDUE"?<div className="mt-3 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-800"><b>Mensalidade vencida.</b> A carência terminou em {date(period.grace_until)}. Regularize o pagamento para evitar ou remover restrições da assinatura.</div>:<div className="mt-3 rounded-xl bg-blue-50 px-3 py-2 text-sm text-blue-800"><b>Assinatura ativa.</b> Sua cobertura já paga vai até <b>{date(latestPaidCoverage)}</b>. Esta é a próxima mensalidade e ainda aguarda pagamento.</div>):null}
-                {subscriptionStatus==="PENDING_ACTIVATION"?<div className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-800">Aguardando confirmação do primeiro pagamento para ativar a cobertura mensal.</div>:null}
+                <p className="text-sm text-slate-500">{subscription?.parking_units?.name??"Star Carvalhos"} · ciclo de {date(period.period_start)} a {date(period.period_end)}</p>
+                <p className="mt-2 text-sm">Data de cobrança do ciclo: {date(period.due_date)}</p>
+                {subscriptionStatus==="ACTIVE"&&period.status==="PAID"?<div className="mt-3 rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-800"><b>Ciclo ativo por 30 dias.</b>{coveredPlates.length?` Cobertura para ${coveredPlates.join(", ")} até ${date(period.period_end)}.`:` Cobertura válida até ${date(period.period_end)}.`}</div>:null}
+                {period.status!=="PAID"&&subscriptionStatus==="SUSPENDED"?<div className="mt-3 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-800"><b>Assinatura suspensa por pendência.</b> Regularize este ciclo para que a reativação seja processada. Você ainda pode pagar pelos métodos disponíveis abaixo.</div>:null}
+                {period.status!=="PAID"&&subscriptionStatus==="ACTIVE"&&latestPaidCoverage?(cardAutoRenewActive?<div className="mt-3 rounded-xl bg-blue-50 px-3 py-2 text-sm text-blue-800"><b>Assinatura ativa.</b> Sua cobertura já paga vai até <b>{date(latestPaidCoverage)}</b>. A próxima cobrança do ciclo de 30 dias será feita automaticamente no cartão em <b>{date(subscription?.next_billing_date??period.due_date)}</b>.</div>:phase==="GRACE"?<div className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-900"><b>Período de carência.</b> A cobrança venceu em {date(period.due_date)}. Regularize até <b>{date(period.grace_until)}</b> para evitar a suspensão da assinatura.</div>:phase==="OVERDUE"?<div className="mt-3 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-800"><b>Ciclo vencido.</b> A carência terminou em {date(period.grace_until)}. Regularize o pagamento para evitar ou remover restrições da assinatura.</div>:<div className="mt-3 rounded-xl bg-blue-50 px-3 py-2 text-sm text-blue-800"><b>Assinatura ativa.</b> Sua cobertura já paga vai até <b>{date(latestPaidCoverage)}</b>. Este é o próximo ciclo de 30 dias e ainda aguarda pagamento.</div>):null}
+                {subscriptionStatus==="PENDING_ACTIVATION"?<div className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-800">Aguardando confirmação do primeiro pagamento para iniciar a cobertura de 30 dias.</div>:null}
               </div>
               <div className="text-right"><b className="text-2xl">{formatMoney(period.amount)}</b><p className="text-sm font-semibold">{statusLabel}</p></div>
             </div>
-            {period.status==="PENDING"?pending
-              ?<MonthlyPaymentActions billingPeriodId={period.id} pendingMethod={pending.method} pixEnabled={asaasPixEnabled} creditEnabled={canUsePayment(capabilities,"CREDIT_CARD","HOSTED_CHECKOUT","ASAAS")}/>
-              :cardAutoRenewActive&&subscription
-                ?<MonthlyAutomaticChargeGuard subscriptionId={subscription.id} nextBillingDate={subscription.next_billing_date}/>
-                :<MonthlyPaymentActions billingPeriodId={period.id} pendingMethod={null} pixEnabled={asaasPixEnabled} creditEnabled={canUsePayment(capabilities,"CREDIT_CARD","HOSTED_CHECKOUT","ASAAS")}/>
-            :null}
+            {period.status==="PENDING"?pending?<MonthlyPaymentActions billingPeriodId={period.id} pendingMethod={pending.method} pixEnabled={asaasPixEnabled} creditEnabled={canUsePayment(capabilities,"CREDIT_CARD","HOSTED_CHECKOUT","ASAAS")}/>:cardAutoRenewActive&&subscription?<MonthlyAutomaticChargeGuard subscriptionId={subscription.id} nextBillingDate={subscription.next_billing_date}/>:<MonthlyPaymentActions billingPeriodId={period.id} pendingMethod={null} pixEnabled={asaasPixEnabled} creditEnabled={canUsePayment(capabilities,"CREDIT_CARD","HOSTED_CHECKOUT","ASAAS")}/>:null}
             {paid?<div className="mt-4 rounded-xl bg-emerald-50 p-3 text-sm text-emerald-800">{formatPaymentMethod(paid.method)} · {formatPaymentStatus(paid.status)} · {formatDateTime(paid.paid_at??paid.created_at)}</div>:pending?<div className="mt-4 rounded-xl bg-amber-50 p-3 text-sm text-amber-800">Pagamento iniciado via <b>{pendingLabel}</b>. Você pode continuar neste método ou escolher outro acima. Ao trocar, a tentativa anterior é encerrada automaticamente e deixa de ficar aberta em segundo plano.</div>:null}
             {showCardRenewal&&subscription?<MonthlyRenewalControls subscriptionId={subscription.id} autoRenew={subscription.auto_renew} nextBillingDate={subscription.next_billing_date} coverageUntil={latestPaidCoverage} cancelAtPeriodEnd={subscription.cancel_at_period_end}/>:null}
           </article>;
         })}
-        {!data.monthlyPeriods.length&&!plans.length?<p className="rounded-2xl border bg-white p-8 text-center text-sm text-slate-500">Nenhuma competência vinculada à sua conta.</p>:null}
+        {!data.monthlyPeriods.length&&!plans.length?<p className="rounded-2xl border bg-white p-8 text-center text-sm text-slate-500">Nenhum ciclo vinculado à sua conta.</p>:null}
       </div>
     </CustomerShell>
   );
