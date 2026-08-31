@@ -81,8 +81,7 @@ export function PixPaymentPanel({ sessionId, billingPeriodId, resumeExisting=fal
     try {
       const monthly = Boolean(billingPeriodId);
       if (monthly) {
-        const parsed=await readResponse(await fetch(`/api/payments/monthly/pix?billingPeriodId=${encodeURIComponent(billingPeriodId ?? "")}`, { cache: "no-store" }));
-        if(parsed)onSwitchReady?.();
+        await readResponse(await fetch(`/api/payments/monthly/pix?billingPeriodId=${encodeURIComponent(billingPeriodId ?? "")}`, { cache: "no-store" }));
       } else {
         await readResponse(await fetch("/api/payments/efi-pix/reconcile", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ sessionId }) }));
       }
@@ -91,7 +90,7 @@ export function PixPaymentPanel({ sessionId, billingPeriodId, resumeExisting=fal
     } finally {
       if (!silent) setRefreshing(false);
     }
-  }, [billingPeriodId,onSwitchReady,readResponse, sessionId]);
+  }, [billingPeriodId,readResponse, sessionId]);
 
   const expireMonthlyCharge = useCallback(async () => {
     if (!billingPeriodId || expiring.current) return;
