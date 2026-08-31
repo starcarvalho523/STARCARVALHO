@@ -87,7 +87,6 @@ async function tryProcessMonthlyRecurringCardPayment(event: ProviderWebhookEvent
   }
 
   const snapshot = await provider.getPayment(event.paymentId);
-  if (snapshot.checkoutId) return false;
   if (
     snapshot.providerPaymentId !== event.paymentId ||
     snapshot.subscriptionId !== event.subscriptionId ||
