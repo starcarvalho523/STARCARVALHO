@@ -78,6 +78,7 @@ export class PaymentService{
       const customerId=await this.resolveProviderCustomer(subject,provider);
       const monthly=subject.type==="MONTHLY_BILLING_PERIOD";
       const query=monthly?`&kind=monthly&billingPeriodId=${encodeURIComponent(subject.id)}`:"";
+      const recurringNextDueDate=monthly?await this.monthlyCheckoutNextDueDate(subject.id):null;
       const checkout=await provider.createCreditCardCheckout({
         customerId,
         amount:Number(context.amount),
@@ -85,7 +86,7 @@ export class PaymentService{
         externalReference:context.externalReference,
         expiresInMinutes:45,
         callback:{successUrl:`${origin}/pagamento/retorno?status=success${query}`,cancelUrl:`${origin}/pagamento/retorno?status=cancel${query}`,expiredUrl:`${origin}/pagamento/retorno?status=expired${query}`},
-        recurrence:monthly?{cycle:"MONTHLY",nextDueDate:`${paymentDueDate()} 12:00:00`}:null,
+        recurrence:recurringNextDueDate?{cycle:"MONTHLY",nextDueDate:`${recurringNextDueDate} 12:00:00`}:null,
       });
       const{error:saveError}=await this.admin.rpc("mark_credit_checkout_created",{transaction_id:context.transactionId,checkout_id:checkout.providerCheckoutId,checkout_status:checkout.providerStatus,checkout_link:checkout.link,external_reference:checkout.externalReference,checkout_amount:checkout.amount,expires_at:checkout.expiresAt});if(saveError)throw rpcError("mark_credit_checkout_created",saveError.message);
       return publicCheckout({...reservation,state:"PENDING",hostedPaymentUrl:checkout.link,expiresAt:checkout.expiresAt});
@@ -160,6 +161,13 @@ export class PaymentService{
     const{data:payment,error:paymentError}=await this.admin.from("payments").select("monthly_billing_period_id").eq("provider","ASAAS").eq("provider_reference",event.paymentId).maybeSingle();if(paymentError||!payment?.monthly_billing_period_id)return;
     const{data:period,error:periodError}=await this.admin.from("monthly_billing_periods").select("due_date").eq("id",payment.monthly_billing_period_id).maybeSingle();if(periodError||!period?.due_date)return;
     await provider.updateRecurringSubscription(event.subscriptionId,{status:"ACTIVE",nextDueDate:nextMonthlyDate(String(period.due_date))});
+  }
+
+  private async monthlyCheckoutNextDueDate(billingPeriodId:string){
+    const{data,error}=await this.admin.from("monthly_billing_periods").select("due_date").eq("id",billingPeriodId).maybeSingle();
+    if(error)throw rpcError("monthly_billing_period_due_date",error.message);
+    if(!data?.due_date)throw new Error("MONTHLY_BILLING_PERIOD_DUE_DATE_REQUIRED");
+    return nextMonthlyDate(String(data.due_date));
   }
 
   private async resolveProviderCustomer(subject:PaymentSubject,provider:PaymentProvider){
