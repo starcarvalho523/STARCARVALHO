@@ -109,8 +109,12 @@ export class AsaasProvider implements PaymentProvider {
 
   async getPayment(providerPaymentId:string):Promise<ProviderCharge>{return normalizePayment(await this.request<AsaasPayment>(`/payments/${encodeURIComponent(providerPaymentId)}`))}
   async cancelPayment(providerPaymentId:string):Promise<void>{await this.request(`/payments/${encodeURIComponent(providerPaymentId)}`,{method:"DELETE"})}
-  async updateRecurringSubscription(providerSubscriptionId:string,input:{status?:"ACTIVE"|"INACTIVE";nextDueDate?:string}):Promise<void>{
-    const body={...(input.status?{status:input.status}:{}),...(input.nextDueDate?{nextDueDate:input.nextDueDate}:{}),updatePendingPayments:false};
+  async updateRecurringSubscription(providerSubscriptionId:string,input:{status?:"ACTIVE"|"INACTIVE";nextDueDate?:string;updatePendingPayments?:boolean}):Promise<void>{
+    const body={
+      ...(input.status?{status:input.status}:{}),
+      ...(input.nextDueDate?{nextDueDate:input.nextDueDate}:{}),
+      updatePendingPayments:input.updatePendingPayments??false,
+    };
     await this.request(`/subscriptions/${encodeURIComponent(providerSubscriptionId)}`,{method:"PUT",body:JSON.stringify(body)});
   }
   async cancelRecurringSubscription(providerSubscriptionId:string):Promise<void>{await this.request(`/subscriptions/${encodeURIComponent(providerSubscriptionId)}`,{method:"DELETE"})}
