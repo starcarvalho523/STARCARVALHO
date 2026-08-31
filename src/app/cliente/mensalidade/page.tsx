@@ -5,7 +5,6 @@ import { MonthlyAutomaticChargeGuard } from "@/components/monthly-automatic-char
 import { MonthlyEnrollmentForm,type SelfServicePlan } from "@/components/customer-self-service-forms";
 import { getCustomerData } from "@/lib/customer-data";
 import { getPaymentAvailability, canUsePayment } from "@/lib/payments/payment-availability";
-import { isAsaasPixAutomaticEnabled } from "@/lib/payments/asaas-pix-automatic-client";
 import { createClient } from "@/lib/supabase/server";
 import { formatDateTime, formatMoney, formatPaymentMethod, formatPaymentStatus } from "@/lib/operator-format";
 export const dynamic = "force-dynamic";
@@ -18,8 +17,6 @@ export default async function Page() {
   const units=[...new Set(data.monthlyPeriods.map(period=>period.monthly_subscriptions?.unit_id).filter((id):id is string=>Boolean(id)))];
   const availabilityByUnit=Object.fromEntries(await Promise.all(units.map(async unitId=>[unitId,await getPaymentAvailability(unitId)])));
   const plans=(planRows??[]) as SelfServicePlan[];
-  const sandboxPreview=process.env.VERCEL_ENV==="preview"&&String(process.env.ASAAS_ENVIRONMENT??"").trim().toLowerCase()==="sandbox";
-  const pixAutomaticFeatureEnabled=isAsaasPixAutomaticEnabled()||sandboxPreview;
 
   const latestPaidCoverageBySubscription=new Map<string,string>();
   for(const period of data.monthlyPeriods){
@@ -79,10 +76,10 @@ export default async function Page() {
               <div className="text-right"><b className="text-2xl">{formatMoney(period.amount)}</b><p className="text-sm font-semibold">{statusLabel}</p></div>
             </div>
             {period.status==="PENDING"?pending
-              ?<MonthlyPaymentActions billingPeriodId={period.id} pendingMethod={pending.method} pixEnabled={asaasPixEnabled} pixAutomaticEnabled={asaasPixEnabled&&pixAutomaticFeatureEnabled} creditEnabled={canUsePayment(capabilities,"CREDIT_CARD","HOSTED_CHECKOUT","ASAAS")}/>
+              ?<MonthlyPaymentActions billingPeriodId={period.id} pendingMethod={pending.method} pixEnabled={asaasPixEnabled} creditEnabled={canUsePayment(capabilities,"CREDIT_CARD","HOSTED_CHECKOUT","ASAAS")}/>
               :cardAutoRenewActive&&subscription
                 ?<MonthlyAutomaticChargeGuard subscriptionId={subscription.id} nextBillingDate={subscription.next_billing_date}/>
-                :<MonthlyPaymentActions billingPeriodId={period.id} pendingMethod={null} pixEnabled={asaasPixEnabled} pixAutomaticEnabled={asaasPixEnabled&&pixAutomaticFeatureEnabled} creditEnabled={canUsePayment(capabilities,"CREDIT_CARD","HOSTED_CHECKOUT","ASAAS")}/>
+                :<MonthlyPaymentActions billingPeriodId={period.id} pendingMethod={null} pixEnabled={asaasPixEnabled} creditEnabled={canUsePayment(capabilities,"CREDIT_CARD","HOSTED_CHECKOUT","ASAAS")}/>
             :null}
             {paid?<div className="mt-4 rounded-xl bg-emerald-50 p-3 text-sm text-emerald-800">{formatPaymentMethod(paid.method)} · {formatPaymentStatus(paid.status)} · {formatDateTime(paid.paid_at??paid.created_at)}</div>:pending?<div className="mt-4 rounded-xl bg-amber-50 p-3 text-sm text-amber-800">Pagamento iniciado via <b>{pendingLabel}</b>. Você pode continuar neste método ou escolher outro acima. Ao trocar, a tentativa anterior é encerrada automaticamente e deixa de ficar aberta em segundo plano.</div>:null}
             {showCardRenewal&&subscription?<MonthlyRenewalControls subscriptionId={subscription.id} autoRenew={subscription.auto_renew} nextBillingDate={subscription.next_billing_date} coverageUntil={latestPaidCoverage} cancelAtPeriodEnd={subscription.cancel_at_period_end}/>:null}
