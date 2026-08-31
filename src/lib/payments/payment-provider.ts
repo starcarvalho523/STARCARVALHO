@@ -33,6 +33,7 @@ export type ProviderCharge = {
   expiresAt: string | null;
   dueDate: string | null;
   subscriptionId: string | null;
+  checkoutId: string | null;
 };
 
 export type CreateCheckoutInput = {
