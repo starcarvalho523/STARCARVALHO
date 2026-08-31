@@ -31,9 +31,9 @@ export type ProviderCharge = {
   qrCodePayload: string | null;
   qrCodeImageBase64: string | null;
   expiresAt: string | null;
-  dueDate: string | null;
-  subscriptionId: string | null;
-  checkoutId: string | null;
+  dueDate?: string | null;
+  subscriptionId?: string | null;
+  checkoutId?: string | null;
 };
 
 export type CreateCheckoutInput = {
