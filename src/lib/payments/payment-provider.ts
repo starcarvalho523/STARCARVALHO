@@ -111,7 +111,7 @@ export interface PaymentProvider {
   validateWebhook(receivedToken: string | null, expectedToken: string): boolean;
   parseWebhook(payload: unknown): ProviderWebhookEvent;
   parseCheckoutWebhook(payload: unknown): ProviderCheckoutWebhookEvent;
-  updateRecurringSubscription?(providerSubscriptionId:string,input:{status?:"ACTIVE"|"INACTIVE";nextDueDate?:string}):Promise<void>;
+  updateRecurringSubscription?(providerSubscriptionId:string,input:{status?:"ACTIVE"|"INACTIVE";nextDueDate?:string;updatePendingPayments?:boolean}):Promise<void>;
   cancelRecurringSubscription?(providerSubscriptionId:string):Promise<void>;
 }
 
