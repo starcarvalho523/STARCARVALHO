@@ -1,10 +1,10 @@
 "use client";
 
-import { CalendarClock, LoaderCircle, WalletCards } from "lucide-react";
+import { ArrowRight, CalendarClock, LoaderCircle, WalletCards } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-export function MonthlyAutomaticChargeGuard({subscriptionId,nextBillingDate}:{subscriptionId:string;nextBillingDate:string|null}){
+export function MonthlyAutomaticChargeGuard({subscriptionId,nextBillingDate,compact=false}:{subscriptionId:string;nextBillingDate:string|null;compact?:boolean}){
   const router=useRouter();
   const[loading,setLoading]=useState(false);
   const[error,setError]=useState<string|null>(null);
@@ -20,6 +20,17 @@ export function MonthlyAutomaticChargeGuard({subscriptionId,nextBillingDate}:{su
     }catch(cause){setError(cause instanceof Error?cause.message:"Não foi possível liberar o pagamento manual.")}
     finally{setLoading(false)}
   };
+
+  if(compact){
+    return <div className="space-y-2">
+      <button type="button" disabled={loading} onClick={()=>void enableManualPayment()} className="group flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-4 font-bold text-white shadow-[0_10px_24px_rgba(37,99,235,.22)] transition hover:-translate-y-0.5 hover:shadow-[0_14px_30px_rgba(37,99,235,.28)] disabled:translate-y-0 disabled:opacity-50">
+        {loading?<LoaderCircle className="size-4 animate-spin"/>:<WalletCards className="size-4"/>}
+        {loading?"Liberando...":"Pagar manualmente"}
+        {!loading?<ArrowRight className="size-4 transition group-hover:translate-x-0.5"/>:null}
+      </button>
+      {error?<p role="alert" className="text-xs font-semibold text-red-600">{error}</p>:null}
+    </div>;
+  }
 
   return <section className="mt-4 rounded-2xl border border-blue-200 bg-blue-50/70 p-4 sm:p-5">
     <div className="flex items-start gap-3">
