@@ -22,12 +22,14 @@ export default async function Page(){
   const coverage=new Map<string,string>();
   for(const p of data.monthlyPeriods){const id=p.monthly_subscriptions?.id;if(!id||p.status!=="PAID")continue;const current=coverage.get(id);if(!current||p.period_end>current)coverage.set(id,p.period_end)}
 
-  const current=data.monthlyPeriods.find(p=>p.status==="PENDING"&&["ACTIVE","PENDING_ACTIVATION"].includes(p.monthly_subscriptions?.status??""))??null;
+  const pendingCurrent=data.monthlyPeriods.find(p=>p.status==="PENDING"&&["ACTIVE","PENDING_ACTIVATION"].includes(p.monthly_subscriptions?.status??""))??null;
+  const paidCurrent=[...data.monthlyPeriods].filter(p=>p.status==="PAID"&&p.monthly_subscriptions?.status==="ACTIVE").sort((a,b)=>b.due_date.localeCompare(a.due_date))[0]??null;
+  const current=pendingCurrent??paidCurrent;
   const sub=current?.monthly_subscriptions??null;
   const awaiting=sub?.status==="PENDING_ACTIVATION";
   const currentCoverage=sub?coverage.get(sub.id)??null:null;
   const autoRenew=Boolean(!awaiting&&sub?.auto_renew&&!sub.cancel_at_period_end&&sub.renewal_provider==="ASAAS"&&(sub.preferred_payment_method==="CREDIT_CARD"||sub.preferred_payment_method==="CARD"));
-  const nextRenewal=current?addDays(current.due_date,30):null;
+  const nextRenewal=current?(sub?.status==="ACTIVE"&&sub.next_billing_date?sub.next_billing_date:addDays(current.due_date,30)):null;
   const timezone=current?.parking_units?.timezone??sub?.parking_units?.timezone??"America/Bahia";
   const progress=current?(awaiting?scheduled():cycleProgress(current.period_start,current.period_end,timezone)):null;
   const recent=data.monthlyPeriods.filter(p=>p.status==="PAID"&&p.payments.some(x=>x.status==="PAID")).slice(0,3);
@@ -50,7 +52,7 @@ export default async function Page(){
           </Card>
 
           <Card accent>
-            <div className="flex items-center justify-between"><span className="flex items-center gap-2 font-bold"><CalendarDays className="size-5 text-blue-600"/>{awaiting?"Primeiro ciclo":"Próximo ciclo"}</span><Badge tone="blue">30 dias corridos</Badge></div>
+            <div className="flex items-center justify-between"><span className="flex items-center gap-2 font-bold"><CalendarDays className="size-5 text-blue-600"/>{awaiting?"Primeiro ciclo":current.status==="PAID"?"Ciclo atual":"Próximo ciclo"}</span><Badge tone="blue">30 dias corridos</Badge></div>
             <p className="mt-3 text-xs font-bold uppercase text-slate-400">{awaiting?"Cobertura após confirmação":"Período de cobertura"}</p><p className="mt-1 text-xl font-extrabold text-blue-700 sm:text-2xl">{date(current.period_start)} <span className="text-slate-300">→</span> {date(current.period_end)}</p>
             <div className="mt-3 grid grid-cols-3 gap-2 border-t pt-3"><Metric label="Cobrança" value={date(current.due_date)}/><Metric label="Renovação" value={date(nextRenewal)}/><Metric label="Valor" value={formatMoney(current.amount)}/></div>
           </Card>
@@ -58,8 +60,8 @@ export default async function Page(){
           <Card>
             <div className="flex items-center justify-between"><span className="flex items-center gap-2 font-bold"><Clock3 className="size-5 text-violet-600"/>{awaiting?"Primeiro pagamento":"Cobrança automática"}</span><Badge tone={autoRenew?"green":awaiting?"blue":"gray"}>{autoRenew?"Ativa":awaiting?"Pendente":"Desativada"}</Badge></div>
             <p className="mt-3 text-sm text-slate-600">{awaiting?"Escolha PIX ou cartão para ativar a primeira cobertura.":autoRenew?"Seu cartão está configurado para renovar automaticamente.":"A renovação automática está desligada."}</p>
-            <div className="mt-3 grid grid-cols-2 gap-2 rounded-xl bg-slate-50 p-3"><Metric label="Cobrança" value={date(current.due_date)}/><Metric label="Método" value={awaiting?"Escolher":autoRenew?"Cartão":"Manual"}/></div>
-            <div className="mt-3">{awaiting?<a href="#payment" className="flex h-11 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 font-bold text-white">Escolher forma de pagamento<ArrowRight className="size-4"/></a>:autoRenew?<MonthlyAutomaticChargeGuard subscriptionId={sub.id} nextBillingDate={current.due_date} compact/>:<a href="#payment" className="flex h-11 items-center justify-center gap-2 rounded-xl bg-blue-600 font-bold text-white">Ver formas de pagamento<ArrowRight className="size-4"/></a>}</div>
+            <div className="mt-3 grid grid-cols-2 gap-2 rounded-xl bg-slate-50 p-3"><Metric label={awaiting?"Cobrança":"Próxima cobrança"} value={date(awaiting?current.due_date:nextRenewal)}/><Metric label="Método" value={awaiting?"Escolher":autoRenew?"Cartão":"Manual"}/></div>
+            <div className="mt-3">{awaiting?<a href="#payment" className="flex h-11 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 font-bold text-white">Escolher forma de pagamento<ArrowRight className="size-4"/></a>:autoRenew?<MonthlyAutomaticChargeGuard subscriptionId={sub.id} nextBillingDate={nextRenewal} compact/>:<a href="#payment" className="flex h-11 items-center justify-center gap-2 rounded-xl bg-blue-600 font-bold text-white">Ver formas de pagamento<ArrowRight className="size-4"/></a>}</div>
           </Card>
         </section>
 
@@ -72,7 +74,7 @@ export default async function Page(){
 
         <section id="payment" className="scroll-mt-28 rounded-2xl border border-blue-200 bg-white p-4 shadow-sm sm:p-5">
           <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="font-extrabold">{awaiting?"Finalize sua adesão":sub.plan_name}</h2><p className="mt-1 text-sm text-slate-500">{sub.parking_units?.name??"Star Carvalhos"} · {date(current.period_start)} a {date(current.period_end)}</p></div><div className="rounded-xl bg-slate-50 px-4 py-3 text-right"><p className="text-xs font-bold uppercase text-slate-400">Valor</p><p className="text-2xl font-extrabold">{formatMoney(current.amount)}</p></div></div>
-          <p className="mt-3 rounded-xl bg-blue-50 px-3 py-2 text-sm text-blue-800">{awaiting?<><b>Aguardando primeiro pagamento.</b> Escolha PIX ou cartão. A cobertura será ativada somente após a confirmação.</>:<><b>Pagamento disponível.</b> Escolha o método desejado.</>}</p>
+          <p className={`mt-3 rounded-xl px-3 py-2 text-sm ${current.status==="PAID"?"bg-emerald-50 text-emerald-800":"bg-blue-50 text-blue-800"}`}>{awaiting?<><b>Aguardando primeiro pagamento.</b> Escolha PIX ou cartão. A cobertura será ativada somente após a confirmação.</>:current.status==="PAID"?<><b>Ciclo pago.</b> Sua cobertura está ativa até {currentCoverage?date(currentCoverage):date(current.period_end)}. Próxima renovação em {date(nextRenewal)}.</>:<><b>Pagamento disponível.</b> Escolha o método desejado.</>}</p>
           <PaymentBlock period={current} availability={availability[sub.unit_id]??[]} autoRenew={autoRenew}/>
           {!awaiting&&sub.status==="ACTIVE"?<div id="renewal-management" className="scroll-mt-28"><MonthlyRenewalControls subscriptionId={sub.id} autoRenew={sub.auto_renew} nextBillingDate={sub.next_billing_date} coverageUntil={currentCoverage} cancelAtPeriodEnd={sub.cancel_at_period_end}/></div>:null}
         </section>
