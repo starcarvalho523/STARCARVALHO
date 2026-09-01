@@ -2,6 +2,7 @@ import Link from "next/link";
 import {
   CalendarDays,
   CarFront,
+  ChevronDown,
   CreditCard,
   House,
   LogOut,
@@ -40,27 +41,35 @@ export function CustomerShell({
 
   return (
     <main className="min-h-dvh overflow-x-hidden bg-slate-100 pb-[calc(4.5rem+env(safe-area-inset-bottom))] text-slate-950 md:pb-8">
-      <header className="sticky top-0 z-30 border-b bg-white/95 backdrop-blur">
+      <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/95 shadow-[0_8px_28px_rgba(15,23,42,.04)] backdrop-blur-xl">
         <div className={`mx-auto flex h-[72px] min-w-0 items-center justify-between gap-2 px-3 sm:px-4 ${widthClass}`}>
           <Brand href="/cliente" />
           <div className="flex shrink-0 items-center gap-1 sm:gap-2">
             <CustomerNotificationBell unread={unreadNotifications} />
-            <Link
-              href="/cliente/conta"
-              className="flex items-center gap-2 rounded-xl px-1.5 py-2 text-sm font-semibold hover:bg-slate-50 sm:px-2"
-            >
-              <span className="grid size-9 place-items-center rounded-full bg-blue-50 text-blue-700">{initial}</span>
-              <span className="hidden sm:inline">{name || "Cliente"}</span>
-            </Link>
-            <form action={logout}>
-              <button
-                aria-label="Sair da conta"
-                title="Sair"
-                className="grid size-9 place-items-center rounded-full text-slate-500 hover:bg-red-50 hover:text-red-600 sm:size-10"
-              >
-                <LogOut className="size-5" />
-              </button>
-            </form>
+            <details className="group relative">
+              <summary className="flex cursor-pointer list-none items-center gap-2 rounded-2xl border border-transparent px-1.5 py-1.5 text-sm font-semibold transition hover:border-slate-200 hover:bg-slate-50 sm:px-2 [&::-webkit-details-marker]:hidden">
+                <span className="grid size-9 place-items-center rounded-full bg-gradient-to-br from-blue-600 to-indigo-600 font-bold text-white shadow-sm">{initial}</span>
+                <span className="hidden max-w-[160px] truncate sm:inline">{name || "Cliente"}</span>
+                <ChevronDown className="hidden size-4 text-slate-400 transition group-open:rotate-180 sm:block" />
+              </summary>
+              <div className="absolute right-0 top-[calc(100%+8px)] z-50 w-56 overflow-hidden rounded-2xl border border-slate-200 bg-white p-2 shadow-[0_20px_60px_rgba(15,23,42,.16)]">
+                <div className="border-b border-slate-100 px-3 py-2">
+                  <p className="truncate text-sm font-bold text-slate-950">{name || "Cliente"}</p>
+                  <p className="text-xs text-slate-500">Conta do cliente</p>
+                </div>
+                <div className="py-1">
+                  <ProfileLink href="/cliente/conta" icon={<UserRound className="size-4" />} label="Minha conta" />
+                  <ProfileLink href="/cliente/pagamentos" icon={<CreditCard className="size-4" />} label="Pagamentos" />
+                  <ProfileLink href="/cliente/veiculos" icon={<WalletCards className="size-4" />} label="Meus veículos" />
+                </div>
+                <form action={logout} className="border-t border-slate-100 pt-1">
+                  <button className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-semibold text-red-600 transition hover:bg-red-50">
+                    <LogOut className="size-4" />
+                    Sair
+                  </button>
+                </form>
+              </div>
+            </details>
           </div>
         </div>
         <nav
@@ -72,8 +81,10 @@ export function CustomerShell({
               key={href}
               href={href}
               aria-current={active === label ? "page" : undefined}
-              className={`flex shrink-0 items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold ${
-                active === label ? "bg-blue-50 text-blue-700" : "text-slate-600 hover:bg-slate-50"
+              className={`flex shrink-0 items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition ${
+                active === label
+                  ? "bg-blue-50 text-blue-700 shadow-[inset_0_0_0_1px_rgba(37,99,235,.05)]"
+                  : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
               }`}
             >
               <Icon className="size-4" />
@@ -107,4 +118,8 @@ export function CustomerShell({
       <MobileNavScrollEnhancer navId="mobile-nav-cliente" storageKey="starcarvalhos:mobile-nav:cliente" hideAt="md" />
     </main>
   );
+}
+
+function ProfileLink({href,icon,label}:{href:string;icon:React.ReactNode;label:string}){
+  return <Link href={href} className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-blue-50 hover:text-blue-700">{icon}{label}</Link>;
 }
