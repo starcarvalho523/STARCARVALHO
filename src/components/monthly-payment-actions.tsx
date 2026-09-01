@@ -20,29 +20,20 @@ export function MonthlyPaymentActions({billingPeriodId,allowCash=false,pendingMe
  const finishSwitch=(method:Exclude<ActiveMethod,null>)=>{setActiveMethod(method);setSwitchingTo(null)};
  const switchingLabel=switchingTo==="PIX"?"Preparando PIX...":switchingTo==="CREDIT_CARD"?"Preparando cartão...":null;
  const hasPending=Boolean(pendingMethod)||activeMethod!==null;
-
- if(hasPending){
-  return <div className="mt-3 space-y-3">
-   <div className="rounded-xl bg-blue-50 px-3 py-2 text-sm text-blue-800"><b>Pagamento em andamento.</b> Você pode continuar no método atual ou trocar agora. Ao escolher outro método, a tentativa anterior é encerrada automaticamente; não precisa esperar expirar.</div>
-   <div className="grid gap-2 sm:grid-cols-2">
-    {pixEnabled?<div className={activeMethod==="PIX"?"relative sm:col-span-2":switchingTo==="PIX"?"pointer-events-none opacity-0":""}>
-      <PixPaymentPanel billingPeriodId={billingPeriodId} resumeExisting={initialMethod==="PIX"} onSwitchStart={()=>beginSwitch("PIX")} onSwitchReady={()=>finishSwitch("PIX")}/>
-      {activeMethod==="PIX"&&switchingTo?<SwitchOverlay label={switchingLabel??"Preparando pagamento..."}/>:null}
-    </div>:null}
-    {creditEnabled?<div className={activeMethod==="CREDIT_CARD"?"relative sm:col-span-2":switchingTo==="CREDIT_CARD"?"pointer-events-none opacity-0":""}>
-      <CreditCheckoutPanel billingPeriodId={billingPeriodId} resumeExisting={initialMethod==="CREDIT_CARD"} onSwitchStart={()=>beginSwitch("CREDIT_CARD")} onSwitchReady={()=>finishSwitch("CREDIT_CARD")}/>
-      {activeMethod==="CREDIT_CARD"&&switchingTo?<SwitchOverlay label={switchingLabel??"Preparando pagamento..."}/>:null}
-    </div>:null}
-   </div>
-  </div>
- }
-
  const onlinePaymentEnabled=pixEnabled||creditEnabled;
+
  return <div className="mt-3 space-y-3">
+   {hasPending?<div className="rounded-xl bg-blue-50 px-3 py-2 text-sm text-blue-800"><b>Pagamento em andamento.</b> Você pode continuar no método atual ou trocar agora. Ao escolher outro método, a tentativa anterior é encerrada automaticamente; não precisa esperar expirar.</div>:null}
    <div className="grid gap-2 sm:grid-cols-2">
      {allowCash?<button type="button" disabled={loading} onClick={()=>void cash()} className="flex h-16 items-center justify-center gap-2 rounded-xl border border-emerald-200 font-bold text-emerald-700 disabled:opacity-50">{loading?<LoaderCircle className="size-5 animate-spin"/>:<Banknote className="size-5"/>}Dinheiro</button>:null}
-     {pixEnabled?<PixPaymentPanel billingPeriodId={billingPeriodId} onSwitchStart={()=>beginSwitch("PIX")} onSwitchReady={()=>finishSwitch("PIX")}/>:null}
-     {creditEnabled?<CreditCheckoutPanel billingPeriodId={billingPeriodId} onSwitchStart={()=>beginSwitch("CREDIT_CARD")} onSwitchReady={()=>finishSwitch("CREDIT_CARD")}/>:null}
+     {pixEnabled?<div className={activeMethod==="PIX"?"relative sm:col-span-2":switchingTo==="PIX"?"pointer-events-none opacity-0":""}>
+       <PixPaymentPanel billingPeriodId={billingPeriodId} resumeExisting={initialMethod==="PIX"} onSwitchStart={()=>beginSwitch("PIX")} onSwitchReady={()=>finishSwitch("PIX")}/>
+       {activeMethod==="PIX"&&switchingTo?<SwitchOverlay label={switchingLabel??"Preparando pagamento..."}/>:null}
+     </div>:null}
+     {creditEnabled?<div className={activeMethod==="CREDIT_CARD"?"relative sm:col-span-2":switchingTo==="CREDIT_CARD"?"pointer-events-none opacity-0":""}>
+       <CreditCheckoutPanel billingPeriodId={billingPeriodId} resumeExisting={initialMethod==="CREDIT_CARD"} onSwitchStart={()=>beginSwitch("CREDIT_CARD")} onSwitchReady={()=>finishSwitch("CREDIT_CARD")}/>
+       {activeMethod==="CREDIT_CARD"&&switchingTo?<SwitchOverlay label={switchingLabel??"Preparando pagamento..."}/>:null}
+     </div>:null}
    </div>
    {!allowCash&&!onlinePaymentEnabled?<p className="rounded-xl bg-slate-100 p-3 text-sm text-slate-600">Pagamento online indisponível nesta unidade.</p>:null}
    {error?<p role="alert" className="text-sm font-semibold text-red-600">{error}</p>:null}
