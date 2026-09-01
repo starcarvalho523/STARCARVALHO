@@ -21,6 +21,8 @@ const errorMessages: Record<string, string> = {
   PAYMENT_REQUEST_FAILED: "Não foi possível solicitar a cobrança PIX. Tente novamente.",
 };
 
+const MONTHLY_PIX_TTL_SECONDS = 5 * 60;
+
 export function PixPaymentPanel({ sessionId, billingPeriodId, resumeExisting=false, onPaid, onSwitchStart, onSwitchReady }: { sessionId?: string; billingPeriodId?: string; resumeExisting?: boolean; onPaid?: () => void; onSwitchStart?: () => void; onSwitchReady?: () => void }) {
   const router = useRouter();
   const paidHandled = useRef(false);
@@ -127,7 +129,8 @@ export function PixPaymentPanel({ sessionId, billingPeriodId, resumeExisting=fal
     const update=()=>{
       const expiresAt=new Date(charge.expiresAt ?? "").getTime();
       if(!Number.isFinite(expiresAt))return;
-      const seconds=Math.max(0,Math.ceil((expiresAt-Date.now())/1000));
+      const rawSeconds=Math.max(0,Math.ceil((expiresAt-Date.now())/1000));
+      const seconds=Math.min(MONTHLY_PIX_TTL_SECONDS,rawSeconds);
       setRemainingSeconds(seconds);
       if(seconds===0)void expireMonthlyCharge();
     };
