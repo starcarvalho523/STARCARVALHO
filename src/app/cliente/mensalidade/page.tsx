@@ -31,7 +31,8 @@ export default async function Page() {
   const highlightedSubscription=highlightedPeriod?.monthly_subscriptions??null;
   const highlightedCoverage=highlightedSubscription?latestPaidCoverageBySubscription.get(highlightedSubscription.id)??null:null;
   const highlightedAutoRenew=Boolean(highlightedSubscription?.auto_renew&&!highlightedSubscription.cancel_at_period_end&&highlightedSubscription.renewal_provider==="ASAAS"&&(highlightedSubscription.preferred_payment_method==="CREDIT_CARD"||highlightedSubscription.preferred_payment_method==="CARD"));
-  const highlightedRenewal=highlightedSubscription?.next_billing_date??(highlightedPeriod?addDays(highlightedPeriod.due_date,30):null);
+  const highlightedCurrentCharge=highlightedPeriod?.due_date??null;
+  const highlightedFollowingRenewal=highlightedPeriod?addDays(highlightedPeriod.due_date,30):null;
 
   return (
     <CustomerShell name={data.profile.full_name} active="Mensalidade" unreadNotifications={data.unreadNotifications}>
@@ -41,7 +42,7 @@ export default async function Page() {
           <p className="text-sm text-slate-500">Cada pagamento corresponde a um ciclo de 30 dias corridos. A data de renovação acompanha esses ciclos.</p>
         </div>
 
-        {highlightedPeriod&&highlightedSubscription&&highlightedRenewal?
+        {highlightedPeriod&&highlightedSubscription&&highlightedCurrentCharge&&highlightedFollowingRenewal?
           <section className="space-y-4" aria-label="Resumo da mensalidade">
             <div className="grid gap-4 lg:grid-cols-[1fr_1.08fr_0.72fr]">
               <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -63,7 +64,7 @@ export default async function Page() {
                   <div className="mt-1 flex flex-wrap items-center gap-2"><p className="text-xl font-extrabold text-slate-950">{date(highlightedPeriod.period_start)} a {date(highlightedPeriod.period_end)}</p><span className="rounded-full bg-blue-100 px-2.5 py-1 text-xs font-bold text-blue-700">30 dias</span></div>
                 </div>
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                  <div className="flex gap-3"><CalendarDays className="mt-0.5 size-5 text-slate-500"/><div><p className="text-sm text-slate-500">Próxima renovação</p><p className="mt-1 text-xl font-extrabold text-blue-600">{date(highlightedRenewal)}</p></div></div>
+                  <div className="flex gap-3"><CalendarDays className="mt-0.5 size-5 text-slate-500"/><div><p className="text-sm text-slate-500">Renovação seguinte</p><p className="mt-1 text-xl font-extrabold text-blue-600">{date(highlightedFollowingRenewal)}</p></div></div>
                   <div className="flex gap-3 sm:border-l sm:border-slate-200 sm:pl-4"><CreditCard className="mt-0.5 size-5 text-slate-500"/><div><p className="text-sm text-slate-500">Valor</p><p className="mt-1 text-xl font-extrabold text-slate-950">{formatMoney(highlightedPeriod.amount)}</p></div></div>
                 </div>
               </div>
@@ -71,7 +72,7 @@ export default async function Page() {
               <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                 <div className="flex items-center justify-between gap-3"><div className="flex items-center gap-2 font-bold text-slate-900"><Clock3 className="size-5 text-blue-600"/>Cobrança automática</div><span className={`rounded-full px-2.5 py-1 text-xs font-bold ${highlightedAutoRenew?"bg-emerald-50 text-emerald-700":"bg-slate-100 text-slate-600"}`}>{highlightedAutoRenew?"Ativa":"Desativada"}</span></div>
                 <p className="mt-5 text-sm text-slate-600">{highlightedAutoRenew?"Sua renovação automática no cartão está ativa.":"A renovação automática não está ativa para este ciclo."}</p>
-                <div className="mt-5 border-t border-slate-100 pt-4"><p className="text-sm text-slate-500">Próxima cobrança</p><p className="mt-1 flex items-center gap-2 text-lg font-extrabold text-blue-600"><CalendarDays className="size-5"/>{date(highlightedRenewal)}</p></div>
+                <div className="mt-5 border-t border-slate-100 pt-4"><p className="text-sm text-slate-500">Cobrança deste ciclo</p><p className="mt-1 flex items-center gap-2 text-lg font-extrabold text-blue-600"><CalendarDays className="size-5"/>{date(highlightedCurrentCharge)}</p></div>
                 {highlightedAutoRenew?<div className="mt-5 border-t border-slate-100 pt-4"><p className="text-sm text-slate-500">Método</p><p className="mt-1 flex items-center gap-2 text-sm font-semibold text-slate-800"><CreditCard className="size-4"/>Cartão de crédito</p></div>:null}
               </div>
             </div>
@@ -82,10 +83,10 @@ export default async function Page() {
                 <TimelinePoint tone="green" date={highlightedCoverage?date(highlightedCoverage):"—"} title="Cobertura atual" description="Último dia já coberto pelo ciclo pago."/>
                 <TimelinePoint tone="blue" date={date(highlightedPeriod.period_start)} title="Início do novo ciclo" description="Começa a valer a nova cobertura de 30 dias."/>
                 <TimelinePoint tone="blue" date={date(highlightedPeriod.period_end)} title="Fim da cobertura" description="Último dia coberto por este ciclo."/>
-                <TimelinePoint tone="purple" date={date(highlightedRenewal)} title="Próxima renovação" description="Nova cobrança começa neste dia."/>
+                <TimelinePoint tone="purple" date={date(highlightedFollowingRenewal)} title="Renovação seguinte" description="A cobrança do ciclo seguinte será nesta data."/>
               </div>
               <div className="mt-5 rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3">
-                <div className="flex gap-3"><Info className="mt-0.5 size-5 shrink-0 text-blue-600"/><div><p className="font-bold text-blue-800">Por que a data muda?</p><p className="mt-1 text-sm leading-6 text-slate-700">Porque cada ciclo tem exatamente <b>30 dias corridos</b>, e não um mês-calendário. Neste caso, a cobrança começa em <b>{date(highlightedPeriod.due_date)}</b> e a próxima renovação fica em <b>{date(highlightedRenewal)}</b>. O ciclo termina um dia antes, em <b>{date(highlightedPeriod.period_end)}</b>, para completar exatamente 30 dias de cobertura.</p></div></div>
+                <div className="flex gap-3"><Info className="mt-0.5 size-5 shrink-0 text-blue-600"/><div><p className="font-bold text-blue-800">Por que a data muda?</p><p className="mt-1 text-sm leading-6 text-slate-700">Porque cada ciclo tem exatamente <b>30 dias corridos</b>, e não um mês-calendário. Este ciclo é cobrado em <b>{date(highlightedCurrentCharge)}</b>, cobre até <b>{date(highlightedPeriod.period_end)}</b> e a renovação seguinte acontece em <b>{date(highlightedFollowingRenewal)}</b>.</p></div></div>
               </div>
             </div>
 
@@ -123,12 +124,12 @@ export default async function Page() {
                 <p className="mt-2 text-sm">Data de cobrança do ciclo: {date(period.due_date)}</p>
                 {subscriptionStatus==="ACTIVE"&&period.status==="PAID"?<div className="mt-3 rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-800"><b>Ciclo ativo por 30 dias.</b>{coveredPlates.length?` Cobertura para ${coveredPlates.join(", ")} até ${date(period.period_end)}.`:` Cobertura válida até ${date(period.period_end)}.`}</div>:null}
                 {period.status!=="PAID"&&subscriptionStatus==="SUSPENDED"?<div className="mt-3 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-800"><b>Assinatura suspensa por pendência.</b> Regularize este ciclo para que a reativação seja processada. Você ainda pode pagar pelos métodos disponíveis abaixo.</div>:null}
-                {period.status!=="PAID"&&subscriptionStatus==="ACTIVE"&&latestPaidCoverage?(cardAutoRenewActive?<div className="mt-3 rounded-xl bg-blue-50 px-3 py-2 text-sm text-blue-800"><b>Assinatura ativa.</b> Sua cobertura já paga vai até <b>{date(latestPaidCoverage)}</b>. A próxima cobrança do ciclo de 30 dias será feita automaticamente no cartão em <b>{date(subscription?.next_billing_date??period.due_date)}</b>.</div>:phase==="GRACE"?<div className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-900"><b>Período de carência.</b> A cobrança venceu em {date(period.due_date)}. Regularize até <b>{date(period.grace_until)}</b> para evitar a suspensão da assinatura.</div>:phase==="OVERDUE"?<div className="mt-3 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-800"><b>Ciclo vencido.</b> A carência terminou em {date(period.grace_until)}. Regularize o pagamento para evitar ou remover restrições da assinatura.</div>:<div className="mt-3 rounded-xl bg-blue-50 px-3 py-2 text-sm text-blue-800"><b>Assinatura ativa.</b> Sua cobertura já paga vai até <b>{date(latestPaidCoverage)}</b>. Este é o próximo ciclo de 30 dias e ainda aguarda pagamento.</div>):null}
+                {period.status!=="PAID"&&subscriptionStatus==="ACTIVE"&&latestPaidCoverage?(cardAutoRenewActive?<div className="mt-3 rounded-xl bg-blue-50 px-3 py-2 text-sm text-blue-800"><b>Assinatura ativa.</b> Sua cobertura já paga vai até <b>{date(latestPaidCoverage)}</b>. A cobrança deste ciclo está programada para <b>{date(period.due_date)}</b>.</div>:phase==="GRACE"?<div className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-900"><b>Período de carência.</b> A cobrança venceu em {date(period.due_date)}. Regularize até <b>{date(period.grace_until)}</b> para evitar a suspensão da assinatura.</div>:phase==="OVERDUE"?<div className="mt-3 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-800"><b>Ciclo vencido.</b> A carência terminou em {date(period.grace_until)}. Regularize o pagamento para evitar ou remover restrições da assinatura.</div>:<div className="mt-3 rounded-xl bg-blue-50 px-3 py-2 text-sm text-blue-800"><b>Assinatura ativa.</b> Sua cobertura já paga vai até <b>{date(latestPaidCoverage)}</b>. Este é o próximo ciclo de 30 dias e ainda aguarda pagamento.</div>):null}
                 {subscriptionStatus==="PENDING_ACTIVATION"?<div className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-800">Aguardando confirmação do primeiro pagamento para iniciar a cobertura de 30 dias.</div>:null}
               </div>
               <div className="text-right"><b className="text-2xl">{formatMoney(period.amount)}</b><p className="text-sm font-semibold">{statusLabel}</p></div>
             </div>
-            {period.status==="PENDING"?pending?<MonthlyPaymentActions billingPeriodId={period.id} pendingMethod={pending.method} pixEnabled={asaasPixEnabled} creditEnabled={canUsePayment(capabilities,"CREDIT_CARD","HOSTED_CHECKOUT","ASAAS")}/>:cardAutoRenewActive&&subscription?<MonthlyAutomaticChargeGuard subscriptionId={subscription.id} nextBillingDate={subscription.next_billing_date}/>:<MonthlyPaymentActions billingPeriodId={period.id} pendingMethod={null} pixEnabled={asaasPixEnabled} creditEnabled={canUsePayment(capabilities,"CREDIT_CARD","HOSTED_CHECKOUT","ASAAS")}/>:null}
+            {period.status==="PENDING"?pending?<MonthlyPaymentActions billingPeriodId={period.id} pendingMethod={pending.method} pixEnabled={asaasPixEnabled} creditEnabled={canUsePayment(capabilities,"CREDIT_CARD","HOSTED_CHECKOUT","ASAAS")}/>:cardAutoRenewActive&&subscription?<MonthlyAutomaticChargeGuard subscriptionId={subscription.id} nextBillingDate={period.due_date}/>:<MonthlyPaymentActions billingPeriodId={period.id} pendingMethod={null} pixEnabled={asaasPixEnabled} creditEnabled={canUsePayment(capabilities,"CREDIT_CARD","HOSTED_CHECKOUT","ASAAS")}/>:null}
             {paid?<div className="mt-4 rounded-xl bg-emerald-50 p-3 text-sm text-emerald-800">{formatPaymentMethod(paid.method)} · {formatPaymentStatus(paid.status)} · {formatDateTime(paid.paid_at??paid.created_at)}</div>:pending?<div className="mt-4 rounded-xl bg-amber-50 p-3 text-sm text-amber-800">Pagamento iniciado via <b>{pendingLabel}</b>. Você pode continuar neste método ou escolher outro acima. Ao trocar, a tentativa anterior é encerrada automaticamente e deixa de ficar aberta em segundo plano.</div>:null}
             {showCardRenewal&&subscription?<MonthlyRenewalControls subscriptionId={subscription.id} autoRenew={subscription.auto_renew} nextBillingDate={subscription.next_billing_date} coverageUntil={latestPaidCoverage} cancelAtPeriodEnd={subscription.cancel_at_period_end}/>:null}
           </article>;
@@ -139,12 +140,9 @@ export default async function Page() {
   );
 }
 
-function TimelinePoint({tone,date:dateValue,title,description}:{tone:"green"|"blue"|"purple";date:string;title:string;description:string}){
-  const toneClass=tone==="green"?"bg-emerald-500 text-emerald-700":tone==="purple"?"bg-violet-500 text-violet-700":"bg-blue-600 text-blue-700";
-  return <div className="relative rounded-2xl bg-slate-50 p-4 text-center"><div className={`mx-auto size-3 rounded-full ${toneClass.split(" ")[0]}`}/><p className={`mt-3 text-sm font-extrabold ${toneClass.split(" ")[1]}`}>{dateValue}</p><p className="mt-1 text-sm font-bold text-slate-900">{title}</p><p className="mt-1 text-xs leading-5 text-slate-500">{description}</p></div>;
-}
+function TimelinePoint({tone,date:dateText,title,description}:{tone:"green"|"blue"|"purple";date:string;title:string;description:string}){const dot=tone==="green"?"bg-emerald-500":tone==="purple"?"bg-violet-500":"bg-blue-600";const text=tone==="green"?"text-emerald-700":tone==="purple"?"text-violet-700":"text-blue-700";return <div className="rounded-2xl bg-slate-50 p-4 text-center"><span className={`mx-auto block size-3 rounded-full ${dot}`}/><p className={`mt-3 font-extrabold ${text}`}>{dateText}</p><p className="mt-1 font-bold text-slate-950">{title}</p><p className="mt-2 text-sm leading-5 text-slate-500">{description}</p></div>}
 function SummaryStep({icon,title,text}:{icon:React.ReactNode;title:string;text:string}){return <div className="flex gap-3"><span className="grid size-10 shrink-0 place-items-center rounded-xl bg-blue-50">{icon}</span><div><p className="font-bold text-slate-900">{title}</p><p className="mt-1 text-sm leading-5 text-slate-500">{text}</p></div></div>}
 function date(value:string){return new Date(`${value}T12:00:00`).toLocaleDateString("pt-BR")}
-function addDays(value:string,days:number){const[y,m,d]=value.split("-").map(Number);const result=new Date(Date.UTC(y,m-1,d+days));return result.toISOString().slice(0,10)}
+function addDays(value:string,days:number){const d=new Date(`${value}T12:00:00Z`);d.setUTCDate(d.getUTCDate()+days);return d.toISOString().slice(0,10)}
 function dateKey(timeZone:string){try{const parts=new Intl.DateTimeFormat("en-CA",{timeZone,year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date());const part=(type:string)=>parts.find(item=>item.type===type)?.value??"";return `${part("year")}-${part("month")}-${part("day")}`}catch{return new Date().toISOString().slice(0,10)}}
 function billingPhase(dueDate:string,graceUntil:string,timeZone:string):BillingPhase{const today=dateKey(timeZone);if(today<=dueDate)return"CURRENT";if(today<=graceUntil)return"GRACE";return"OVERDUE"}
