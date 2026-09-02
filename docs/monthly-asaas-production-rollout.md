@@ -34,6 +34,8 @@ Não iniciar a promoção se qualquer item abaixo estiver incompleto.
 - Registrar a versão atual de `supabase_migrations.schema_migrations`.
 - Confirmar que nenhuma migration da PR #52 já foi aplicada manualmente fora do histórico oficial.
 - Não aplicar migrations temporárias de canário usadas somente no QA.
+- Cadastrar a chave de API Asaas Produção diretamente no Vault com o nome `ASAAS_PRODUCTION_API_KEY`; não enviar a chave em chat, código ou migration.
+- O cleanup offline de PIX Produção permanece fail-closed enquanto esse segredo não existir.
 
 ### Vercel Produção
 
@@ -100,8 +102,11 @@ Pacote principal desta PR:
 - `20260901100500_allow_customer_payment_availability_for_monthly_subscription.sql`
 - `20260901150500_fix_monthly_recurring_binding_checkout_fallback_30_days.sql`
 - `20260901171500_harden_private_monthly_helper_execute_grants.sql`
+- `20260902113000_monthly_pix_production_background_cleanup.sql`
 
 Observação: o histórico do QA contém migrations/probes temporários usados durante homologação. Eles não fazem parte deste pacote e não devem ser recriados em Produção.
+
+A migration `20260902113000_monthly_pix_production_background_cleanup.sql` é específica de Produção: ela opera apenas em `ASAAS/PRODUCTION`, usa `https://api.asaas.com/v3`, exige o Vault secret `ASAAS_PRODUCTION_API_KEY`, filtra somente pagamentos mensais PIX Asaas em Produção e nunca toca em Efí. O cron fica instalado somente quando o runtime config do banco está explicitamente em Asaas Produção; a função continua fail-closed sem o segredo.
 
 ## Ordem de promoção
 
@@ -109,17 +114,18 @@ Observação: o histórico do QA contém migrations/probes temporários usados d
 2. Confirmar CI do HEAD.
 3. Fazer snapshot/backup do Supabase Produção.
 4. Registrar contagens e estado atual de pagamentos/mensalidades para comparação pós-deploy.
-5. Configurar variáveis Asaas de Produção na Vercel, mantendo `ASAAS_LIVE_PAYMENTS_ENABLED` controlado até a janela de ativação.
-6. Configurar webhook Asaas de Produção com token correspondente.
-7. Aplicar migrations versionadas no Supabase Produção, na ordem.
-8. Rodar auditoria pós-migration antes de liberar cobranças.
-9. Fazer merge/deploy somente após autorização explícita.
-10. Confirmar deployment READY.
-11. Validar `/api/webhooks/asaas` com evento legítimo de Produção ou teste permitido pelo Asaas, sem inventar pagamento local.
-12. Executar um canário real de baixo risco com um único cliente/plano autorizado.
-13. Confirmar primeiro pagamento, binding, cobertura de 30 dias e próxima cobrança.
-14. Monitorar logs e invariantes financeiros.
-15. Só então liberar o fluxo para os demais clientes.
+5. Cadastrar `ASAAS_PRODUCTION_API_KEY` no Vault do Supabase Produção.
+6. Configurar variáveis Asaas de Produção na Vercel, mantendo a ativação controlada até a janela de rollout.
+7. Configurar webhook Asaas de Produção com token correspondente.
+8. Aplicar migrations versionadas no Supabase Produção, na ordem.
+9. Rodar auditoria pós-migration antes de liberar cobranças.
+10. Fazer merge/deploy somente após autorização explícita.
+11. Confirmar deployment READY.
+12. Validar `/api/webhooks/asaas` com evento legítimo de Produção ou teste permitido pelo Asaas, sem inventar pagamento local.
+13. Executar um canário real de baixo risco com um único cliente/plano autorizado.
+14. Confirmar primeiro pagamento, binding, cobertura de 30 dias e próxima cobrança.
+15. Monitorar logs e invariantes financeiros.
+16. Só então liberar o fluxo para os demais clientes.
 
 ## Auditoria pós-migration
 
@@ -132,7 +138,7 @@ Confirmar:
 - zero PIX vencidos ainda PENDING.
 - zero `auto_renew=true` junto com `cancel_at_period_end=true`.
 - zero auto-renew ativo concorrendo com pagamento manual PENDING.
-- cron/background cleanup instalado conforme previsto.
+- cron/background cleanup de Produção instalado e `monthly_pix_production_cleanup_environment_ready() = true`.
 - nenhuma capability Efí alterada.
 - Pix Automático continua indisponível.
 
@@ -162,7 +168,7 @@ Esperado:
 1. QR aparece no mesmo clique.
 2. Contador operacional inicia próximo de 05:00.
 3. Apenas uma tentativa fica PENDING.
-4. Se abandonar, cleanup encerra a tentativa.
+4. Se abandonar, cleanup de Produção encerra a tentativa via Asaas live.
 5. Troca PIX ↔ cartão cancela a tentativa anterior.
 
 ## Monitoramento pós-deploy
@@ -176,6 +182,7 @@ Nas primeiras horas, acompanhar:
 - pagamentos sem competência.
 - bindings sem assinatura local.
 - divergências entre `next_billing_date` local e `nextDueDate` Asaas.
+- fila `private.monthly_pix_cleanup_requests` para falhas repetidas.
 
 ## Rollback
 
@@ -205,9 +212,10 @@ Migrations de banco devem ser tratadas como preferencialmente forward-only. Não
 
 - CI verde.
 - Preview/artefato do HEAD validado.
-- Backup feito.
+- Backup/checkpoint feito.
 - migrations prontas e auditadas.
-- variáveis Asaas de Produção válidas.
+- `ASAAS_PRODUCTION_API_KEY` presente no Vault.
+- variáveis Asaas de Produção válidas na Vercel.
 - webhook configurado e autenticado.
 - Pix Automático desligado.
 - Efí intacto.
@@ -216,6 +224,7 @@ Migrations de banco devem ser tratadas como preferencialmente forward-only. Não
 ### NO-GO
 
 - qualquer segredo ausente ou ambiente Asaas divergente;
+- `ASAAS_PRODUCTION_API_KEY` ausente no Vault;
 - webhook sem token;
 - migration drift desconhecido;
 - RLS/grants inseguros;
