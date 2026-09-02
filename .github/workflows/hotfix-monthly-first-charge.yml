@@ -1,0 +1,48 @@
+name: Apply monthly first-charge hotfix
+
+on:
+  push:
+    branches:
+      - hotfix/monthly-first-charge-today
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: hotfix/monthly-first-charge-today
+      - name: Patch initial recurring due date
+        shell: python
+        run: |
+          from pathlib import Path
+          path = Path('src/lib/payments/payment-service.ts')
+          text = path.read_text()
+          old1 = 'const recurringNextDueDate=monthly?await this.monthlyCheckoutNextDueDate(subject.id):null;'
+          new1 = 'const recurringFirstDueDate=monthly?await this.monthlyCheckoutFirstDueDate(subject.id):null;'
+          old2 = 'recurrence:recurringNextDueDate?{cycle:"MONTHLY",nextDueDate:`${recurringNextDueDate} 12:00:00`}:null'
+          new2 = 'recurrence:recurringFirstDueDate?{cycle:"MONTHLY",nextDueDate:`${recurringFirstDueDate} 12:00:00`}:null'
+          old3 = 'private async monthlyCheckoutNextDueDate(billingPeriodId:string){const{data,error}=await this.admin.from("monthly_billing_periods").select("due_date").eq("id",billingPeriodId).maybeSingle();if(error)throw rpcError("monthly_billing_period_due_date",error.message);if(!data?.due_date)throw new Error("MONTHLY_BILLING_PERIOD_DUE_DATE_REQUIRED");return nextThirtyDayDate(String(data.due_date))}'
+          new3 = 'private async monthlyCheckoutFirstDueDate(billingPeriodId:string){const{data,error}=await this.admin.from("monthly_billing_periods").select("due_date").eq("id",billingPeriodId).maybeSingle();if(error)throw rpcError("monthly_billing_period_due_date",error.message);if(!data?.due_date)throw new Error("MONTHLY_BILLING_PERIOD_DUE_DATE_REQUIRED");return String(data.due_date)}'
+          for old, new in [(old1,new1),(old2,new2),(old3,new3)]:
+              if text.count(old) != 1:
+                  raise SystemExit(f'Expected exactly one match, got {text.count(old)} for: {old[:80]}')
+              text = text.replace(old,new)
+          path.write_text(text)
+      - name: Verify renewal re-anchor remains +30 days
+        shell: bash
+        run: |
+          grep -F 'nextDueDate:nextThirtyDayDate(String(period.due_date))' src/lib/payments/payment-service.ts
+          grep -F 'return String(data.due_date)' src/lib/payments/payment-service.ts
+      - name: Commit hotfix
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/lib/payments/payment-service.ts
+          git commit -m 'fix: charge first monthly checkout immediately'
+          git push origin HEAD:hotfix/monthly-first-charge-today
