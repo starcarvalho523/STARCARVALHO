@@ -13,7 +13,7 @@ type BillingPeriodRealtimeRow={id?:unknown;status?:unknown};
 const FAST_POLL_MS=300;
 const MEDIUM_POLL_MS=750;
 const SLOW_POLL_MS=2500;
-const AUTO_REDIRECT_MS=900;
+const AUTO_REDIRECT_MS=5000;
 
 export function PaymentReturnStatus({billingPeriodId}:{billingPeriodId:string}){
   const[state,setState]=useState<"CHECKING"|"PAID"|"PENDING">("CHECKING");
@@ -94,7 +94,7 @@ export function PaymentReturnStatus({billingPeriodId}:{billingPeriodId:string}){
       <p className="flex items-center justify-center gap-2 font-bold"><ShieldCheck className="size-5"/>Confirmação segura recebida do Asaas</p>
       <p className="mt-2">Sua cobertura e renovação já estão atualizadas.</p>
     </div>
-    <p className="mt-4 text-sm font-medium text-slate-500">Abrindo sua mensalidade...</p>
+    <p className="mt-4 text-sm font-medium text-slate-500">Abrindo sua mensalidade em 5 segundos...</p>
     <Link href="/cliente/mensalidade?payment=confirmed" className="mt-5 inline-flex rounded-xl bg-blue-600 px-5 py-3 font-bold text-white">Ir agora</Link>
   </section>;
 
