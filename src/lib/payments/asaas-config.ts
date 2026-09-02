@@ -39,7 +39,11 @@ export function isAsaasConfigured(env: NodeJS.ProcessEnv = process.env) {
   try {
     resolveAsaasRuntimeConfig(env);
     return true;
-  } catch {
+  } catch (error) {
+    if (String(env.VERCEL_ENV ?? "").trim().toLowerCase() === "preview") {
+      const code = error instanceof Error ? error.message : "ASAAS_CONFIG_UNKNOWN";
+      console.warn("ASAAS_PREVIEW_CONFIG_INVALID", { code });
+    }
     return false;
   }
 }

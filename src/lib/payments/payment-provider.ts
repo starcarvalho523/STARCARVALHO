@@ -31,6 +31,9 @@ export type ProviderCharge = {
   qrCodePayload: string | null;
   qrCodeImageBase64: string | null;
   expiresAt: string | null;
+  dueDate?: string | null;
+  subscriptionId?: string | null;
+  checkoutId?: string | null;
 };
 
 export type CreateCheckoutInput = {
@@ -40,6 +43,11 @@ export type CreateCheckoutInput = {
   externalReference: string;
   expiresInMinutes: number;
   callback: { successUrl: string; cancelUrl: string; expiredUrl: string };
+  recurrence?: {
+    cycle: "MONTHLY";
+    nextDueDate: string;
+    endDate?: string | null;
+  } | null;
 };
 
 export type ProviderCheckout = {
@@ -73,6 +81,8 @@ export type ProviderWebhookEvent = {
   billingType: string | null;
   /** Server-side correlation data supplied by Asaas for Checkout charges. */
   checkoutId: string | null;
+  /** Asaas subscription that originated a recurring charge, when present. */
+  subscriptionId: string | null;
 };
 
 export type ProviderCheckoutWebhookEvent = {
@@ -101,6 +111,8 @@ export interface PaymentProvider {
   validateWebhook(receivedToken: string | null, expectedToken: string): boolean;
   parseWebhook(payload: unknown): ProviderWebhookEvent;
   parseCheckoutWebhook(payload: unknown): ProviderCheckoutWebhookEvent;
+  updateRecurringSubscription?(providerSubscriptionId:string,input:{status?:"ACTIVE"|"INACTIVE";nextDueDate?:string;updatePendingPayments?:boolean}):Promise<void>;
+  cancelRecurringSubscription?(providerSubscriptionId:string):Promise<void>;
 }
 
 export type PointTerminalSnapshot = {
