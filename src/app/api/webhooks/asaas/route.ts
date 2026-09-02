@@ -54,6 +54,10 @@ export async function POST(request: Request) {
           await service.processWebhook(event);
           if (event.type === "PAYMENT_CONFIRMED" && event.subscriptionId) {
             await bindInitialMonthlyRecurringCardFromPayment(event, provider);
+            const reconciledAfterBind = await tryProcessMonthlyRecurringCardPayment(event, provider);
+            if (!reconciledAfterBind) {
+              throw new Error("ASAAS_INITIAL_RECURRING_PAYMENT_RECONCILIATION_UNRESOLVED");
+            }
           }
         }
       }
