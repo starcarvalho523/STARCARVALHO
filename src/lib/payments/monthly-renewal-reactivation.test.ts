@@ -18,15 +18,15 @@ const baseCharge:ProviderCharge={
   subscriptionId:"sub_test",
 };
 
-test("reactivation only toggles ACTIVE and never resends nextDueDate",()=>{
-  const update=recurringReactivationUpdate();
-  assert.deepEqual(update,{status:"ACTIVE"});
-  assert.equal("nextDueDate" in update,false);
+test("reactivation restores ACTIVE with the next billing date required by Asaas",()=>{
+  const update=recurringReactivationUpdate("2026-10-02");
+  assert.deepEqual(update,{status:"ACTIVE",nextDueDate:"2026-10-02"});
 });
 
-test("only future PENDING recurring charges are cancelable",()=>{
+test("only future PENDING credit card recurring charges are cancelable",()=>{
   assert.equal(isGeneratedFuturePendingCharge(baseCharge,"2026-10-02"),true);
   assert.equal(isGeneratedFuturePendingCharge({...baseCharge,providerStatus:"CONFIRMED"},"2026-10-02"),false);
   assert.equal(isGeneratedFuturePendingCharge({...baseCharge,providerStatus:"RECEIVED"},"2026-10-02"),false);
+  assert.equal(isGeneratedFuturePendingCharge({...baseCharge,billingType:"PIX"},"2026-10-02"),false);
   assert.equal(isGeneratedFuturePendingCharge({...baseCharge,dueDate:"2026-10-01"},"2026-10-02"),false);
 });
