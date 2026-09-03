@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { getPaymentProvider } from "@/lib/payments/provider-factory";
 import type { PaymentProvider } from "@/lib/payments/payment-provider";
+import { isGeneratedFuturePendingCharge, recurringReactivationUpdate } from "@/lib/payments/monthly-renewal-reactivation";
 
 type RenewalContext={
   subscriptionId:string;
@@ -17,7 +18,7 @@ type RenewalContext={
 async function cancelGeneratedFuturePendingCharges(provider:PaymentProvider,providerSubscriptionId:string,nextBillingDate:string){
   if(!provider.listRecurringSubscriptionPayments)throw new Error("RECURRING_PAYMENT_LIST_NOT_SUPPORTED");
   const charges=await provider.listRecurringSubscriptionPayments(providerSubscriptionId);
-  const pendingFuture=charges.filter((charge)=>charge.providerStatus==="PENDING"&&typeof charge.dueDate==="string"&&charge.dueDate>=nextBillingDate);
+  const pendingFuture=charges.filter((charge)=>isGeneratedFuturePendingCharge(charge,nextBillingDate));
   for(const charge of pendingFuture)await provider.cancelPayment(charge.providerPaymentId);
 }
 
@@ -43,7 +44,7 @@ export async function POST(request:Request){
       if(!context.providerSubscriptionId||!context.nextBillingDate||!provider.updateRecurringSubscription||!provider.listRecurringSubscriptionPayments)return Response.json({error:"RENEWAL_NOT_READY"},{status:409});
 
       await cancelGeneratedFuturePendingCharges(provider,context.providerSubscriptionId,context.nextBillingDate);
-      await provider.updateRecurringSubscription(context.providerSubscriptionId,{status:"ACTIVE",nextDueDate:context.nextBillingDate});
+      await provider.updateRecurringSubscription(context.providerSubscriptionId,recurringReactivationUpdate());
       const{data:updated,error:updateError}=await supabase.rpc("set_customer_monthly_auto_renew",{target_subscription:subscriptionId,target_enabled:true});
       if(updateError){
         try{
@@ -63,7 +64,7 @@ export async function POST(request:Request){
       const{data:updated,error:updateError}=await supabase.rpc("set_customer_monthly_auto_renew",{target_subscription:subscriptionId,target_enabled:false});
       if(updateError){
         if(context.providerSubscriptionId&&context.nextBillingDate&&provider.updateRecurringSubscription){
-          try{await provider.updateRecurringSubscription(context.providerSubscriptionId,{status:"ACTIVE",nextDueDate:context.nextBillingDate})}catch(rollbackError){console.error("MONTHLY_RENEWAL_DISABLE_ROLLBACK_FAILED",{code:rollbackError instanceof Error?rollbackError.message.slice(0,100):"UNKNOWN"})}
+          try{await provider.updateRecurringSubscription(context.providerSubscriptionId,recurringReactivationUpdate())}catch(rollbackError){console.error("MONTHLY_RENEWAL_DISABLE_ROLLBACK_FAILED",{code:rollbackError instanceof Error?rollbackError.message.slice(0,100):"UNKNOWN"})}
         }
         throw new Error(updateError.message);
       }
