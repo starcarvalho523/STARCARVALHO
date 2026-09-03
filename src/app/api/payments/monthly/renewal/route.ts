@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getPaymentProvider } from "@/lib/payments/provider-factory";
 import type { PaymentProvider } from "@/lib/payments/payment-provider";
 import { isGeneratedFuturePendingCharge, recurringReactivationUpdate } from "@/lib/payments/monthly-renewal-reactivation";
+import { createMonthlyRenewalCardSetup } from "@/lib/payments/monthly-renewal-card-setup";
 
 type RenewalContext={
   subscriptionId:string;
@@ -41,7 +42,13 @@ export async function POST(request:Request){
       const{data:hasPending,error:pendingError}=await supabase.rpc("has_customer_monthly_pending_manual_payment",{target_subscription:subscriptionId});
       if(pendingError)throw new Error(pendingError.message);
       if(hasPending===true)return Response.json({error:"Existe um pagamento manual em andamento. Conclua ou troque essa tentativa antes de reativar a renovação automática."},{status:409});
-      if(!context.providerSubscriptionId||!context.nextBillingDate||!provider.updateRecurringSubscription||!provider.listRecurringSubscriptionPayments)return Response.json({error:"RENEWAL_NOT_READY"},{status:409});
+
+      if(!context.providerSubscriptionId){
+        const setup=await createMonthlyRenewalCardSetup(subscriptionId,supabase,new URL(request.url).origin);
+        return Response.json({setup},{headers:{"cache-control":"no-store"}});
+      }
+
+      if(!context.nextBillingDate||!provider.updateRecurringSubscription||!provider.listRecurringSubscriptionPayments)return Response.json({error:"RENEWAL_NOT_READY"},{status:409});
 
       await cancelGeneratedFuturePendingCharges(provider,context.providerSubscriptionId,context.nextBillingDate);
       await provider.updateRecurringSubscription(context.providerSubscriptionId,recurringReactivationUpdate(context.nextBillingDate));
@@ -76,7 +83,10 @@ export async function POST(request:Request){
     if(updateError)throw new Error(updateError.message);
     return Response.json({renewal:updated});
   }catch(error){
-    console.error("MONTHLY_RENEWAL_ACTION_FAILED",{code:error instanceof Error?error.message.slice(0,100):"UNKNOWN"});
+    const code=error instanceof Error?error.message:"UNKNOWN_ERROR";
+    console.error("MONTHLY_RENEWAL_ACTION_FAILED",{code:code.slice(0,100)});
+    if(code.includes("CUSTOMER_BILLING_DOCUMENT_REQUIRED"))return Response.json({error:"Para ativar a renovação automática, complete seu CPF/CNPJ em Minha conta."},{status:409});
+    if(code.includes("RENEWAL_PAID_COVERAGE_REQUIRED"))return Response.json({error:"É necessário ter um ciclo pago antes de ativar a renovação automática."},{status:409});
     return Response.json({error:"Não foi possível atualizar a renovação agora."},{status:503});
   }
 }
