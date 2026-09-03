@@ -44,7 +44,7 @@ export async function POST(request:Request){
       if(!context.providerSubscriptionId||!context.nextBillingDate||!provider.updateRecurringSubscription||!provider.listRecurringSubscriptionPayments)return Response.json({error:"RENEWAL_NOT_READY"},{status:409});
 
       await cancelGeneratedFuturePendingCharges(provider,context.providerSubscriptionId,context.nextBillingDate);
-      await provider.updateRecurringSubscription(context.providerSubscriptionId,recurringReactivationUpdate());
+      await provider.updateRecurringSubscription(context.providerSubscriptionId,recurringReactivationUpdate(context.nextBillingDate));
       const{data:updated,error:updateError}=await supabase.rpc("set_customer_monthly_auto_renew",{target_subscription:subscriptionId,target_enabled:true});
       if(updateError){
         try{
@@ -64,7 +64,7 @@ export async function POST(request:Request){
       const{data:updated,error:updateError}=await supabase.rpc("set_customer_monthly_auto_renew",{target_subscription:subscriptionId,target_enabled:false});
       if(updateError){
         if(context.providerSubscriptionId&&context.nextBillingDate&&provider.updateRecurringSubscription){
-          try{await provider.updateRecurringSubscription(context.providerSubscriptionId,recurringReactivationUpdate())}catch(rollbackError){console.error("MONTHLY_RENEWAL_DISABLE_ROLLBACK_FAILED",{code:rollbackError instanceof Error?rollbackError.message.slice(0,100):"UNKNOWN"})}
+          try{await provider.updateRecurringSubscription(context.providerSubscriptionId,recurringReactivationUpdate(context.nextBillingDate))}catch(rollbackError){console.error("MONTHLY_RENEWAL_DISABLE_ROLLBACK_FAILED",{code:rollbackError instanceof Error?rollbackError.message.slice(0,100):"UNKNOWN"})}
         }
         throw new Error(updateError.message);
       }
