@@ -24,6 +24,13 @@ type CustomerContext={
   provider_customer_id:string|null;
 };
 
+type IgnoredProviderEvent={
+  id:number;
+  provider_event_id:string;
+  provider_payment_id:string|null;
+  sanitized_payload:unknown;
+};
+
 export async function createMonthlyRenewalCardSetup(subscriptionId:string,userClient:SupabaseClient,origin:string){
   const{data:rawContext,error:contextError}=await userClient.rpc("get_customer_monthly_renewal_context",{target_subscription:subscriptionId});
   if(contextError)throw new Error(contextError.message);
@@ -94,6 +101,112 @@ export async function createMonthlyRenewalCardSetup(subscriptionId:string,userCl
   });
 
   return{alreadyBound:false,checkoutUrl:checkout.link,nextBillingDate};
+}
+
+export async function reconcileIgnoredMonthlyRenewalCardSetup(subscriptionId:string,userClient:SupabaseClient){
+  const{data:rawContext,error:contextError}=await userClient.rpc("get_customer_monthly_renewal_context",{target_subscription:subscriptionId});
+  if(contextError)throw new Error(contextError.message);
+  const context=rawContext as RenewalContext;
+  if(context.status!=="ACTIVE")throw new Error("RENEWAL_SUBSCRIPTION_NOT_ACTIVE");
+  if(context.providerSubscriptionId)return{reconciled:true,providerSubscriptionId:context.providerSubscriptionId,nextBillingDate:context.nextBillingDate};
+
+  const admin=createAdminClient();
+  const{data:period,error:periodError}=await admin
+    .from("monthly_billing_periods")
+    .select("id,amount,period_end")
+    .eq("subscription_id",subscriptionId)
+    .eq("status","PAID")
+    .order("period_end",{ascending:false})
+    .limit(1)
+    .maybeSingle();
+  if(periodError)throw new Error(`RENEWAL_PERIOD_LOOKUP_${periodError.message}`);
+  if(!period?.id||!period.period_end)throw new Error("RENEWAL_PAID_COVERAGE_REQUIRED");
+
+  const provider=getPaymentProvider();
+  if(provider.name!=="ASAAS")throw new Error("RENEWAL_PROVIDER_UNSUPPORTED");
+  const{data:rawCustomer,error:customerError}=await admin.rpc("get_payment_customer_context",{
+    subject_type:"MONTHLY_BILLING_PERIOD",
+    subject_id:period.id,
+    target_provider:provider.name,
+    target_environment:provider.environment,
+  });
+  if(customerError)throw new Error(`RENEWAL_CUSTOMER_CONTEXT_${customerError.message}`);
+  const customer=rawCustomer as CustomerContext;
+  if(!customer.provider_customer_id)return null;
+
+  const since=new Date(Date.now()-2*60*60*1000).toISOString();
+  const{data:events,error:eventsError}=await admin
+    .schema("private")
+    .from("payment_provider_events")
+    .select("id,provider_event_id,provider_payment_id,sanitized_payload")
+    .eq("provider","ASAAS")
+    .eq("event_type","PAYMENT_CREATED")
+    .eq("processing_status","IGNORED")
+    .gte("received_at",since)
+    .order("received_at",{ascending:false})
+    .limit(20);
+  if(eventsError)throw new Error(`RENEWAL_IGNORED_EVENT_LOOKUP_${eventsError.message}`);
+
+  const expectedNextBillingDate=addDays(String(period.period_end),1);
+  const matches: Array<{event:IgnoredProviderEvent;providerSubscriptionId:string;providerPaymentId:string}> = [];
+  for(const rawEvent of (events??[]) as IgnoredProviderEvent[]){
+    const payload=isRecord(rawEvent.sanitized_payload)?rawEvent.sanitized_payload:null;
+    const providerPaymentId=rawEvent.provider_payment_id;
+    const providerSubscriptionId=payload&&typeof payload.subscriptionId==="string"?payload.subscriptionId:null;
+    if(!providerPaymentId||!providerSubscriptionId||payload?.billingType!=="CREDIT_CARD")continue;
+    try{
+      const snapshot=await provider.getPayment(providerPaymentId);
+      if(snapshot.providerPaymentId!==providerPaymentId)continue;
+      if(snapshot.subscriptionId!==providerSubscriptionId)continue;
+      if(snapshot.billingType!=="CREDIT_CARD")continue;
+      if(snapshot.providerCustomerId!==customer.provider_customer_id)continue;
+      if(Number(snapshot.amount)!==Number(period.amount))continue;
+      if(snapshot.dueDate!==expectedNextBillingDate)continue;
+      if(!["PENDING","CONFIRMED"].includes(snapshot.providerStatus))continue;
+      matches.push({event:rawEvent,providerSubscriptionId,providerPaymentId});
+    }catch{
+      continue;
+    }
+  }
+
+  if(matches.length===0)return null;
+  if(matches.length!==1)throw new Error("RENEWAL_SETUP_RECONCILIATION_AMBIGUOUS");
+  const match=matches[0];
+  const now=new Date().toISOString();
+
+  const{error:bindingError}=await admin.from("monthly_recurring_provider_bindings").upsert({
+    subscription_id:subscriptionId,
+    provider:"ASAAS",
+    method:"CREDIT_CARD",
+    provider_customer_id:customer.provider_customer_id,
+    provider_subscription_id:match.providerSubscriptionId,
+    authorization_status:"ACTIVE",
+    initial_billing_period_id:period.id,
+    last_provider_event_id:match.event.provider_event_id,
+    last_provider_event_at:now,
+    updated_at:now,
+  },{onConflict:"subscription_id,method"});
+  if(bindingError)throw new Error(`RENEWAL_SETUP_RECONCILIATION_BINDING_${bindingError.message}`);
+
+  const{error:subscriptionError}=await admin.from("monthly_subscriptions").update({
+    auto_renew:true,
+    preferred_payment_method:"CREDIT_CARD",
+    renewal_provider:"ASAAS",
+    next_billing_date:expectedNextBillingDate,
+    cancel_at_period_end:false,
+    updated_at:now,
+  }).eq("id",subscriptionId);
+  if(subscriptionError)throw new Error(`RENEWAL_SETUP_RECONCILIATION_SUBSCRIPTION_${subscriptionError.message}`);
+
+  const{error:eventUpdateError}=await admin
+    .schema("private")
+    .from("payment_provider_events")
+    .update({processing_status:"PROCESSED",processed_at:now})
+    .eq("id",match.event.id)
+    .eq("processing_status","IGNORED");
+  if(eventUpdateError)throw new Error(`RENEWAL_SETUP_RECONCILIATION_EVENT_${eventUpdateError.message}`);
+
+  return{reconciled:true,providerSubscriptionId:match.providerSubscriptionId,nextBillingDate:expectedNextBillingDate};
 }
 
 export async function tryProcessMonthlyRenewalCardSetupSubscriptionWebhook(payload:unknown,environment:"SANDBOX"|"PRODUCTION"){
