@@ -2,7 +2,7 @@
 
 import { CalendarClock, CheckCircle2, LoaderCircle, RefreshCw, XCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 export function MonthlyRenewalControls({
   subscriptionId,
@@ -22,12 +22,6 @@ export function MonthlyRenewalControls({
   const[error,setError]=useState<string|null>(null);
   const[localAutoRenew,setLocalAutoRenew]=useState(autoRenew);
   const[localCancelAtPeriodEnd,setLocalCancelAtPeriodEnd]=useState(cancelAtPeriodEnd);
-
-  useEffect(()=>{
-    if(loading)return;
-    setLocalAutoRenew(autoRenew);
-    setLocalCancelAtPeriodEnd(cancelAtPeriodEnd);
-  },[autoRenew,cancelAtPeriodEnd,loading]);
 
   const act=async(action:"ENABLE"|"DISABLE"|"CANCEL_AT_PERIOD_END")=>{
     if(action==="CANCEL_AT_PERIOD_END"&&!window.confirm("Cancelar a renovação da assinatura ao fim do período já pago? Sua cobertura atual continuará válida até a data informada."))return;
