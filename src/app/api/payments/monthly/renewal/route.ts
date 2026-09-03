@@ -56,7 +56,7 @@ export async function POST(request:Request){
     }
 
     if(action==="DISABLE"){
-      if(context.providerSubscriptionId&&context.nextBillingDate&&provider.updateRecurringSubscription&&provider.listRecurringSubscriptionPayments){
+      if(context.providerSubscriptionId&&context.nextBillingDate&&provider.updateRecurringSubscription){
         await provider.updateRecurringSubscription(context.providerSubscriptionId,{status:"INACTIVE"});
         await cancelGeneratedFuturePendingCharges(provider,context.providerSubscriptionId,context.nextBillingDate);
       }
