@@ -109,6 +109,14 @@ export class AsaasProvider implements PaymentProvider {
 
   async getPayment(providerPaymentId:string):Promise<ProviderCharge>{return normalizePayment(await this.request<AsaasPayment>(`/payments/${encodeURIComponent(providerPaymentId)}`))}
   async cancelPayment(providerPaymentId:string):Promise<void>{await this.request(`/payments/${encodeURIComponent(providerPaymentId)}`,{method:"DELETE"})}
+  async listRecurringSubscriptionPayments(providerSubscriptionId:string):Promise<ProviderCharge[]>{
+    const result=await this.request<AsaasList>(`/subscriptions/${encodeURIComponent(providerSubscriptionId)}/payments`);
+    if(!Array.isArray(result.data))throw new Error("INVALID_ASAAS_SUBSCRIPTION_PAYMENT_LIST");
+    return result.data.map((item)=>{
+      if(!isRecord(item))throw new Error("INVALID_ASAAS_PAYMENT");
+      return normalizePayment(item);
+    });
+  }
   async updateRecurringSubscription(providerSubscriptionId:string,input:{status?:"ACTIVE"|"INACTIVE";nextDueDate?:string;updatePendingPayments?:boolean}):Promise<void>{
     const body={
       ...(input.status?{status:input.status}:{}),
