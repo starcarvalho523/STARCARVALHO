@@ -4,6 +4,7 @@ import { safeTokenEquals } from "@/lib/payments/asaas-provider";
 import { isAsaasPixAutomaticEvent } from "@/lib/payments/asaas-recurring-events";
 import { processAsaasPixAutomaticWebhook } from "@/lib/payments/asaas-pix-automatic-webhook";
 import { processAsaasPixAutomaticInitialPaymentWebhook } from "@/lib/payments/asaas-pix-automatic-initial-payment";
+import { tryProcessMonthlyRenewalCardSetupSubscriptionWebhook } from "@/lib/payments/monthly-renewal-card-setup";
 import type { PaymentProvider, ProviderWebhookEvent } from "@/lib/payments/payment-provider";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -44,7 +45,8 @@ export async function POST(request: Request) {
     } else if (eventName.startsWith("CHECKOUT_")) {
       await service.processCheckoutWebhook(provider.parseCheckoutWebhook(payload));
     } else if (eventName.startsWith("SUBSCRIPTION_")) {
-      await service.processSubscriptionWebhook(payload);
+      const renewalSetupHandled=await tryProcessMonthlyRenewalCardSetupSubscriptionWebhook(payload,provider.environment);
+      if(!renewalSetupHandled)await service.processSubscriptionWebhook(payload);
     } else {
       const initial = await processAsaasPixAutomaticInitialPaymentWebhook(payload, provider.environment);
       if (!initial.handled) {
@@ -71,6 +73,7 @@ export async function POST(request: Request) {
       (error.message === "INVALID_ASAAS_WEBHOOK" ||
         error.message.startsWith("ASAAS_SUBSCRIPTION_INVALID_") ||
         error.message.startsWith("ASAAS_PIX_AUTOMATIC_INVALID_") ||
+        error.message.startsWith("ASAAS_RENEWAL_SETUP_") ||
         error.message.includes("EVENT_ID_REQUIRED"));
 
     console.warn("ASAAS_WEBHOOK_PROCESSING_ERROR", {
