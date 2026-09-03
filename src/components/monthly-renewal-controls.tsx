@@ -28,6 +28,8 @@ export function MonthlyRenewalControls({
       const response=await fetch("/api/payments/monthly/renewal",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({subscriptionId,action})});
       const body=await response.json().catch(()=>({}));
       if(!response.ok)throw new Error(typeof body.error==="string"?body.error:"Não foi possível atualizar a renovação.");
+      const checkoutUrl=typeof body?.setup?.checkoutUrl==="string"?body.setup.checkoutUrl:null;
+      if(checkoutUrl){window.location.assign(checkoutUrl);return;}
       router.refresh();
     }catch(cause){setError(cause instanceof Error?cause.message:"Não foi possível atualizar a renovação.")}
     finally{setLoading(null)}
@@ -50,14 +52,14 @@ export function MonthlyRenewalControls({
           <p className="mt-1 text-sm text-slate-700">As próximas mensalidades serão cobradas automaticamente no cartão. Você pode desativar a renovação quando quiser; isso não interrompe o período que já foi pago.</p>
         </>:<>
           <p className="mt-2 text-sm font-semibold text-slate-900">Renovação automática no cartão: desativada.</p>
-          <p className="mt-1 text-sm text-slate-700">Nenhuma nova cobrança automática será feita enquanto a renovação estiver desativada.</p>
+          <p className="mt-1 text-sm text-slate-700">Para ativar, você será direcionado ao ambiente seguro do Asaas para cadastrar o cartão. O ciclo atual já pago não será cobrado novamente; a primeira cobrança automática ficará para a próxima renovação.</p>
         </>}
       </div>
       <div className="rounded-xl border bg-white px-4 py-3 text-sm"><div className="flex items-center gap-2 font-semibold"><CalendarClock className="size-4"/>Próxima cobrança</div><p className="mt-1 text-slate-600">{autoRenew?date(nextBillingDate):"Desativada"}</p></div>
     </div>
 
     <div className="mt-4 grid gap-2 sm:grid-cols-2">
-      {autoRenew?<button type="button" disabled={Boolean(loading)} onClick={()=>void act("DISABLE")} className="flex h-11 items-center justify-center gap-2 rounded-xl border bg-white font-bold text-slate-700 disabled:opacity-50">{loading==="DISABLE"?<LoaderCircle className="size-4 animate-spin"/>:<RefreshCw className="size-4"/>}Desativar renovação automática</button>:<button type="button" disabled={Boolean(loading)} onClick={()=>void act("ENABLE")} className="flex h-11 items-center justify-center gap-2 rounded-xl bg-blue-600 font-bold text-white disabled:opacity-50">{loading==="ENABLE"?<LoaderCircle className="size-4 animate-spin"/>:<RefreshCw className="size-4"/>}Ativar renovação automática</button>}
+      {autoRenew?<button type="button" disabled={Boolean(loading)} onClick={()=>void act("DISABLE")} className="flex h-11 items-center justify-center gap-2 rounded-xl border bg-white font-bold text-slate-700 disabled:opacity-50">{loading==="DISABLE"?<LoaderCircle className="size-4 animate-spin"/>:<RefreshCw className="size-4"/>}Desativar renovação automática</button>:<button type="button" disabled={Boolean(loading)} onClick={()=>void act("ENABLE")} className="flex h-11 items-center justify-center gap-2 rounded-xl bg-blue-600 font-bold text-white disabled:opacity-50">{loading==="ENABLE"?<LoaderCircle className="size-4 animate-spin"/>:<RefreshCw className="size-4"/>}Cadastrar cartão e ativar renovação</button>}
       <button type="button" disabled={Boolean(loading)} onClick={()=>void act("CANCEL_AT_PERIOD_END")} className="flex h-11 items-center justify-center gap-2 rounded-xl border border-red-200 bg-white font-bold text-red-700 disabled:opacity-50">{loading==="CANCEL_AT_PERIOD_END"?<LoaderCircle className="size-4 animate-spin"/>:<XCircle className="size-4"/>}Cancelar assinatura ao fim do período</button>
     </div>
     {error?<p role="alert" className="mt-3 text-sm font-semibold text-red-600">{error}</p>:null}
