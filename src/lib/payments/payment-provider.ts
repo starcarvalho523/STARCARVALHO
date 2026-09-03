@@ -107,6 +107,7 @@ export interface PaymentProvider {
   resolveCheckoutPayment(checkoutId:string,expectedExternalReference:string,expectedPaymentId:string,expectedAmount:number):Promise<ProviderCheckoutPayment>;
   getPayment(providerPaymentId: string): Promise<ProviderCharge>;
   cancelPayment(providerPaymentId: string): Promise<void>;
+  listRecurringSubscriptionPayments?(providerSubscriptionId:string):Promise<ProviderCharge[]>;
   getHostedPaymentUrl(payment: ProviderCharge): string | null;
   validateWebhook(receivedToken: string | null, expectedToken: string): boolean;
   parseWebhook(payload: unknown): ProviderWebhookEvent;
