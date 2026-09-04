@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getPaymentProvider } from "@/lib/payments/provider-factory";
 import type { PaymentProvider } from "@/lib/payments/payment-provider";
 import { isGeneratedFuturePendingCharge, recurringReactivationUpdate } from "@/lib/payments/monthly-renewal-reactivation";
@@ -86,6 +87,16 @@ export async function POST(request:Request){
     if(context.providerSubscriptionId&&provider.cancelRecurringSubscription)await provider.cancelRecurringSubscription(context.providerSubscriptionId);
     const{data:updated,error:updateError}=await supabase.rpc("cancel_customer_monthly_subscription_at_period_end",{target_subscription:subscriptionId});
     if(updateError)throw new Error(updateError.message);
+
+    if(context.providerSubscriptionId){
+      const admin=createAdminClient();
+      const{error:bindingError}=await admin.from("monthly_recurring_provider_bindings").update({
+        authorization_status:"CANCELLED",
+        updated_at:new Date().toISOString(),
+      }).eq("subscription_id",subscriptionId).eq("method","CREDIT_CARD").eq("provider_subscription_id",context.providerSubscriptionId);
+      if(bindingError)throw new Error(`RENEWAL_BINDING_CANCEL_${bindingError.message}`);
+    }
+
     return Response.json({renewal:updated});
   }catch(error){
     const code=error instanceof Error?error.message:"UNKNOWN_ERROR";
