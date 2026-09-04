@@ -1,7 +1,7 @@
 import type { ProviderCharge } from "./payment-provider";
 
-export function recurringReactivationUpdate(_nextDueDate:string){
-  return {status:"ACTIVE" as const};
+export function recurringReactivationUpdate(nextDueDate:string){
+  return {status:"ACTIVE" as const,nextDueDate,updatePendingPayments:false};
 }
 
 export function isGeneratedFuturePendingCharge(charge:ProviderCharge,nextBillingDate:string){
