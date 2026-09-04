@@ -1,5 +1,5 @@
 import { timingSafeEqual } from "node:crypto";
-import type { CreateChargeInput, CreateCheckoutInput, CreateProviderCustomerInput, PaymentProvider, ProviderCharge, ProviderCheckout, ProviderCheckoutPayment, ProviderCustomer, ProviderPaymentState, ProviderPixQrCode, ProviderWebhookEvent, ProviderCheckoutWebhookEvent } from "./payment-provider";
+import type { CreateChargeInput, CreateCheckoutInput, CreateProviderCustomerInput, CreateRecurringCardSubscriptionInput, PaymentProvider, ProviderCharge, ProviderCheckout, ProviderCheckoutPayment, ProviderCustomer, ProviderPaymentState, ProviderPixQrCode, ProviderRecurringSubscription, ProviderWebhookEvent, ProviderCheckoutWebhookEvent } from "./payment-provider";
 
 type Fetcher = typeof fetch;
 type AsaasPayment = { id?:unknown; customer?:unknown; status?:unknown; billingType?:unknown; value?:unknown; dueDate?:unknown; externalReference?:unknown; invoiceUrl?:unknown; checkoutSession?:unknown; subscription?:unknown };
@@ -8,6 +8,7 @@ type AsaasQrCode = { payload?:unknown; encodedImage?:unknown; expirationDate?:un
 type AsaasList = { data?:unknown };
 type AsaasErrorBody = { errors?:unknown };
 type AsaasCheckout = { id?:unknown; status?:unknown; link?:unknown; externalReference?:unknown; minutesToExpire?:unknown; billingTypes?:unknown };
+type AsaasSubscription = { id?:unknown; customer?:unknown; status?:unknown; billingType?:unknown; value?:unknown; cycle?:unknown; nextDueDate?:unknown; externalReference?:unknown };
 
 export class AsaasPublicError extends Error {
   constructor(readonly status:number,readonly publicCode:string|null,readonly publicDescription:string|null){
@@ -92,6 +93,38 @@ export class AsaasProvider implements PaymentProvider {
     return{providerCheckoutId:checkout.id,providerStatus:checkout.status,amount:input.amount,externalReference:input.externalReference,link:checkout.link,expiresAt:new Date(Date.now()+input.expiresInMinutes*60_000).toISOString()};
   }
 
+  async findRecurringSubscriptionByExternalReference(externalReference:string):Promise<ProviderRecurringSubscription|null>{
+    const query=new URLSearchParams({externalReference,limit:"2",offset:"0"});
+    const result=await this.request<AsaasList>(`/subscriptions?${query.toString()}`);
+    if(!Array.isArray(result.data))throw new Error("INVALID_ASAAS_SUBSCRIPTION_LIST");
+    const matches=result.data.filter((item):item is AsaasSubscription=>isRecord(item)&&item.externalReference===externalReference);
+    if(matches.length>1)throw new Error("ASAAS_DUPLICATE_SUBSCRIPTION_EXTERNAL_REFERENCE");
+    return matches.length===1?normalizeSubscription(matches[0]):null;
+  }
+
+  async createRecurringCardSubscription(input:CreateRecurringCardSubscriptionInput):Promise<ProviderRecurringSubscription>{
+    const body={
+      customer:input.customerId,
+      billingType:"CREDIT_CARD",
+      value:input.amount,
+      nextDueDate:input.nextDueDate,
+      cycle:"MONTHLY",
+      description:input.description,
+      externalReference:input.externalReference,
+      creditCard:input.creditCard,
+      creditCardHolderInfo:input.creditCardHolderInfo,
+      remoteIp:input.remoteIp,
+    };
+    const subscription=await this.request<AsaasSubscription>("/subscriptions",{
+      method:"POST",
+      body:JSON.stringify(body),
+      signal:AbortSignal.timeout(65_000),
+    });
+    const normalized=normalizeSubscription(subscription);
+    if(normalized.providerCustomerId!==input.customerId||normalized.billingType!=="CREDIT_CARD"||normalized.cycle!=="MONTHLY"||Number(normalized.amount)!==Number(input.amount)||normalized.nextDueDate!==input.nextDueDate||normalized.externalReference!==input.externalReference)throw new Error("ASAAS_RECURRING_SUBSCRIPTION_MISMATCH");
+    return normalized;
+  }
+
   async resolveCheckoutPayment(checkoutId:string,expectedExternalReference:string,expectedPaymentId:string,expectedAmount:number):Promise<ProviderCheckoutPayment>{
     const query=new URLSearchParams({checkoutSession:checkoutId,limit:"2",offset:"0"});
     const payments=await this.request<AsaasList>(`/payments?${query.toString()}`);
@@ -157,11 +190,12 @@ export class AsaasProvider implements PaymentProvider {
 
 function publicErrorDetail(body:unknown){if(!isRecord(body))return{code:null,description:null};const errors=(body as AsaasErrorBody).errors;const first=Array.isArray(errors)&&isRecord(errors[0])?errors[0]:null;return{code:sanitizeCode(first?.code),description:sanitizeDescription(first?.description)}}
 function sanitizeCode(value:unknown){return typeof value==="string"&&/^[A-Za-z0-9_.-]{1,64}$/.test(value)?value:null}
-function sanitizeDescription(value:unknown){if(typeof value!=="string")return null;return value.replace(/(access[_-]?token|api[_-]?key|authorization|payload|encodedImage)\s*[:=]\s*\S+/gi,"[redacted]").replace(/\b(?:pay|cus)_[A-Za-z0-9_-]+\b/g,"[redacted-id]").replace(/\b[0-9a-f]{8}-[0-9a-f-]{27,}\b/gi,"[redacted-id]").replace(/[\r\n\t]+/g," ").trim().slice(0,160)||null}
+function sanitizeDescription(value:unknown){if(typeof value!=="string")return null;return value.replace(/(access[_-]?token|api[_-]?key|authorization|payload|encodedImage)\s*[:=]\s*\S+/gi,"[redacted]").replace(/\b(?:pay|cus|sub)_[A-Za-z0-9_-]+\b/g,"[redacted-id]").replace(/\b\d{13,19}\b/g,"[redacted-card]").replace(/\b[0-9a-f]{8}-[0-9a-f-]{27,}\b/gi,"[redacted-id]").replace(/[\r\n\t]+/g," ").trim().slice(0,160)||null}
 export function safeTokenEquals(receivedToken:string|null,expectedToken:string){if(!receivedToken||!expectedToken)return false;const received=Buffer.from(receivedToken);const expected=Buffer.from(expectedToken);return received.length===expected.length&&timingSafeEqual(received,expected)}
 export function mapAsaasPaymentState(status:string,eventType?:string):ProviderPaymentState{if(eventType==="PAYMENT_RECEIVED"||status==="RECEIVED")return "PAID";if(eventType==="PAYMENT_OVERDUE"||status==="OVERDUE")return "EXPIRED";if(eventType==="PAYMENT_DELETED"||status==="DELETED")return "CANCELLED";if(status==="REFUNDED"||status==="CHARGEBACK_REQUESTED"||status==="CHARGEBACK_DISPUTE")return "REVIEW";return "PENDING"}
 function normalizeCustomer(value:AsaasCustomer):ProviderCustomer{if(typeof value.id!=="string")throw new Error("INVALID_ASAAS_CUSTOMER");return{providerCustomerId:value.id,externalReference:stringOrNull(value.externalReference)}}
 function normalizePayment(value:AsaasPayment):ProviderCharge{if(typeof value.id!=="string"||typeof value.customer!=="string"||typeof value.status!=="string")throw new Error("INVALID_ASAAS_PAYMENT");return{providerPaymentId:value.id,providerCustomerId:value.customer,providerStatus:value.status,billingType:stringOrNull(value.billingType),amount:numberOrNull(value.value)??0,externalReference:stringOrNull(value.externalReference)??"",hostedPaymentUrl:stringOrNull(value.invoiceUrl),qrCodePayload:null,qrCodeImageBase64:null,expiresAt:null,dueDate:stringOrNull(value.dueDate),subscriptionId:stringOrNull(value.subscription),checkoutId:stringOrNull(value.checkoutSession)}}
+function normalizeSubscription(value:AsaasSubscription):ProviderRecurringSubscription{if(typeof value.id!=="string"||typeof value.customer!=="string"||typeof value.status!=="string"||typeof value.billingType!=="string"||typeof value.cycle!=="string"||typeof value.nextDueDate!=="string")throw new Error("INVALID_ASAAS_SUBSCRIPTION");return{providerSubscriptionId:value.id,providerCustomerId:value.customer,providerStatus:value.status,billingType:value.billingType,amount:numberOrNull(value.value)??0,cycle:value.cycle,nextDueDate:value.nextDueDate.slice(0,10),externalReference:stringOrNull(value.externalReference)}}
 function isRecord(value:unknown):value is Record<string,unknown>{return typeof value==="object"&&value!==null&&!Array.isArray(value)}
 function stringOrNull(value:unknown){return typeof value==="string"?value:null}
 function numberOrNull(value:unknown){const number=typeof value==="number"?value:typeof value==="string"?Number(value):NaN;return Number.isFinite(number)?number:null}
