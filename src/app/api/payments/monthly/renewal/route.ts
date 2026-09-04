@@ -2,7 +2,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getPaymentProvider } from "@/lib/payments/provider-factory";
 import type { PaymentProvider } from "@/lib/payments/payment-provider";
 import { isGeneratedFuturePendingCharge, recurringReactivationUpdate } from "@/lib/payments/monthly-renewal-reactivation";
-import { createMonthlyRenewalCardSetup, reconcileIgnoredMonthlyRenewalCardSetup } from "@/lib/payments/monthly-renewal-card-setup";
+import { createMonthlyRenewalCardSetup } from "@/lib/payments/monthly-renewal-card-setup";
+import { reconcileIgnoredMonthlyRenewalCardSetupRpc } from "@/lib/payments/monthly-renewal-reconcile-rpc";
 
 type RenewalContext={
   subscriptionId:string;
@@ -44,7 +45,7 @@ export async function POST(request:Request){
       if(hasPending===true)return Response.json({error:"Existe um pagamento manual em andamento. Conclua ou troque essa tentativa antes de reativar a renovação automática."},{status:409});
 
       if(!context.providerSubscriptionId){
-        const reconciled=await reconcileIgnoredMonthlyRenewalCardSetup(subscriptionId,supabase);
+        const reconciled=await reconcileIgnoredMonthlyRenewalCardSetupRpc(subscriptionId,supabase);
         if(reconciled)return Response.json({renewal:reconciled,reconciled:true},{headers:{"cache-control":"no-store"}});
         const setup=await createMonthlyRenewalCardSetup(subscriptionId,supabase,new URL(request.url).origin);
         return Response.json({setup},{headers:{"cache-control":"no-store"}});
