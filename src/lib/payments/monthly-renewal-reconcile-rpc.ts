@@ -37,7 +37,7 @@ export async function reconcileIgnoredMonthlyRenewalCardSetupRpc(subscriptionId:
   const customer=rawCustomer as CustomerContext;
   if(!customer.provider_customer_id)return null;
 
-  const since=new Date(Date.now()-2*60*60*1000).toISOString();
+  const since=new Date(Date.now()-24*60*60*1000).toISOString();
   const{data:events,error:eventsError}=await admin.rpc("list_ignored_monthly_renewal_events",{target_since:since});
   if(eventsError)throw new Error(`RENEWAL_IGNORED_EVENT_LOOKUP_${eventsError.message}`);
 
