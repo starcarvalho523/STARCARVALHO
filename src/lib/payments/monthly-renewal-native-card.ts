@@ -204,7 +204,8 @@ async function resolveSetupContext(subscriptionId:string,userClient:SupabaseClie
 }
 
 function assertProviderSubscription(subscription:ProviderRecurringSubscription,setup:SetupContext){
-  if(subscription.providerCustomerId!==setup.providerCustomerId||subscription.billingType!=="CREDIT_CARD"||subscription.cycle!=="MONTHLY"||subscription.providerStatus!=="ACTIVE"||Number(subscription.amount)!==Number(setup.period.amount)||subscription.nextDueDate!==setup.nextBillingDate||subscription.externalReference!==setup.externalReference)throw new Error("RENEWAL_PROVIDER_SUBSCRIPTION_MISMATCH");
+  const unsafeStatus=subscription.providerStatus==="INACTIVE"||subscription.providerStatus==="EXPIRED";
+  if(subscription.providerCustomerId!==setup.providerCustomerId||subscription.billingType!=="CREDIT_CARD"||subscription.cycle!=="MONTHLY"||unsafeStatus||Number(subscription.amount)!==Number(setup.period.amount)||subscription.nextDueDate!==setup.nextBillingDate||subscription.externalReference!==setup.externalReference)throw new Error("RENEWAL_PROVIDER_SUBSCRIPTION_MISMATCH");
 }
 function addDays(value:string,days:number){const date=new Date(`${value}T12:00:00Z`);date.setUTCDate(date.getUTCDate()+days);return date.toISOString().slice(0,10)}
 function isRecord(value:unknown):value is Record<string,unknown>{return typeof value==="object"&&value!==null&&!Array.isArray(value)}
