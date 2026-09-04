@@ -69,6 +69,43 @@ export type ProviderCheckoutPayment = {
   externalReference: string;
 };
 
+export type CreateRecurringCardSubscriptionInput = {
+  customerId: string;
+  amount: number;
+  nextDueDate: string;
+  description: string;
+  externalReference: string;
+  remoteIp: string;
+  creditCard: {
+    holderName: string;
+    number: string;
+    expiryMonth: string;
+    expiryYear: string;
+    ccv: string;
+  };
+  creditCardHolderInfo: {
+    name: string;
+    email: string;
+    cpfCnpj: string;
+    postalCode: string;
+    addressNumber: string;
+    addressComplement?: string | null;
+    phone?: string | null;
+    mobilePhone?: string | null;
+  };
+};
+
+export type ProviderRecurringSubscription = {
+  providerSubscriptionId: string;
+  providerCustomerId: string;
+  providerStatus: string;
+  billingType: string;
+  amount: number;
+  cycle: string;
+  nextDueDate: string;
+  externalReference: string | null;
+};
+
 export type ProviderPixQrCode = Pick<ProviderCharge, "qrCodePayload" | "qrCodeImageBase64" | "expiresAt">;
 
 export type ProviderWebhookEvent = {
@@ -107,6 +144,8 @@ export interface PaymentProvider {
   resolveCheckoutPayment(checkoutId:string,expectedExternalReference:string,expectedPaymentId:string,expectedAmount:number):Promise<ProviderCheckoutPayment>;
   getPayment(providerPaymentId: string): Promise<ProviderCharge>;
   cancelPayment(providerPaymentId: string): Promise<void>;
+  createRecurringCardSubscription?(input:CreateRecurringCardSubscriptionInput):Promise<ProviderRecurringSubscription>;
+  findRecurringSubscriptionByExternalReference?(externalReference:string):Promise<ProviderRecurringSubscription|null>;
   listRecurringSubscriptionPayments?(providerSubscriptionId:string):Promise<ProviderCharge[]>;
   getHostedPaymentUrl(payment: ProviderCharge): string | null;
   validateWebhook(receivedToken: string | null, expectedToken: string): boolean;
