@@ -120,16 +120,29 @@ export async function activateMonthlyRenewalWithNativeCard(subscriptionId:string
   if(providerSubscription){
     assertProviderSubscription(providerSubscription,setup);
   }else{
-    providerSubscription=await setup.provider.createRecurringCardSubscription({
-      customerId:setup.providerCustomerId,
-      amount:setup.period.amount,
-      nextDueDate:setup.nextBillingDate,
-      description:"Renovação automática da mensalidade Star Carvalhos",
-      externalReference:setup.externalReference,
-      remoteIp,
-      creditCard:payload.creditCard,
-      creditCardHolderInfo:payload.creditCardHolderInfo,
-    });
+    let creationError:unknown=null;
+    try{
+      await setup.provider.createRecurringCardSubscription({
+        customerId:setup.providerCustomerId,
+        amount:setup.period.amount,
+        nextDueDate:setup.nextBillingDate,
+        description:"Renovação automática da mensalidade Star Carvalhos",
+        externalReference:setup.externalReference,
+        remoteIp,
+        creditCard:payload.creditCard,
+        creditCardHolderInfo:payload.creditCardHolderInfo,
+      });
+    }catch(error){
+      const code=error instanceof Error?error.message:"UNKNOWN_ERROR";
+      if(code!=="ASAAS_RECURRING_SUBSCRIPTION_MISMATCH"&&code!=="RENEWAL_PROVIDER_SUBSCRIPTION_MISMATCH")throw error;
+      creationError=error;
+    }
+
+    providerSubscription=await resolveCanonicalProviderSubscription(setup);
+    if(!providerSubscription){
+      if(creationError)throw creationError;
+      throw new Error("RENEWAL_PROVIDER_CANONICAL_NOT_FOUND");
+    }
     assertProviderSubscription(providerSubscription,setup);
   }
 
@@ -166,6 +179,17 @@ export async function activateMonthlyRenewalWithNativeCard(subscriptionId:string
   }
 
   return{active:true,nextBillingDate:setup.nextBillingDate,providerSubscriptionId:providerSubscription.providerSubscriptionId};
+}
+
+async function resolveCanonicalProviderSubscription(setup:SetupContext){
+  if(!setup.provider.findRecurringSubscriptionByExternalReference)return null;
+  const delays=[0,200,500,1000,2000];
+  for(const delay of delays){
+    if(delay>0)await sleep(delay);
+    const candidate=await setup.provider.findRecurringSubscriptionByExternalReference(setup.externalReference);
+    if(candidate)return candidate;
+  }
+  return null;
 }
 
 async function resolveSetupContext(subscriptionId:string,userClient:SupabaseClient):Promise<SetupContext>{
@@ -207,5 +231,6 @@ function assertProviderSubscription(subscription:ProviderRecurringSubscription,s
   const unsafeStatus=subscription.providerStatus==="INACTIVE"||subscription.providerStatus==="EXPIRED";
   if(subscription.providerCustomerId!==setup.providerCustomerId||subscription.billingType!=="CREDIT_CARD"||subscription.cycle!=="MONTHLY"||unsafeStatus||Number(subscription.amount)!==Number(setup.period.amount)||subscription.nextDueDate!==setup.nextBillingDate||subscription.externalReference!==setup.externalReference)throw new Error("RENEWAL_PROVIDER_SUBSCRIPTION_MISMATCH");
 }
+function sleep(ms:number){return new Promise<void>((resolve)=>setTimeout(resolve,ms))}
 function addDays(value:string,days:number){const date=new Date(`${value}T12:00:00Z`);date.setUTCDate(date.getUTCDate()+days);return date.toISOString().slice(0,10)}
 function isRecord(value:unknown):value is Record<string,unknown>{return typeof value==="object"&&value!==null&&!Array.isArray(value)}
