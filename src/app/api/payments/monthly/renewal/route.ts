@@ -3,6 +3,7 @@ import { getPaymentProvider } from "@/lib/payments/provider-factory";
 import type { PaymentProvider } from "@/lib/payments/payment-provider";
 import { isGeneratedFuturePendingCharge, recurringReactivationUpdate } from "@/lib/payments/monthly-renewal-reactivation";
 import { cleanupOrphanedHostedRenewalSetups, prepareMonthlyRenewalNativeCardSetup } from "@/lib/payments/monthly-renewal-native-card";
+import { reconcileMonthlyRenewalFromAuthenticatedPaymentEvent } from "@/lib/payments/monthly-renewal-payment-event-reconcile";
 
 type RenewalContext={
   subscriptionId:string;
@@ -44,6 +45,9 @@ export async function POST(request:Request){
       if(hasPending===true)return Response.json({error:"Existe um pagamento manual em andamento. Conclua ou troque essa tentativa antes de reativar a renovação automática."},{status:409});
 
       if(!context.providerSubscriptionId){
+        const reconciled=await reconcileMonthlyRenewalFromAuthenticatedPaymentEvent(subscriptionId,supabase);
+        if(reconciled)return Response.json({renewal:reconciled,reconciled:true},{headers:{"cache-control":"no-store"}});
+
         const cleanup=await cleanupOrphanedHostedRenewalSetups(subscriptionId,supabase);
         const setup=await prepareMonthlyRenewalNativeCardSetup(subscriptionId,supabase);
         return Response.json({setup,cleanup},{headers:{"cache-control":"no-store"}});
@@ -89,6 +93,7 @@ export async function POST(request:Request){
     if(code.includes("CUSTOMER_BILLING_DOCUMENT_REQUIRED"))return Response.json({error:"Para ativar a renovação automática, complete seu CPF/CNPJ em Minha conta."},{status:409});
     if(code.includes("RENEWAL_PAID_COVERAGE_REQUIRED"))return Response.json({error:"É necessário ter um ciclo pago antes de ativar a renovação automática."},{status:409});
     if(code.includes("RENEWAL_ORPHAN_REVIEW_REQUIRED"))return Response.json({error:"Encontramos uma tentativa anterior de cartão que exige revisão antes de criar outra recorrência."},{status:409});
+    if(code.includes("RENEWAL_EVENT_RECONCILIATION_AMBIGUOUS")||code.includes("RENEWAL_EVENT_PROVIDER_SUBSCRIPTION_ALREADY_BOUND"))return Response.json({error:"Encontramos mais de uma recorrência candidata e bloqueamos a ativação para revisão."},{status:409});
     return Response.json({error:"Não foi possível atualizar a renovação agora."},{status:503});
   }
 }
