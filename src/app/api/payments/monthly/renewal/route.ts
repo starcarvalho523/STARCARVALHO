@@ -25,6 +25,14 @@ async function cancelGeneratedFuturePendingCharges(provider:PaymentProvider,prov
   for(const charge of pendingFuture)await provider.cancelPayment(charge.providerPaymentId);
 }
 
+function todayInBahia(){
+  const parts=new Intl.DateTimeFormat("en-CA",{timeZone:"America/Bahia",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date());
+  const year=parts.find((part)=>part.type==="year")?.value;
+  const month=parts.find((part)=>part.type==="month")?.value;
+  const day=parts.find((part)=>part.type==="day")?.value;
+  return year&&month&&day?`${year}-${month}-${day}`:new Date().toISOString().slice(0,10);
+}
+
 export async function POST(request:Request){
   try{
     const body=await request.json().catch(()=>({}));
@@ -55,6 +63,7 @@ export async function POST(request:Request){
       }
 
       if(!context.nextBillingDate||!provider.updateRecurringSubscription||!provider.listRecurringSubscriptionPayments)return Response.json({error:"RENEWAL_NOT_READY"},{status:409});
+      if(context.nextBillingDate<=todayInBahia())return Response.json({error:"A próxima cobrança precisa estar em uma data futura para reativar a renovação automática."},{status:409});
 
       await cancelGeneratedFuturePendingCharges(provider,context.providerSubscriptionId,context.nextBillingDate);
       await provider.updateRecurringSubscription(context.providerSubscriptionId,recurringReactivationUpdate(context.nextBillingDate));
@@ -101,6 +110,7 @@ export async function POST(request:Request){
   }catch(error){
     const code=error instanceof Error?error.message:"UNKNOWN_ERROR";
     console.error("MONTHLY_RENEWAL_ACTION_FAILED",{code:code.slice(0,100)});
+    if(code.includes("invalid_nextDueDate"))return Response.json({error:"A próxima cobrança informada não é válida para reativação. Escolha uma data futura."},{status:409});
     if(code.includes("CUSTOMER_BILLING_DOCUMENT_REQUIRED"))return Response.json({error:"Para ativar a renovação automática, complete seu CPF/CNPJ em Minha conta."},{status:409});
     if(code.includes("RENEWAL_PAID_COVERAGE_REQUIRED"))return Response.json({error:"É necessário ter um ciclo pago antes de ativar a renovação automática."},{status:409});
     if(code.includes("RENEWAL_ORPHAN_REVIEW_REQUIRED"))return Response.json({error:"Encontramos uma tentativa anterior de cartão que exige revisão antes de criar outra recorrência."},{status:409});
