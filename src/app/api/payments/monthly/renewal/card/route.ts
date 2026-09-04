@@ -30,7 +30,7 @@ export async function POST(request:Request){
     const addressNumber=text(holder.addressNumber,20);
     const addressComplement=text(holder.addressComplement,80)||null;
     const mobilePhone=digits(holder.mobilePhone,13);
-    if(!/^\S+@\S+\.\S+$/.test(email)||!^(?:\d{11}|\d{14})$/.test(cpfCnpj)||!/^\d{8}$/.test(postalCode)||!addressNumber||!/^\d{10,13}$/.test(mobilePhone))return Response.json({error:"Confira CPF/CNPJ, e-mail, celular, CEP e número do endereço."},{status:400});
+    if(!/^\S+@\S+\.\S+$/.test(email)||!(/^(?:\d{11}|\d{14})$/).test(cpfCnpj)||!/^\d{8}$/.test(postalCode)||!addressNumber||!/^\d{10,13}$/.test(mobilePhone))return Response.json({error:"Confira CPF/CNPJ, e-mail, celular, CEP e número do endereço."},{status:400});
 
     const remoteIp=clientIp(request);
     if(!remoteIp)return Response.json({error:"Não foi possível validar a origem segura da solicitação. Atualize a página e tente novamente."},{status:400});
