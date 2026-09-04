@@ -52,7 +52,7 @@ export async function cleanupOrphanedHostedRenewalSetups(subscriptionId:string,u
   const provider=setup.provider;
   if(!provider.cancelRecurringSubscription||!provider.listRecurringSubscriptionPayments)throw new Error("RENEWAL_PROVIDER_CLEANUP_UNSUPPORTED");
 
-  const since=new Date(Date.now()-48*60*60*1000).toISOString();
+  const since=new Date(Date.now()-72*60*60*1000).toISOString();
   const admin=createAdminClient();
   const{data:events,error:eventsError}=await admin.rpc("list_ignored_monthly_renewal_events",{target_since:since});
   if(eventsError)throw new Error(`RENEWAL_IGNORED_EVENT_LOOKUP_${eventsError.message}`);
@@ -62,11 +62,26 @@ export async function cleanupOrphanedHostedRenewalSetups(subscriptionId:string,u
     const payload=isRecord(rawEvent.sanitized_payload)?rawEvent.sanitized_payload:null;
     const providerPaymentId=rawEvent.provider_payment_id;
     const providerSubscriptionId=payload&&typeof payload.subscriptionId==="string"?payload.subscriptionId:null;
+    const payloadValue=payload&&typeof payload.value==="number"?payload.value:null;
+    const payloadExternalReference=payload?.externalReference;
     if(!providerPaymentId||!providerSubscriptionId||payload?.billingType!=="CREDIT_CARD")continue;
+    if(payloadExternalReference!==null||Number(payloadValue)!==Number(setup.period.amount))continue;
+
+    const{data:existingBinding,error:bindingLookupError}=await admin
+      .from("monthly_recurring_provider_bindings")
+      .select("subscription_id")
+      .eq("provider","ASAAS")
+      .eq("provider_subscription_id",providerSubscriptionId)
+      .limit(1)
+      .maybeSingle();
+    if(bindingLookupError)throw new Error(`RENEWAL_ORPHAN_BINDING_LOOKUP_${bindingLookupError.message}`);
+    if(existingBinding)continue;
+
     try{
       const snapshot=await provider.getPayment(providerPaymentId);
       if(snapshot.providerPaymentId!==providerPaymentId||snapshot.subscriptionId!==providerSubscriptionId||snapshot.billingType!=="CREDIT_CARD")continue;
-      if(snapshot.providerCustomerId!==setup.providerCustomerId||Number(snapshot.amount)!==Number(setup.period.amount)||snapshot.dueDate!==setup.nextBillingDate)continue;
+      if(Number(snapshot.amount)!==Number(setup.period.amount)||snapshot.dueDate!==setup.nextBillingDate)continue;
+      if(snapshot.externalReference)continue;
       if(snapshot.providerStatus!=="PENDING")throw new Error("RENEWAL_ORPHAN_REVIEW_REQUIRED");
       matches.push({event:rawEvent,providerSubscriptionId});
     }catch(error){
@@ -80,9 +95,9 @@ export async function cleanupOrphanedHostedRenewalSetups(subscriptionId:string,u
   let cleaned=0;
   for(const[providerSubscriptionId,matchedEvents]of bySubscription){
     const charges=await provider.listRecurringSubscriptionPayments(providerSubscriptionId);
-    for(const charge of charges){
-      if(charge.providerStatus==="PENDING"&&charge.billingType==="CREDIT_CARD"&&Number(charge.amount)===Number(setup.period.amount)&&charge.dueDate===setup.nextBillingDate)await provider.cancelPayment(charge.providerPaymentId);
-    }
+    const unsafeCharge=charges.find((charge)=>charge.providerStatus!=="PENDING"||charge.billingType!=="CREDIT_CARD"||Number(charge.amount)!==Number(setup.period.amount)||charge.dueDate!==setup.nextBillingDate||Boolean(charge.externalReference));
+    if(unsafeCharge)throw new Error("RENEWAL_ORPHAN_REVIEW_REQUIRED");
+    for(const charge of charges)await provider.cancelPayment(charge.providerPaymentId);
     await provider.cancelRecurringSubscription(providerSubscriptionId);
     for(const event of matchedEvents){
       const{data:marked,error:markError}=await admin.rpc("mark_ignored_monthly_renewal_event_processed",{target_event_id:event.id});
