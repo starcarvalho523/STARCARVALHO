@@ -40,10 +40,23 @@ export async function POST(request:Request){
     if(pendingError)throw new Error(pendingError.message);
     if(hasPending===true)return Response.json({error:"Existe um pagamento manual em andamento. Conclua ou troque essa tentativa antes de ativar a renovação automática."},{status:409});
 
-    const renewal=await activateMonthlyRenewalWithNativeCard(subscriptionId,supabase,{
+    const payload={
       creditCard:{holderName,number,expiryMonth,expiryYear,ccv},
       creditCardHolderInfo:{name,email,cpfCnpj,postalCode,addressNumber,addressComplement,mobilePhone,phone:mobilePhone},
-    },remoteIp);
+    };
+
+    let renewal;
+    try{
+      renewal=await activateMonthlyRenewalWithNativeCard(subscriptionId,supabase,payload,remoteIp);
+    }catch(firstError){
+      const firstCode=firstError instanceof Error?firstError.message:"UNKNOWN_ERROR";
+      if(firstCode!=="ASAAS_RECURRING_SUBSCRIPTION_MISMATCH")throw firstError;
+      // The Asaas POST can succeed while its immediate response omits/normalizes a field differently.
+      // Re-enter the activation flow once: it first resolves by externalReference, validates the
+      // canonical subscription and binds it locally. It does not create a second subscription.
+      renewal=await activateMonthlyRenewalWithNativeCard(subscriptionId,supabase,payload,remoteIp);
+    }
+
     return Response.json({renewal},{headers:{"cache-control":"no-store"}});
   }catch(error){
     const code=error instanceof Error?error.message:"UNKNOWN_ERROR";
