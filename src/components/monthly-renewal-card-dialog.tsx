@@ -48,14 +48,20 @@ export function MonthlyRenewalCardDialog({subscriptionId,amount,nextBillingDate,
         }),
       });
       const body=await response.json().catch(()=>({}));
-      if(!response.ok)throw new Error(typeof body.error==="string"?body.error:"Não foi possível ativar a renovação.");
+      if(!response.ok){
+        const serverMessage=typeof body.error==="string"?body.error:"Não foi possível ativar a renovação.";
+        if(response.status===503||response.status===504)throw new Error("A autorização pode já ter sido recebida pelo Asaas. Feche este formulário e atualize a página antes de qualquer nova tentativa. Não envie o cartão novamente agora.");
+        if(response.status===409)throw new Error(`${serverMessage} Atualize a página antes de tentar novamente.`);
+        if(response.status===400&&serverMessage.includes("O Asaas não conseguiu validar o cartão"))throw new Error("O Asaas rejeitou a solicitação. Confira os dados informados; se este cartão já funcionou antes, não repita várias tentativas seguidas.");
+        throw new Error(serverMessage);
+      }
       setFields(empty);
       onSuccess();
     }catch(cause){setError(cause instanceof Error?cause.message:"Não foi possível ativar a renovação.")}
     finally{setLoading(false)}
   };
 
-  return <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/45 p-0 backdrop-blur-[2px] sm:items-center sm:p-6" role="dialog" aria-modal="true" aria-labelledby="renewal-card-title">
+  return <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/45 p-0 backdrop-blur-[2px] sm:items-center sm:p-6" role="dialog" aria-modal="true" aria-labelledby="renewal-card-title" aria-busy={loading}>
     <div className="max-h-[94vh] w-full overflow-y-auto rounded-t-3xl bg-white shadow-2xl sm:max-w-3xl sm:rounded-3xl">
       <div className="sticky top-0 z-10 flex items-center justify-between border-b bg-white px-5 py-4 sm:px-6">
         <div><h2 id="renewal-card-title" className="text-lg font-black text-slate-950">Ativar renovação automática</h2><p className="mt-0.5 text-sm text-slate-500">Cadastre o cartão para as próximas mensalidades.</p></div>
@@ -94,11 +100,12 @@ export function MonthlyRenewalCardDialog({subscriptionId,amount,nextBillingDate,
           </div>
         </section>
 
-        {error?<p role="alert" className="mt-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">{error}</p>:null}
+        {loading?<div className="mt-5 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-800">Validando e sincronizando com o Asaas. Não feche, atualize ou clique novamente durante esta etapa.</div>:null}
+        {error?<div role="alert" className="mt-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"><p className="font-semibold">{error}</p><p className="mt-1 text-xs">Antes de reenviar qualquer dado, feche o modal e atualize a página para verificar se a autorização já foi criada.</p></div>:null}
 
         <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <button type="button" onClick={onClose} disabled={loading} className="h-12 rounded-xl border px-5 font-bold text-slate-700 disabled:opacity-50">Cancelar</button>
-          <button type="submit" disabled={loading} className="flex h-12 items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 font-black text-white disabled:opacity-50">{loading?<LoaderCircle className="size-5 animate-spin"/>:<CalendarClock className="size-5"/>}{loading?"Validando cartão...":"Autorizar renovação automática"}</button>
+          <button type="submit" disabled={loading} className="flex h-12 items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 font-black text-white disabled:cursor-wait disabled:opacity-50">{loading?<LoaderCircle className="size-5 animate-spin"/>:<CalendarClock className="size-5"/>}{loading?"Validando e sincronizando...":"Autorizar renovação automática"}</button>
         </div>
         <p className="mt-3 text-center text-xs text-slate-500">Os dados completos do cartão não são armazenados pelo Star Carvalhos.</p>
       </form>

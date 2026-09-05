@@ -18,9 +18,9 @@ const baseCharge:ProviderCharge={
   subscriptionId:"sub_test",
 };
 
-test("reactivation restores ACTIVE with the next billing date required by Asaas",()=>{
+test("reactivation restores ACTIVE without rewriting the provider due date",()=>{
   const update=recurringReactivationUpdate("2026-10-02");
-  assert.deepEqual(update,{status:"ACTIVE",nextDueDate:"2026-10-02"});
+  assert.deepEqual(update,{status:"ACTIVE"});
 });
 
 test("only future PENDING credit card recurring charges are cancelable",()=>{
