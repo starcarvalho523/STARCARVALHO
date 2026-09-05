@@ -146,6 +146,8 @@ export async function activateMonthlyRenewalWithNativeCard(subscriptionId:string
     assertProviderSubscription(providerSubscription,setup);
   }
 
+  await assertInitialRecurringCharge(providerSubscription,setup);
+
   const admin=createAdminClient();
   const now=new Date().toISOString();
   const{error:bindingError}=await admin.from("monthly_recurring_provider_bindings").upsert({
@@ -192,6 +194,21 @@ async function resolveCanonicalProviderSubscription(setup:SetupContext){
   return null;
 }
 
+async function assertInitialRecurringCharge(subscription:ProviderRecurringSubscription,setup:SetupContext){
+  if(!setup.provider.listRecurringSubscriptionPayments)throw new Error("RENEWAL_PROVIDER_PAYMENT_LIST_UNSUPPORTED");
+  const charges=await setup.provider.listRecurringSubscriptionPayments(subscription.providerSubscriptionId);
+  const matches=charges.filter((charge)=>
+    charge.subscriptionId===subscription.providerSubscriptionId&&
+    charge.providerCustomerId===setup.providerCustomerId&&
+    charge.billingType==="CREDIT_CARD"&&
+    Number(charge.amount)===Number(setup.period.amount)&&
+    charge.dueDate===setup.nextBillingDate&&
+    charge.externalReference===setup.externalReference&&
+    ["PENDING","CONFIRMED"].includes(charge.providerStatus)
+  );
+  if(matches.length!==1)throw new Error("RENEWAL_PROVIDER_INITIAL_CHARGE_MISMATCH");
+}
+
 async function resolveSetupContext(subscriptionId:string,userClient:SupabaseClient):Promise<SetupContext>{
   const{data:rawContext,error:contextError}=await userClient.rpc("get_customer_monthly_renewal_context",{target_subscription:subscriptionId});
   if(contextError)throw new Error(contextError.message);
@@ -231,7 +248,7 @@ async function resolveSetupContext(subscriptionId:string,userClient:SupabaseClie
 
 function assertProviderSubscription(subscription:ProviderRecurringSubscription,setup:SetupContext){
   const unsafeStatus=subscription.providerStatus==="INACTIVE"||subscription.providerStatus==="EXPIRED";
-  if(subscription.providerCustomerId!==setup.providerCustomerId||subscription.billingType!=="CREDIT_CARD"||subscription.cycle!=="MONTHLY"||unsafeStatus||Number(subscription.amount)!==Number(setup.period.amount)||subscription.nextDueDate!==setup.nextBillingDate||subscription.externalReference!==setup.externalReference)throw new Error("RENEWAL_PROVIDER_SUBSCRIPTION_MISMATCH");
+  if(subscription.providerCustomerId!==setup.providerCustomerId||subscription.billingType!=="CREDIT_CARD"||subscription.cycle!=="MONTHLY"||unsafeStatus||Number(subscription.amount)!==Number(setup.period.amount)||subscription.externalReference!==setup.externalReference)throw new Error("RENEWAL_PROVIDER_SUBSCRIPTION_MISMATCH");
 }
 function sleep(ms:number){return new Promise<void>((resolve)=>setTimeout(resolve,ms))}
 function addDays(value:string,days:number){const date=new Date(`${value}T12:00:00Z`);date.setUTCDate(date.getUTCDate()+days);return date.toISOString().slice(0,10)}
