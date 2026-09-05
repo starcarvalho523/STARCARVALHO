@@ -5,6 +5,7 @@ import type { PaymentProvider } from "@/lib/payments/payment-provider";
 import { isGeneratedFuturePendingCharge, recurringReactivationUpdate } from "@/lib/payments/monthly-renewal-reactivation";
 import { cleanupOrphanedHostedRenewalSetups, prepareMonthlyRenewalNativeCardSetup } from "@/lib/payments/monthly-renewal-native-card";
 import { reconcileMonthlyRenewalFromAuthenticatedPaymentEvent } from "@/lib/payments/monthly-renewal-payment-event-reconcile";
+import { classifyRenewalActionError, errorCode } from "@/lib/payments/monthly-renewal-errors";
 
 type RenewalContext={
   subscriptionId:string;
@@ -34,11 +35,12 @@ function todayInBahia(){
 }
 
 export async function POST(request:Request){
+  const attemptId=attemptIdFrom(request);
   try{
     const body=await request.json().catch(()=>({}));
     const subscriptionId=typeof body?.subscriptionId==="string"?body.subscriptionId:"";
     const action=typeof body?.action==="string"?body.action:"";
-    if(!subscriptionId||!["ENABLE","DISABLE","CANCEL_AT_PERIOD_END"].includes(action))return Response.json({error:"INVALID_RENEWAL_REQUEST"},{status:400});
+    if(!subscriptionId||!["ENABLE","DISABLE","CANCEL_AT_PERIOD_END"].includes(action))return Response.json({error:"Solicitação de renovação inválida.",code:"INVALID_RENEWAL_REQUEST",retryable:false,attemptId},{status:400});
 
     const supabase=await createClient();
     const{data,error}=await supabase.rpc("get_customer_monthly_renewal_context",{target_subscription:subscriptionId});
@@ -46,24 +48,24 @@ export async function POST(request:Request){
     const context=data as RenewalContext;
     const provider=getPaymentProvider();
 
-    if(context.renewalProvider&&context.renewalProvider!=="ASAAS")return Response.json({error:"RENEWAL_PROVIDER_UNSUPPORTED"},{status:409});
+    if(context.renewalProvider&&context.renewalProvider!=="ASAAS")return Response.json({error:"O provedor desta renovação não é compatível com esta ação.",code:"RENEWAL_PROVIDER_UNSUPPORTED",retryable:false,attemptId},{status:409});
 
     if(action==="ENABLE"){
       const{data:hasPending,error:pendingError}=await supabase.rpc("has_customer_monthly_pending_manual_payment",{target_subscription:subscriptionId});
       if(pendingError)throw new Error(pendingError.message);
-      if(hasPending===true)return Response.json({error:"Existe um pagamento manual em andamento. Conclua ou troque essa tentativa antes de reativar a renovação automática."},{status:409});
+      if(hasPending===true)return Response.json({error:"Existe um pagamento manual em andamento. Conclua ou troque essa tentativa antes de reativar a renovação automática.",code:"MANUAL_PAYMENT_PENDING",retryable:false,attemptId},{status:409});
 
       if(!context.providerSubscriptionId){
         const reconciled=await reconcileMonthlyRenewalFromAuthenticatedPaymentEvent(subscriptionId,supabase);
-        if(reconciled)return Response.json({renewal:reconciled,reconciled:true},{headers:{"cache-control":"no-store"}});
+        if(reconciled)return Response.json({renewal:reconciled,reconciled:true,attemptId},{headers:{"cache-control":"no-store"}});
 
         const cleanup=await cleanupOrphanedHostedRenewalSetups(subscriptionId,supabase);
         const setup=await prepareMonthlyRenewalNativeCardSetup(subscriptionId,supabase);
-        return Response.json({setup,cleanup},{headers:{"cache-control":"no-store"}});
+        return Response.json({setup,cleanup,attemptId},{headers:{"cache-control":"no-store"}});
       }
 
-      if(!context.nextBillingDate||!provider.updateRecurringSubscription||!provider.listRecurringSubscriptionPayments)return Response.json({error:"RENEWAL_NOT_READY"},{status:409});
-      if(context.nextBillingDate<=todayInBahia())return Response.json({error:"A próxima cobrança precisa estar em uma data futura para reativar a renovação automática."},{status:409});
+      if(!context.nextBillingDate||!provider.updateRecurringSubscription||!provider.listRecurringSubscriptionPayments)return Response.json({error:"A renovação ainda não está pronta para esta alteração.",code:"RENEWAL_NOT_READY",retryable:false,attemptId},{status:409});
+      if(context.nextBillingDate<=todayInBahia())return Response.json({error:"A próxima cobrança precisa estar em uma data futura para reativar a renovação automática.",code:"INVALID_NEXT_DUE_DATE",retryable:false,attemptId},{status:409});
 
       await cancelGeneratedFuturePendingCharges(provider,context.providerSubscriptionId,context.nextBillingDate);
       await provider.updateRecurringSubscription(context.providerSubscriptionId,recurringReactivationUpdate(context.nextBillingDate));
@@ -72,10 +74,10 @@ export async function POST(request:Request){
         try{
           await provider.updateRecurringSubscription(context.providerSubscriptionId,{status:"INACTIVE"});
           await cancelGeneratedFuturePendingCharges(provider,context.providerSubscriptionId,context.nextBillingDate);
-        }catch(rollbackError){console.error("MONTHLY_RENEWAL_ENABLE_ROLLBACK_FAILED",{code:rollbackError instanceof Error?rollbackError.message.slice(0,100):"UNKNOWN"})}
+        }catch(rollbackError){console.error("MONTHLY_RENEWAL_ENABLE_ROLLBACK_FAILED",{attemptId,code:errorCode(rollbackError).slice(0,100)})}
         throw new Error(updateError.message);
       }
-      return Response.json({renewal:updated});
+      return Response.json({renewal:updated,attemptId});
     }
 
     if(action==="DISABLE"){
@@ -86,11 +88,11 @@ export async function POST(request:Request){
       const{data:updated,error:updateError}=await supabase.rpc("set_customer_monthly_auto_renew",{target_subscription:subscriptionId,target_enabled:false});
       if(updateError){
         if(context.providerSubscriptionId&&context.nextBillingDate&&provider.updateRecurringSubscription){
-          try{await provider.updateRecurringSubscription(context.providerSubscriptionId,recurringReactivationUpdate(context.nextBillingDate))}catch(rollbackError){console.error("MONTHLY_RENEWAL_DISABLE_ROLLBACK_FAILED",{code:rollbackError instanceof Error?rollbackError.message.slice(0,100):"UNKNOWN"})}
+          try{await provider.updateRecurringSubscription(context.providerSubscriptionId,recurringReactivationUpdate(context.nextBillingDate))}catch(rollbackError){console.error("MONTHLY_RENEWAL_DISABLE_ROLLBACK_FAILED",{attemptId,code:errorCode(rollbackError).slice(0,100)})}
         }
         throw new Error(updateError.message);
       }
-      return Response.json({renewal:updated});
+      return Response.json({renewal:updated,attemptId});
     }
 
     if(context.providerSubscriptionId&&provider.cancelRecurringSubscription)await provider.cancelRecurringSubscription(context.providerSubscriptionId);
@@ -106,15 +108,15 @@ export async function POST(request:Request){
       if(bindingError)throw new Error(`RENEWAL_BINDING_CANCEL_${bindingError.message}`);
     }
 
-    return Response.json({renewal:updated});
+    return Response.json({renewal:updated,attemptId});
   }catch(error){
-    const code=error instanceof Error?error.message:"UNKNOWN_ERROR";
-    console.error("MONTHLY_RENEWAL_ACTION_FAILED",{code:code.slice(0,100)});
-    if(code.includes("invalid_nextDueDate"))return Response.json({error:"A próxima cobrança informada não é válida para reativação. Escolha uma data futura."},{status:409});
-    if(code.includes("CUSTOMER_BILLING_DOCUMENT_REQUIRED"))return Response.json({error:"Para ativar a renovação automática, complete seu CPF/CNPJ em Minha conta."},{status:409});
-    if(code.includes("RENEWAL_PAID_COVERAGE_REQUIRED"))return Response.json({error:"É necessário ter um ciclo pago antes de ativar a renovação automática."},{status:409});
-    if(code.includes("RENEWAL_ORPHAN_REVIEW_REQUIRED"))return Response.json({error:"Encontramos uma tentativa anterior de cartão que exige revisão antes de criar outra recorrência."},{status:409});
-    if(code.includes("RENEWAL_EVENT_RECONCILIATION_AMBIGUOUS")||code.includes("RENEWAL_EVENT_PROVIDER_SUBSCRIPTION_ALREADY_BOUND"))return Response.json({error:"Encontramos mais de uma recorrência candidata e bloqueamos a ativação para revisão."},{status:409});
-    return Response.json({error:"Não foi possível atualizar a renovação agora."},{status:503});
+    const policy=classifyRenewalActionError(error);
+    console.error("MONTHLY_RENEWAL_ACTION_FAILED",{attemptId,code:errorCode(error).slice(0,100),publicCode:policy.code,status:policy.status});
+    return Response.json({error:policy.message,code:policy.code,retryable:policy.retryable,attemptId},{status:policy.status});
   }
+}
+
+function attemptIdFrom(request:Request){
+  const provided=request.headers.get("x-renewal-attempt-id")?.trim();
+  return provided&&/^[A-Za-z0-9_-]{8,64}$/.test(provided)?provided:crypto.randomUUID();
 }
