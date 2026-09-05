@@ -34,6 +34,9 @@ export function PixPaymentPanel({ sessionId, billingPeriodId, resumeExisting=fal
   const [copied, setCopied] = useState(false);
   const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const monthly=Boolean(billingPeriodId);
+  const providerLabel=monthly?"Asaas":"Efí";
+  const contextLabel=monthly?"Mensalidade":"Estadia";
 
   const readResponse = useCallback(async (response: Response) => {
     const body = (await response.json().catch(() => ({}))) as PixResponse;
@@ -64,7 +67,6 @@ export function PixPaymentPanel({ sessionId, billingPeriodId, resumeExisting=fal
     expiring.current=false;
     if(billingPeriodId)onSwitchStart?.();
     try {
-      const monthly=Boolean(billingPeriodId);
       const parsed=await readResponse(await fetch(monthly?"/api/payments/monthly/pix":"/api/payments/efi-pix", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -76,12 +78,11 @@ export function PixPaymentPanel({ sessionId, billingPeriodId, resumeExisting=fal
     } finally {
       setLoading(false);
     }
-  },[billingPeriodId,onSwitchReady,onSwitchStart,readResponse,sessionId]);
+  },[billingPeriodId,monthly,onSwitchReady,onSwitchStart,readResponse,sessionId]);
 
   const refreshCharge = useCallback(async (silent = false) => {
     if (!silent) setRefreshing(true);
     try {
-      const monthly = Boolean(billingPeriodId);
       if (monthly) {
         await readResponse(await fetch(`/api/payments/monthly/pix?billingPeriodId=${encodeURIComponent(billingPeriodId ?? "")}`, { cache: "no-store" }));
       } else {
@@ -92,7 +93,7 @@ export function PixPaymentPanel({ sessionId, billingPeriodId, resumeExisting=fal
     } finally {
       if (!silent) setRefreshing(false);
     }
-  }, [billingPeriodId,readResponse, sessionId]);
+  }, [billingPeriodId,monthly,readResponse, sessionId]);
 
   const expireMonthlyCharge = useCallback(async () => {
     if (!billingPeriodId || expiring.current) return;
@@ -154,8 +155,9 @@ export function PixPaymentPanel({ sessionId, billingPeriodId, resumeExisting=fal
     return <div>
       <button type="button" onClick={resumeExisting?()=>void refreshCharge():()=>void createCharge()} disabled={loading||refreshing} className="flex h-16 w-full items-center justify-center gap-2 rounded-xl border border-emerald-200 font-bold text-emerald-700 hover:bg-emerald-50 disabled:opacity-50">
         {loading||refreshing ? <LoaderCircle className="size-5 animate-spin" /> : <QrCode className="size-5" />}
-        {loading||refreshing ? "Trocando para PIX..." : resumeExisting ? "Continuar PIX" : "PIX"}
+        {loading||refreshing ? "Preparando PIX..." : resumeExisting ? "Continuar PIX" : "PIX"}
       </button>
+      <p className="mt-1.5 text-center text-[11px] font-semibold text-slate-500">{contextLabel} via {providerLabel}</p>
       {error ? <p role="alert" className="mt-2 text-xs font-semibold text-red-600">{error}</p> : null}
     </div>;
   }
@@ -169,7 +171,7 @@ export function PixPaymentPanel({ sessionId, billingPeriodId, resumeExisting=fal
   const statusLabel=isPaid ? "Pago" : isTerminal ? (charge.state === "EXPIRED" ? "PIX expirado" : "Cobrança indisponível") : charge.state === "RECONCILING" ? "Confirmando pagamento" : "Aguardando pagamento";
   return <section className="space-y-4 rounded-2xl border border-emerald-200 bg-emerald-50/50 p-4 sm:col-span-3 sm:p-5">
     <div className="flex flex-wrap items-start justify-between gap-3">
-      <div><h3 className="text-lg font-bold">Pagamento via PIX</h3><p className="mt-1 text-2xl font-bold text-emerald-700">{formatMoney(charge.amount)}</p></div>
+      <div><h3 className="text-lg font-bold">Pagamento via PIX</h3><p className="text-xs font-semibold text-slate-500">{contextLabel} processada via {providerLabel}</p><p className="mt-1 text-2xl font-bold text-emerald-700">{formatMoney(charge.amount)}</p></div>
       <span className={`rounded-full px-3 py-1 text-xs font-bold ${isPaid ? "bg-emerald-100 text-emerald-700" : isTerminal ? "bg-slate-200 text-slate-700" : "bg-amber-100 text-amber-800"}`}>{statusLabel}</span>
     </div>
     {!isPaid && !isTerminal ? <div className="grid gap-4 md:grid-cols-[200px_1fr]"><div className="grid min-h-48 place-items-center rounded-xl border bg-white p-3">{imageSource ? <Image unoptimized src={imageSource} alt="QR Code para pagamento PIX" width={184} height={184} className="size-44" /> : <p className="text-center text-xs text-slate-500">QR Code indisponível para esta cobrança.</p>}</div><div className="min-w-0 space-y-3"><div><label htmlFor={`pix-code-${sessionId??billingPeriodId}`} className="text-xs font-semibold text-slate-600">Código PIX Copia e Cola</label><textarea id={`pix-code-${sessionId??billingPeriodId}`} readOnly value={charge.qrCodePayload ?? ""} rows={5} className="mt-1 w-full resize-none rounded-xl border bg-white p-3 text-xs outline-none" /></div><button type="button" onClick={copyPayload} disabled={!charge.qrCodePayload} className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 text-sm font-bold text-white disabled:opacity-50">{copied ? <Check className="size-4" /> : <Copy className="size-4" />}{copied ? "Código copiado" : "Copiar código PIX"}</button>{billingPeriodId&&remainingSeconds!==null?<p className={`text-sm font-bold ${remainingSeconds<=60?"text-amber-700":"text-slate-700"}`}>Expira em {formatCountdown(remainingSeconds)}</p>:charge.expiresAt?<p className="text-xs text-slate-600">Preparando contagem de 5 minutos...</p>:null}</div></div> : null}
