@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getPaymentProvider } from "./provider-factory";
 import type { CreateRecurringCardSubscriptionInput, PaymentProvider, ProviderRecurringSubscription } from "./payment-provider";
+import { isAmbiguousRecurringCreationError } from "./monthly-renewal-errors";
 
 type RenewalContext={
   subscriptionId:string;
@@ -133,8 +134,7 @@ export async function activateMonthlyRenewalWithNativeCard(subscriptionId:string
         creditCardHolderInfo:payload.creditCardHolderInfo,
       });
     }catch(error){
-      const code=error instanceof Error?error.message:"UNKNOWN_ERROR";
-      if(code!=="ASAAS_RECURRING_SUBSCRIPTION_MISMATCH"&&code!=="RENEWAL_PROVIDER_SUBSCRIPTION_MISMATCH")throw error;
+      if(!isAmbiguousRecurringCreationError(error))throw error;
       creationError=error;
     }
 
@@ -146,7 +146,7 @@ export async function activateMonthlyRenewalWithNativeCard(subscriptionId:string
     assertProviderSubscription(providerSubscription,setup);
   }
 
-  await assertInitialRecurringCharge(providerSubscription,setup);
+  await waitForInitialRecurringCharge(providerSubscription,setup);
 
   const admin=createAdminClient();
   const now=new Date().toISOString();
@@ -185,28 +185,43 @@ export async function activateMonthlyRenewalWithNativeCard(subscriptionId:string
 
 async function resolveCanonicalProviderSubscription(setup:SetupContext){
   if(!setup.provider.findRecurringSubscriptionByExternalReference)return null;
-  const delays=[0,200,500,1000,2000];
+  const delays=[0,200,500,1000,2000,3500];
   for(const delay of delays){
     if(delay>0)await sleep(delay);
-    const candidate=await setup.provider.findRecurringSubscriptionByExternalReference(setup.externalReference);
-    if(candidate)return candidate;
+    try{
+      const candidate=await setup.provider.findRecurringSubscriptionByExternalReference(setup.externalReference);
+      if(candidate)return candidate;
+    }catch(error){
+      if(!isAmbiguousRecurringCreationError(error))throw error;
+    }
   }
   return null;
 }
 
-async function assertInitialRecurringCharge(subscription:ProviderRecurringSubscription,setup:SetupContext){
+async function waitForInitialRecurringCharge(subscription:ProviderRecurringSubscription,setup:SetupContext){
   if(!setup.provider.listRecurringSubscriptionPayments)throw new Error("RENEWAL_PROVIDER_PAYMENT_LIST_UNSUPPORTED");
-  const charges=await setup.provider.listRecurringSubscriptionPayments(subscription.providerSubscriptionId);
-  const matches=charges.filter((charge)=>
-    charge.subscriptionId===subscription.providerSubscriptionId&&
-    charge.providerCustomerId===setup.providerCustomerId&&
-    charge.billingType==="CREDIT_CARD"&&
-    Number(charge.amount)===Number(setup.period.amount)&&
-    charge.dueDate===setup.nextBillingDate&&
-    charge.externalReference===setup.externalReference&&
-    ["PENDING","CONFIRMED"].includes(charge.providerStatus)
-  );
-  if(matches.length!==1)throw new Error("RENEWAL_PROVIDER_INITIAL_CHARGE_MISMATCH");
+  const delays=[0,200,500,1000,2000,3500];
+  for(const delay of delays){
+    if(delay>0)await sleep(delay);
+    try{
+      const charges=await setup.provider.listRecurringSubscriptionPayments(subscription.providerSubscriptionId);
+      const matches=charges.filter((charge)=>
+        charge.subscriptionId===subscription.providerSubscriptionId&&
+        charge.providerCustomerId===setup.providerCustomerId&&
+        charge.billingType==="CREDIT_CARD"&&
+        Number(charge.amount)===Number(setup.period.amount)&&
+        charge.dueDate===setup.nextBillingDate&&
+        charge.externalReference===setup.externalReference&&
+        ["PENDING","CONFIRMED"].includes(charge.providerStatus)
+      );
+      if(matches.length===1)return;
+      if(matches.length>1)throw new Error("RENEWAL_PROVIDER_INITIAL_CHARGE_MISMATCH");
+    }catch(error){
+      if(error instanceof Error&&error.message==="RENEWAL_PROVIDER_INITIAL_CHARGE_MISMATCH")throw error;
+      if(!isAmbiguousRecurringCreationError(error))throw error;
+    }
+  }
+  throw new Error("RENEWAL_PROVIDER_INITIAL_CHARGE_NOT_READY");
 }
 
 async function resolveSetupContext(subscriptionId:string,userClient:SupabaseClient):Promise<SetupContext>{
