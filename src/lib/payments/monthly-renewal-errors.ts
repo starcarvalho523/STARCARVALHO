@@ -1,5 +1,3 @@
-import { AsaasPublicError } from "./asaas-provider";
-
 export type RenewalHttpError={
   status:number;
   code:string;
@@ -7,19 +5,22 @@ export type RenewalHttpError={
   retryable:boolean;
 };
 
+type AsaasErrorLike=Error&{status:number;publicCode?:string|null;publicDescription?:string|null};
+
 export function classifyCardActivationError(error:unknown):RenewalHttpError{
   const code=errorCode(error);
+  const asaas=asAsaasError(error);
 
-  if(error instanceof AsaasPublicError){
-    if(error.status===400){
-      const detail=`${error.publicCode??""} ${error.publicDescription??""}`.toLowerCase();
+  if(asaas){
+    if(asaas.status===400){
+      const detail=`${asaas.publicCode??""} ${asaas.publicDescription??""}`.toLowerCase();
       const isCardSpecific=/credit.?card|cart[aã]o|cvv|ccv|security.?code|expiry|expiration|validade|holder|titular/.test(detail);
       if(isCardSpecific)return{status:400,code:"CARD_DATA_REJECTED",message:"O Asaas recusou os dados do cartão. Confira os dados do cartão e do titular antes de tentar novamente.",retryable:false};
       return{status:422,code:"PROVIDER_REQUEST_REJECTED",message:"O Asaas rejeitou os dados da solicitação antes de concluir a autorização. O cartão não foi classificado como recusado.",retryable:false};
     }
-    if(error.status===429)return{status:503,code:"PROVIDER_RATE_LIMITED",message:"O Asaas está temporariamente limitando novas solicitações. Aguarde um momento; não envie o cartão repetidamente.",retryable:true};
-    if(error.status>=500)return{status:503,code:"PROVIDER_UNAVAILABLE",message:"O Asaas está temporariamente indisponível. A solicitação não será repetida automaticamente.",retryable:true};
-    if(error.status===401||error.status===403)return{status:502,code:"PROVIDER_AUTH_CONFIGURATION",message:"A integração de pagamentos precisa de revisão administrativa. Não tente reenviar o cartão agora.",retryable:false};
+    if(asaas.status===429)return{status:503,code:"PROVIDER_RATE_LIMITED",message:"O Asaas está temporariamente limitando novas solicitações. Aguarde um momento; não envie o cartão repetidamente.",retryable:true};
+    if(asaas.status>=500)return{status:503,code:"PROVIDER_UNAVAILABLE",message:"O Asaas está temporariamente indisponível. A solicitação não será repetida automaticamente.",retryable:true};
+    if(asaas.status===401||asaas.status===403)return{status:502,code:"PROVIDER_AUTH_CONFIGURATION",message:"A integração de pagamentos precisa de revisão administrativa. Não tente reenviar o cartão agora.",retryable:false};
   }
 
   if(includesAny(code,["CUSTOMER_BILLING_DOCUMENT_REQUIRED"]))return{status:409,code:"BILLING_DOCUMENT_REQUIRED",message:"Complete seu CPF/CNPJ em Minha conta antes de ativar a renovação.",retryable:false};
@@ -34,10 +35,11 @@ export function classifyCardActivationError(error:unknown):RenewalHttpError{
 
 export function classifyRenewalActionError(error:unknown):RenewalHttpError{
   const code=errorCode(error);
-  if(error instanceof AsaasPublicError){
-    if(error.status===429)return{status:503,code:"PROVIDER_RATE_LIMITED",message:"O Asaas está temporariamente limitando solicitações. Aguarde um momento e atualize a página.",retryable:true};
-    if(error.status>=500)return{status:503,code:"PROVIDER_UNAVAILABLE",message:"O Asaas está temporariamente indisponível. Tente novamente mais tarde.",retryable:true};
-    if(error.status>=400)return{status:409,code:"PROVIDER_ACTION_REJECTED",message:"O Asaas rejeitou esta alteração de renovação. O estado anterior foi preservado.",retryable:false};
+  const asaas=asAsaasError(error);
+  if(asaas){
+    if(asaas.status===429)return{status:503,code:"PROVIDER_RATE_LIMITED",message:"O Asaas está temporariamente limitando solicitações. Aguarde um momento e atualize a página.",retryable:true};
+    if(asaas.status>=500)return{status:503,code:"PROVIDER_UNAVAILABLE",message:"O Asaas está temporariamente indisponível. Tente novamente mais tarde.",retryable:true};
+    if(asaas.status>=400)return{status:409,code:"PROVIDER_ACTION_REJECTED",message:"O Asaas rejeitou esta alteração de renovação. O estado anterior foi preservado.",retryable:false};
   }
   if(code.includes("invalid_nextDueDate"))return{status:409,code:"INVALID_NEXT_DUE_DATE",message:"A próxima cobrança informada não é válida para reativação.",retryable:false};
   if(code.includes("CUSTOMER_BILLING_DOCUMENT_REQUIRED"))return{status:409,code:"BILLING_DOCUMENT_REQUIRED",message:"Para ativar a renovação automática, complete seu CPF/CNPJ em Minha conta.",retryable:false};
@@ -47,10 +49,16 @@ export function classifyRenewalActionError(error:unknown):RenewalHttpError{
 }
 
 export function isAmbiguousRecurringCreationError(error:unknown){
-  if(error instanceof AsaasPublicError)return error.status>=500||error.status===429;
+  const asaas=asAsaasError(error);
+  if(asaas)return asaas.status>=500||asaas.status===429;
   const code=errorCode(error);
   return includesAny(code,["ASAAS_RECURRING_SUBSCRIPTION_MISMATCH","RENEWAL_PROVIDER_SUBSCRIPTION_MISMATCH","TimeoutError","AbortError"]);
 }
 
 export function errorCode(error:unknown){return error instanceof Error?error.message:"UNKNOWN_ERROR"}
 function includesAny(value:string,needles:string[]){return needles.some((needle)=>value.includes(needle))}
+function asAsaasError(error:unknown):AsaasErrorLike|null{
+  if(!(error instanceof Error)||error.name!=="AsaasPublicError")return null;
+  const candidate=error as Partial<AsaasErrorLike>;
+  return typeof candidate.status==="number"?candidate as AsaasErrorLike:null;
+}
