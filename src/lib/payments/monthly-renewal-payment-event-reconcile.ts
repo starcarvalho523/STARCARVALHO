@@ -61,7 +61,9 @@ export async function reconcileMonthlyRenewalFromAuthenticatedPaymentEvent(subsc
 
   const expectedAmount=Number(period.amount);
   const expectedNextBillingDate=addDays(String(period.period_end),1);
-  const expectedExternalReference=`starcarvalhos:monthly-renewal:${subscriptionId}`;
+  const shortSubscriptionId=subscriptionId.replace(/-/g,"");
+  const shortPeriodId=String(period.id).replace(/-/g,"");
+  const expectedExternalReference=`sc:mr:${shortSubscriptionId}:${shortPeriodId}`;
   const since=new Date(Date.now()-72*60*60*1000).toISOString();
   const{data:events,error:eventsError}=await admin.rpc("list_ignored_monthly_renewal_events",{target_since:since});
   if(eventsError)throw new Error(`RENEWAL_EVENT_LOOKUP_${eventsError.message}`);

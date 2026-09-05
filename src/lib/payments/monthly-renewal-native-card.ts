@@ -224,7 +224,9 @@ async function resolveSetupContext(subscriptionId:string,userClient:SupabaseClie
   const amount=Number(period.amount);
   if(!Number.isFinite(amount)||amount<=0)throw new Error("RENEWAL_INVALID_AMOUNT");
   const nextBillingDate=addDays(String(period.period_end),1);
-  return{context,period:{id:String(period.id),amount,period_end:String(period.period_end)},provider,customer,providerCustomerId,nextBillingDate,externalReference:`starcarvalhos:monthly-renewal:${subscriptionId}:${period.id}`};
+  const shortSubscriptionId=subscriptionId.replace(/-/g,"");
+  const shortPeriodId=String(period.id).replace(/-/g,"");
+  return{context,period:{id:String(period.id),amount,period_end:String(period.period_end)},provider,customer,providerCustomerId,nextBillingDate,externalReference:`sc:mr:${shortSubscriptionId}:${shortPeriodId}`};
 }
 
 function assertProviderSubscription(subscription:ProviderRecurringSubscription,setup:SetupContext){
