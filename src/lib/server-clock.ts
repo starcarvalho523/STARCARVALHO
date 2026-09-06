@@ -5,3 +5,7 @@ export function daysAgoIso(days: number, now = new Date()) {
   result.setUTCDate(result.getUTCDate() - Math.max(0, days));
   return result.toISOString();
 }
+
+export function todayIsoDate(now = new Date()) {
+  return now.toISOString().slice(0, 10);
+}
