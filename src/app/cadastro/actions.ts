@@ -3,7 +3,15 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 export type SignupState = { error?: string; success?: string };
-async function siteOrigin() { const h = await headers(); return process.env.NEXT_PUBLIC_SITE_URL ?? `${h.get("x-forwarded-proto") ?? "http"}://${h.get("host") ?? "localhost:3000"}`; }
+async function siteOrigin() {
+  const configured = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+  if (configured) return new URL(configured).origin;
+  if (process.env.VERCEL_ENV === "production") throw new Error("SITE_URL_NOT_CONFIGURED");
+  const h = await headers();
+  const proto = h.get("x-forwarded-proto") === "https" ? "https" : "http";
+  const host = h.get("host") ?? "localhost:3000";
+  return new URL(`${proto}://${host}`).origin;
+}
 export async function signup(_: SignupState, formData: FormData): Promise<SignupState> {
   const fullName = String(formData.get("fullName") ?? "").trim(); const email = String(formData.get("email") ?? "").trim().toLowerCase(); const password = String(formData.get("password") ?? ""); const confirm = String(formData.get("confirm") ?? "");
   if (fullName.length < 2 || !email.includes("@") || password.length < 8) return { error: "Preencha nome, e-mail válido e senha com pelo menos 8 caracteres." };
