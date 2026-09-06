@@ -2,6 +2,7 @@ import { BarChart3, BriefcaseBusiness, Building2, CarFront, CircleDollarSign, Ga
 import { getMonthlyAccess, money } from "@/lib/monthly-admin";
 import { createClient } from "@/lib/supabase/server";
 import { commercialSummary } from "@/lib/ceo-commercial-analytics";
+import { daysAgoIso } from "@/lib/server-clock";
 import { createBusinessContract, saveZone } from "./actions";
 
 const pct = (value: number) => `${value.toFixed(1).replace(".", ",")}%`;
@@ -11,7 +12,7 @@ export default async function StrategyPage({ searchParams }: { searchParams: Pro
   const params = await searchParams;
   const { unitIds, manageableUnitIds } = await getMonthlyAccess();
   const supabase = await createClient();
-  const since = new Date(Date.now() - 30 * 86400000).toISOString();
+  const since = daysAgoIso(30);
 
   const [unitsQ,zonesQ,sessionsQ,paymentsQ,subscriptionsQ,demandQ,businessQ] = await Promise.all([
     supabase.from("parking_units").select("id,name,capacity").in("id",unitIds),
