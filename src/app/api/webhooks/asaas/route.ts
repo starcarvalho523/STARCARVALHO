@@ -5,6 +5,7 @@ import { isAsaasPixAutomaticEvent } from "@/lib/payments/asaas-recurring-events"
 import { processAsaasPixAutomaticWebhook } from "@/lib/payments/asaas-pix-automatic-webhook";
 import { processAsaasPixAutomaticInitialPaymentWebhook } from "@/lib/payments/asaas-pix-automatic-initial-payment";
 import { tryProcessMonthlyRenewalCardSetupSubscriptionWebhook } from "@/lib/payments/monthly-renewal-card-setup";
+import { nextUngeneratedThirtyDayDueDate } from "@/lib/payments/recurring-30-day-schedule";
 import type { PaymentProvider, ProviderWebhookEvent } from "@/lib/payments/payment-provider";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -45,8 +46,8 @@ export async function POST(request: Request) {
     } else if (eventName.startsWith("CHECKOUT_")) {
       await service.processCheckoutWebhook(provider.parseCheckoutWebhook(payload));
     } else if (eventName.startsWith("SUBSCRIPTION_")) {
-      const renewalSetupHandled=await tryProcessMonthlyRenewalCardSetupSubscriptionWebhook(payload,provider.environment);
-      if(!renewalSetupHandled)await service.processSubscriptionWebhook(payload);
+      const renewalSetupHandled = await tryProcessMonthlyRenewalCardSetupSubscriptionWebhook(payload, provider.environment);
+      if (!renewalSetupHandled) await service.processSubscriptionWebhook(payload);
     } else {
       const initial = await processAsaasPixAutomaticInitialPaymentWebhook(payload, provider.environment);
       if (!initial.handled) {
@@ -111,6 +112,14 @@ async function tryProcessMonthlyRecurringCardPayment(event: ProviderWebhookEvent
   }
 
   const admin = createAdminClient();
+  const { data: ensuredPeriodId, error: ensureError } = await admin.rpc("ensure_asaas_recurring_billing_period", {
+    target_provider_subscription_id: event.subscriptionId,
+    target_due_date: snapshot.dueDate,
+    target_amount: reportedAmount,
+  });
+  if (ensureError) throw new Error(`ASAAS_RECURRING_PERIOD_RPC_${ensureError.message}`);
+  if (ensuredPeriodId === null) return false;
+
   const { data, error } = await admin.rpc("process_asaas_monthly_recurring_payment_webhook", {
     event_id: event.id,
     event_type: event.type,
@@ -134,7 +143,7 @@ async function tryProcessMonthlyRecurringCardPayment(event: ProviderWebhookEvent
 
   const handled = String(data ?? "") !== "NOT_BOUND";
   if (handled && event.type === "PAYMENT_CONFIRMED") {
-    await alignRecurringProviderSchedule(event.subscriptionId, provider);
+    await alignRecurringProviderSchedule(event.subscriptionId, snapshot.dueDate, provider);
   }
   return handled;
 }
@@ -148,6 +157,7 @@ async function bindInitialMonthlyRecurringCardFromPayment(event: ProviderWebhook
     snapshot.billingType !== "CREDIT_CARD" ||
     !snapshot.checkoutId ||
     !snapshot.providerCustomerId ||
+    !snapshot.dueDate ||
     Number(snapshot.amount) <= 0
   ) throw new Error("ASAAS_INITIAL_RECURRING_BIND_CORRELATION_MISMATCH");
 
@@ -164,31 +174,34 @@ async function bindInitialMonthlyRecurringCardFromPayment(event: ProviderWebhook
 
   const result = data && typeof data === "object" ? data as { result?: unknown } : null;
   if (result?.result !== "bound") throw new Error("ASAAS_INITIAL_RECURRING_BIND_UNRESOLVED");
-  await alignRecurringProviderSchedule(event.subscriptionId, provider);
+  await alignRecurringProviderSchedule(event.subscriptionId, snapshot.dueDate, provider);
 }
 
-async function alignRecurringProviderSchedule(providerSubscriptionId:string, provider:PaymentProvider) {
-  if (!provider.updateRecurringSubscription) return;
-  const admin=createAdminClient();
-  const { data:binding,error:bindingError }=await admin
-    .from("monthly_recurring_provider_bindings")
-    .select("subscription_id")
-    .eq("provider","ASAAS")
-    .eq("method","CREDIT_CARD")
-    .eq("provider_subscription_id",providerSubscriptionId)
-    .maybeSingle();
-  if(bindingError||!binding?.subscription_id)throw new Error("ASAAS_RECURRING_BINDING_NOT_FOUND");
+async function alignRecurringProviderSchedule(providerSubscriptionId: string, confirmedDueDate: string, provider: PaymentProvider) {
+  if (!provider.updateRecurringSubscription || !provider.listRecurringSubscriptionPayments) return;
 
-  const { data:subscription,error:subscriptionError }=await admin
-    .from("monthly_subscriptions")
-    .select("next_billing_date")
-    .eq("id",binding.subscription_id)
-    .maybeSingle();
-  if(subscriptionError||!subscription?.next_billing_date)throw new Error("ASAAS_RECURRING_NEXT_BILLING_DATE_REQUIRED");
+  const admin = createAdminClient();
+  const { data: reconciledNextDueDate, error: reconciliationError } = await admin.rpc(
+    "reconcile_asaas_recurring_30_day_schedule",
+    {
+      target_provider_subscription_id: providerSubscriptionId,
+      confirmed_due_date: confirmedDueDate,
+    },
+  );
+  if (reconciliationError || typeof reconciledNextDueDate !== "string") {
+    throw new Error("ASAAS_RECURRING_30_DAY_RECONCILIATION_FAILED");
+  }
 
-  await provider.updateRecurringSubscription(providerSubscriptionId,{
-    status:"ACTIVE",
-    nextDueDate:String(subscription.next_billing_date),
-    updatePendingPayments:true,
+  const generatedPayments = await provider.listRecurringSubscriptionPayments(providerSubscriptionId);
+  const providerNextDueDate = nextUngeneratedThirtyDayDueDate(
+    reconciledNextDueDate,
+    generatedPayments.map((payment) => payment.dueDate),
+    new Date().toISOString().slice(0, 10),
+  );
+
+  await provider.updateRecurringSubscription(providerSubscriptionId, {
+    status: "ACTIVE",
+    nextDueDate: providerNextDueDate,
+    updatePendingPayments: false,
   });
 }
