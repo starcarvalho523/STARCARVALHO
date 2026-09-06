@@ -80,6 +80,12 @@ export function isAuthorizedOrigin(request: Request, env: NodeJS.ProcessEnv = pr
 }
 
 function getSourceIp(headers: Headers): string | null {
+  // Vercel overwrites this header at the platform edge, so prefer it over the
+  // generic forwarding chain. Keep x-forwarded-for/x-real-ip only as a
+  // compatibility fallback for local/test environments.
+  const vercelForwarded = headers.get("x-vercel-forwarded-for");
+  if (vercelForwarded) return vercelForwarded.split(",")[0]?.trim() || null;
+
   const forwarded = headers.get("x-forwarded-for");
   if (forwarded) return forwarded.split(",")[0]?.trim() || null;
   return headers.get("x-real-ip")?.trim() || null;
