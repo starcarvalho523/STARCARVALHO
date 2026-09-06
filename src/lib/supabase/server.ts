@@ -1,13 +1,14 @@
 import { createServerClient } from "@supabase/ssr";
-import { cookies, headers } from "next/headers";
+import { cookies } from "next/headers";
 import { getSupabaseEnvironment } from "./env";
 
 export async function createClient() {
   const cookieStore = await cookies();
-  const requestHeaders = await headers();
-  const hostname =
-    requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host") ?? undefined;
-  const { url, publishableKey } = getSupabaseEnvironment(hostname);
+  // Server-side database selection must depend on trusted deployment metadata,
+  // never on Host/X-Forwarded-Host supplied by an incoming request.
+  const runtimeHostname =
+    process.env.VERCEL_ENV === "preview" ? "preview.vercel.app" : undefined;
+  const { url, publishableKey } = getSupabaseEnvironment(runtimeHostname);
 
   return createServerClient(url, publishableKey, {
     cookies: {
