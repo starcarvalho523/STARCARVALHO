@@ -1,10 +1,11 @@
-import { Bell, Building2, CircleHelp, FileSearch, FileText, Handshake, Home, MonitorSmartphone, Settings, Tags, UserRoundCheck, Users, WalletCards } from "lucide-react";
+import { Bell, Building2, CircleHelp, FileSearch, FileText, Handshake, Home, MonitorSmartphone, Settings, Tags, TrendingUp, UserRoundCheck, Users, WalletCards } from "lucide-react";
 import type { NavItem } from "@/components/dashboard-shell";
 
 const adminRoles = ["owner", "manager"];
 
 export const ceoNav: NavItem[] = [
   {label:"Painel do CEO",href:"/ceo",icon:Home,group:"Visão",allowedRoles:adminRoles},
+  {label:"Estratégia",href:"/ceo/estrategia",icon:TrendingUp,allowedRoles:adminRoles},
   {label:"Unidades",href:"/ceo/unidades",icon:Building2,group:"Gestão",allowedRoles:adminRoles},
   {label:"Financeiro",href:"/ceo/financeiro",icon:WalletCards,allowedRoles:["owner","finance"]},
   {label:"Terminais",href:"/ceo/terminais",icon:MonitorSmartphone,allowedRoles:adminRoles},
