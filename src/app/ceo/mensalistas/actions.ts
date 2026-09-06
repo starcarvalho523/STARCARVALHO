@@ -18,7 +18,9 @@ function friendly(message: string) {
   if (message.includes("MONTHLY_VEHICLE_CUSTOMER_MISMATCH")) return "O veículo não pertence ao cliente desta assinatura.";
   if (message.includes("MONTHLY_MAX_VEHICLES_REACHED")) return "O limite de veículos do plano foi atingido.";
   if (message.includes("MONTHLY_INVALID_STATUS_TRANSITION")) return "Esta alteração de status não é permitida.";
-  if (message.includes("MONTHLY_INVALID_PLAN")) return "As regras comerciais do plano são incompatíveis. Revise simultaneidade, horários e capacidade reservada.";
+  if (message.includes("GUARANTEED_PLAN_SOLD_OUT")) return "A capacidade reservada deste plano garantido já foi vendida.";
+  if (message.includes("COMMERCIAL_RESERVED_CAPACITY_EXCEEDED")) return "A capacidade comercial reservada ultrapassa as vagas físicas da unidade.";
+  if (message.includes("MONTHLY_INVALID_PLAN")) return "As regras comerciais do plano são incompatíveis. Revise dias, simultaneidade, horários e capacidade reservada.";
   return "Não foi possível concluir a operação com segurança.";
 }
 
@@ -27,20 +29,21 @@ export async function createPlan(form: FormData) {
   const unitId = text(form, "unitId");
   try {
     await requireMonthlyUnit(unitId, true);
+    const allowedWeekdays = form.getAll("allowedWeekday").map((value)=>Number(String(value))).filter((value)=>Number.isInteger(value) && value>=0 && value<=6);
     const input = {
       name: text(form, "name"), description: text(form, "description"), price: num(form, "price"),
       graceDays: num(form, "graceDays"), maxVehicles: num(form, "maxVehicles"),
       maxSimultaneous: num(form, "maxSimultaneous"), planCategory: text(form, "planCategory"),
       vehicleScope: text(form, "vehicleScope"), guaranteedSpace: checked(form, "guaranteedSpace"),
       access24h: checked(form, "access24h"), accessStart: text(form, "accessStart") || null,
-      accessEnd: text(form, "accessEnd") || null, holidaysAllowed: checked(form, "holidaysAllowed"),
-      dailyEntryLimit: optionalNum(form, "dailyEntryLimit"), cancellationNoticeDays: num(form, "cancellationNoticeDays"),
-      reservedCapacity: num(form, "reservedCapacity"),
+      accessEnd: text(form, "accessEnd") || null, allowedWeekdays,
+      holidaysAllowed: checked(form, "holidaysAllowed"), dailyEntryLimit: optionalNum(form, "dailyEntryLimit"),
+      cancellationNoticeDays: num(form, "cancellationNoticeDays"), reservedCapacity: num(form, "reservedCapacity"),
     };
-    if (input.name.length < 2 || input.price <= 0 || input.graceDays < 0 || input.graceDays > 90 || input.maxVehicles < 1 || input.maxSimultaneous < 1 || input.maxSimultaneous > input.maxVehicles || !["ECONOMIC","STANDARD","GUARANTEED","BUSINESS"].includes(input.planCategory) || !["CAR","MOTORCYCLE","BOTH"].includes(input.vehicleScope) || input.cancellationNoticeDays < 0 || input.cancellationNoticeDays > 90 || input.reservedCapacity < 0 || (!input.access24h && (!input.accessStart || !input.accessEnd))) fail("Revise as regras comerciais do plano.", path);
+    if (input.name.length < 2 || input.price <= 0 || input.graceDays < 0 || input.graceDays > 90 || input.maxVehicles < 1 || input.maxSimultaneous < 1 || input.maxSimultaneous > input.maxVehicles || input.allowedWeekdays.length === 0 || !["ECONOMIC","STANDARD","GUARANTEED","BUSINESS"].includes(input.planCategory) || !["CAR","MOTORCYCLE","BOTH"].includes(input.vehicleScope) || input.cancellationNoticeDays < 0 || input.cancellationNoticeDays > 90 || input.reservedCapacity < 0 || (!input.access24h && (!input.accessStart || !input.accessEnd))) fail("Revise as regras comerciais do plano.", path);
 
     const supabase = await createClient();
-    const { error } = await supabase.rpc("create_monthly_plan_v2", {
+    const { error } = await supabase.rpc("create_monthly_plan_v3", {
       target_unit: unitId,
       plan_name: input.name,
       plan_description: input.description,
@@ -54,6 +57,7 @@ export async function createPlan(form: FormData) {
       plan_access_24h: input.access24h,
       plan_access_start: input.accessStart,
       plan_access_end: input.accessEnd,
+      plan_allowed_weekdays: input.allowedWeekdays,
       plan_holidays_allowed: input.holidaysAllowed,
       plan_daily_entry_limit: input.dailyEntryLimit,
       plan_cancellation_notice_days: input.cancellationNoticeDays,
