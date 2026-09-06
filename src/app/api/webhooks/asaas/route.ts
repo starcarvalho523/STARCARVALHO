@@ -112,6 +112,14 @@ async function tryProcessMonthlyRecurringCardPayment(event: ProviderWebhookEvent
   }
 
   const admin = createAdminClient();
+  const { data: ensuredPeriodId, error: ensureError } = await admin.rpc("ensure_asaas_recurring_billing_period", {
+    target_provider_subscription_id: event.subscriptionId,
+    target_due_date: snapshot.dueDate,
+    target_amount: reportedAmount,
+  });
+  if (ensureError) throw new Error(`ASAAS_RECURRING_PERIOD_RPC_${ensureError.message}`);
+  if (ensuredPeriodId === null) return false;
+
   const { data, error } = await admin.rpc("process_asaas_monthly_recurring_payment_webhook", {
     event_id: event.id,
     event_type: event.type,
