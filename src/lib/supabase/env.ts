@@ -21,6 +21,10 @@ export function isVercelPreviewHost(hostname?: string | null) {
   return host.endsWith(".vercel.app") && host !== PRODUCTION_VERCEL_HOST;
 }
 
+export function isVercelPreviewRuntime(environment: NodeJS.ProcessEnv = process.env) {
+  return environment.VERCEL_ENV === "preview";
+}
+
 export function isEfiCardQaPreviewRuntime(
   environment: NodeJS.ProcessEnv = process.env,
 ) {
@@ -59,8 +63,8 @@ export function isEfiPixProductionRuntimeEnabled(
   );
 }
 
-export function getServerSupabaseEnvironment() {
-  if (isEfiCardQaPreviewRuntime() || isMonthlyAsaasQaPreviewRuntime()) {
+export function getServerSupabaseEnvironment(environment: NodeJS.ProcessEnv = process.env) {
+  if (isVercelPreviewRuntime(environment)) {
     return {
       url: QA_SUPABASE_URL,
       publishableKey: QA_SUPABASE_PUBLISHABLE_KEY,
