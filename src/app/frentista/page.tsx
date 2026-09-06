@@ -9,6 +9,7 @@ import { OperatorSessionTable } from "@/components/operator-session-table";
 import { VehicleGroupIcon } from "@/components/vehicle-type-icon";
 import { getOperatorDashboard,formatMoney } from "@/lib/operator-data";
 import { operatorNav } from "@/lib/operator-nav";
+import { recordFullDemand } from "./demand-actions";
 export const dynamic="force-dynamic";
 
 export default async function OperatorPage(){
@@ -43,19 +44,14 @@ export default async function OperatorPage(){
       </section>
 
       <section className="rounded-2xl border border-blue-100 bg-blue-50/30 p-3.5 shadow-sm sm:p-4">
-        <div className="mb-2">
-          <h2 className="font-bold text-slate-950">Nova entrada rápida</h2>
-        </div>
+        <div className="mb-2"><h2 className="font-bold text-slate-950">Nova entrada rápida</h2></div>
         <EntryForm compact carEnabled={data.has_active_car_tariff} motorcycleEnabled={data.has_active_motorcycle_tariff}/>
       </section>
 
-      {data.available_spaces===0&&<p className="rounded-xl border border-red-200 bg-red-50 p-4 font-semibold text-red-700">Estacionamento lotado. Não registre novas entradas.</p>}
+      {data.available_spaces===0&&<section className="rounded-xl border border-red-200 bg-red-50 p-4 text-red-800"><p className="font-semibold">Estacionamento lotado. Não registre novas entradas.</p><p className="mt-1 text-sm text-red-700">Quando um veículo for embora por falta de vaga, registre abaixo. Esse dado alimenta a análise de expansão do CEO.</p><div className="mt-3 flex flex-wrap gap-2"><form action={recordFullDemand}><input type="hidden" name="unitId" value={data.unit.id}/><input type="hidden" name="vehicleType" value="CAR"/><button className="rounded-lg bg-red-700 px-4 py-2 text-sm font-bold text-white hover:bg-red-800">+ 1 carro recusado</button></form><form action={recordFullDemand}><input type="hidden" name="unitId" value={data.unit.id}/><input type="hidden" name="vehicleType" value="MOTORCYCLE"/><button className="rounded-lg border border-red-300 bg-white px-4 py-2 text-sm font-bold text-red-700 hover:bg-red-100">+ 1 moto recusada</button></form></div></section>}
 
       <section className="overflow-hidden rounded-2xl border bg-white shadow-sm">
-        <div className="flex items-center justify-between border-b px-5 py-4">
-          <h2 className="font-bold">Veículos no pátio</h2>
-          <Link href="/frentista/veiculos" className="text-sm font-semibold text-blue-600">Ver todos</Link>
-        </div>
+        <div className="flex items-center justify-between border-b px-5 py-4"><h2 className="font-bold">Veículos no pátio</h2><Link href="/frentista/veiculos" className="text-sm font-semibold text-blue-600">Ver todos</Link></div>
         <OperatorSessionTable sessions={data.active_sessions} timezone={data.unit.timezone} limit={8}/>
       </section>
     </div>
