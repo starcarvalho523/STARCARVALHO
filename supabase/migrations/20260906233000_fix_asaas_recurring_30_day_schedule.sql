@@ -44,7 +44,6 @@ begin
   limit 1;
   if period_id is not null then return period_id; end if;
 
-  -- A data recebida precisa pertencer exatamente à sequência de 30 dias iniciada em starts_on.
   cycle_due:=subscription.starts_on;
   while cycle_due<target_due_date loop
     cycle_due:=private.monthly_cycle_next_date(cycle_due);
@@ -99,7 +98,8 @@ declare
   binding public.monthly_recurring_provider_bindings;
   subscription public.monthly_subscriptions;
   latest_period_due date;
-  candidate date;
+  local_next_due date;
+  provider_next_ungenerated_due date;
 begin
   if coalesce(btrim(target_provider_subscription_id),'')='' or confirmed_due_date is null then
     raise exception 'ASAAS_RECURRING_SCHEDULE_INVALID' using errcode='22023';
@@ -123,12 +123,16 @@ begin
   from public.monthly_billing_periods p
   where p.subscription_id=subscription.id;
 
-  -- A agenda local aponta para a próxima competência ainda não representada no banco.
-  -- Se o Asaas já antecipou a criação de uma competência futura, avançamos 30 dias a partir dela.
-  candidate:=private.monthly_cycle_next_date(greatest(confirmed_due_date,coalesce(latest_period_due,confirmed_due_date)));
+  -- next_billing_date representa a próxima competência local do cliente.
+  local_next_due:=private.monthly_cycle_next_date(confirmed_due_date);
+  -- O retorno representa a primeira data que ainda não está materializada como competência local;
+  -- essa é a candidata segura para configurar no Asaas quando cobranças futuras já foram geradas.
+  provider_next_ungenerated_due:=private.monthly_cycle_next_date(
+    greatest(confirmed_due_date,coalesce(latest_period_due,confirmed_due_date))
+  );
 
   update public.monthly_subscriptions
-  set next_billing_date=candidate,
+  set next_billing_date=local_next_due,
       auto_renew=true,
       preferred_payment_method='CREDIT_CARD',
       renewal_provider='ASAAS',
@@ -141,11 +145,12 @@ begin
     'subscription_id',subscription.id,
     'confirmed_due_date',confirmed_due_date,
     'latest_billing_period_due',latest_period_due,
-    'next_billing_date',candidate,
+    'local_next_billing_date',local_next_due,
+    'provider_next_ungenerated_due',provider_next_ungenerated_due,
     'cadence_days',30
   ));
 
-  return candidate;
+  return provider_next_ungenerated_due;
 end $$;
 
 revoke all on function public.ensure_asaas_recurring_billing_period(text,date,numeric) from public,anon,authenticated;
