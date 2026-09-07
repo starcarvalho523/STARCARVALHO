@@ -15,7 +15,7 @@ type Stage="SCHEDULED"|"START"|"RUNNING"|"ENDING"|"ENDED";
 
 export default async function Page(){
   const supabase=await createClient();
-  const[data,{data:planRows}]=await Promise.all([getCustomerData(),supabase.rpc("list_self_service_monthly_plans")]);
+  const[data,{data:planRows}]=await Promise.all([getCustomerData("monthly"),supabase.rpc("list_self_service_monthly_plans")]);
   const plans=(planRows??[]) as SelfServicePlan[];
   const units=[...new Set(data.monthlyPeriods.map(p=>p.monthly_subscriptions?.unit_id).filter((id):id is string=>Boolean(id)))];
   const availability=Object.fromEntries(await Promise.all(units.map(async id=>[id,await getPaymentAvailability(id)])));

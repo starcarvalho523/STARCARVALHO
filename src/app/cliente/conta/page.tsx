@@ -8,7 +8,7 @@ import { formatDateTime } from "@/lib/operator-format";
 export const dynamic="force-dynamic";
 
 export default async function Page(){
-  const data=await getCustomerData();
+  const data=await getCustomerData("account");
   return <CustomerShell name={data.profile.full_name} active="Minha conta" unreadNotifications={data.unreadNotifications}>
     <div className="space-y-5">
       <div>

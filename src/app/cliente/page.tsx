@@ -53,7 +53,7 @@ const shortcuts = [
 ];
 
 export default async function Page() {
-  const data = await getCustomerData();
+  const data = await getCustomerData("home");
   const firstName = data.profile.full_name.trim().split(/\s+/)[0] || "Cliente";
 
   return (

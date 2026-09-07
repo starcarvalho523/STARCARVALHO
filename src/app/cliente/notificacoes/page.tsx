@@ -8,7 +8,7 @@ import { formatDateTime } from "@/lib/operator-format";
 import { markAllNotificationsRead, markNotificationRead } from "./actions";
 export const dynamic = "force-dynamic";
 export default async function Page() {
-  const data = await getCustomerData();
+  const data = await getCustomerData("notifications");
   return (
     <CustomerShell
       name={data.profile.full_name}
