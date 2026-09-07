@@ -8,6 +8,7 @@ import {
   LogIn,
   LogOut,
   Maximize2,
+  Plus,
   TrendingUp,
 } from "lucide-react";
 import { DashboardShell } from "@/components/dashboard-shell";
@@ -33,7 +34,13 @@ export default async function Page({
           title="Unidades"
           description="Acompanhe capacidade, ocupação e desempenho de cada estacionamento."
         >
-          <CeoFilters units={data.units} />
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <CeoFilters units={data.units} />
+            <Link href="/ceo/unidades/nova" className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700">
+              <Plus className="size-4" />
+              Nova unidade
+            </Link>
+          </div>
         </CeoPageHeader>
 
         <div className="grid gap-4 xl:grid-cols-2">
@@ -100,7 +107,7 @@ export default async function Page({
                     href={`/ceo/unidades/${unit.id}`}
                     className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700 sm:min-w-32"
                   >
-                    Ver mais
+                    Gerenciar
                     <ChevronRight className="size-4" />
                   </Link>
                 </div>
@@ -110,9 +117,12 @@ export default async function Page({
         </div>
 
         {!data.unitSummaries.length ? (
-          <p className="rounded-2xl border border-slate-200 bg-white p-10 text-center text-sm text-slate-500 shadow-sm">
-            Nenhuma unidade autorizada encontrada.
-          </p>
+          <div className="rounded-2xl border border-slate-200 bg-white p-10 text-center shadow-sm">
+            <Building2 className="mx-auto size-10 text-slate-300" />
+            <p className="mt-3 font-semibold text-slate-700">Nenhuma unidade autorizada encontrada.</p>
+            <p className="mt-1 text-sm text-slate-500">Crie a primeira unidade para começar a operação.</p>
+            <Link href="/ceo/unidades/nova" className="mt-4 inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 text-sm font-bold text-white"><Plus className="size-4" />Nova unidade</Link>
+          </div>
         ) : null}
       </div>
     </DashboardShell>
