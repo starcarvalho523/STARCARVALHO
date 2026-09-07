@@ -5,10 +5,16 @@ export function CeoFilters({units}:{units:Array<{id:string;name:string}>}){
   const router=useRouter(),path=usePathname(),params=useSearchParams();
   function set(key:string,value:string){const next=new URLSearchParams(params);next.set(key,value);router.replace(`${path}?${next}`)}
 
-  return <div className="flex w-full max-w-[330px] items-center gap-2 rounded-2xl border border-slate-200 bg-white/80 p-2 shadow-sm sm:w-auto sm:max-w-none sm:gap-1.5">
+  return <div className="flex w-full max-w-[390px] items-center gap-2 rounded-2xl border border-slate-200 bg-white/80 p-2 shadow-sm sm:w-auto sm:max-w-none sm:gap-1.5">
     <label className="sr-only" htmlFor="ceo-period">Período</label>
-    <select id="ceo-period" value={params.get("period")??"today"} onChange={e=>set("period",e.target.value)} className="h-10 w-[94px] shrink-0 rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-50 sm:w-[100px]">
-      <option value="today">Hoje</option><option value="7">7 dias</option><option value="30">30 dias</option>
+    <select id="ceo-period" value={params.get("period")??"today"} onChange={e=>set("period",e.target.value)} className="h-10 w-[132px] shrink-0 rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-50 sm:w-[145px]">
+      <option value="today">Hoje</option>
+      <option value="7">7 dias</option>
+      <option value="30">30 dias</option>
+      <option value="90">3 meses</option>
+      <option value="180">6 meses</option>
+      <option value="365">1 ano</option>
+      <option value="all">Todo o período</option>
     </select>
     <label className="sr-only" htmlFor="ceo-unit">Unidade</label>
     <select id="ceo-unit" value={params.get("unit")??"all"} onChange={e=>set("unit",e.target.value)} className="h-10 min-w-0 flex-1 rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-50 sm:w-[190px] sm:flex-none">
