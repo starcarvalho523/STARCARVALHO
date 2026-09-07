@@ -25,7 +25,7 @@ export default async function Page({
 }: {
   searchParams: Promise<{ period?: string; unit?: string }>;
 }) {
-  const data = await getCeoAnalytics(normalizeCeoFilters(await searchParams));
+  const data = await getCeoAnalytics(normalizeCeoFilters(await searchParams), "admin", "units");
 
   return (
     <DashboardShell nav={ceoNav} active="Unidades" role="CEO">

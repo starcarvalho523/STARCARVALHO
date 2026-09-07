@@ -14,7 +14,7 @@ export const dynamic="force-dynamic";
 
 export default async function Page({searchParams}:{searchParams:Promise<{period?:string;unit?:string}>}){
   const filters=normalizeCeoFilters(await searchParams);
-  const data=await getCeoOperationalAnalytics(filters);
+  const data=await getCeoOperationalAnalytics(filters, "admin", "dashboard");
   const activeCars=data.active.filter(session=>session.vehicle_type==="CAR").length;
   const activeMotorcycles=data.active.filter(session=>session.vehicle_type==="MOTORCYCLE").length;
   const occupancy=`${data.metrics.occupancy.toFixed(1).replace(".",",")}%`;

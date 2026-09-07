@@ -14,7 +14,7 @@ type SeverityKey = "all" | "Info" | "Atenção" | "Crítico";
 
 export default async function Page({ searchParams }: { searchParams: Promise<{ unit?: string; filter?: string; severity?: string; q?: string }> }) {
   const p = await searchParams;
-  const d = await getCeoAnalytics(normalizeCeoFilters({ period: "today", unit: p.unit }));
+  const d = await getCeoAnalytics(normalizeCeoFilters({ period: "today", unit: p.unit }), "admin", "alerts");
   const supabase = await createClient();
 
   const activationSubscriptionIds = [...new Set(

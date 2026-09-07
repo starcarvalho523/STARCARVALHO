@@ -37,23 +37,34 @@ export default async function StrategyPage({ searchParams }: { searchParams: Pro
   const nowIso = new Date().toISOString();
   const today = nowIso.slice(0,10);
 
-  const [unitsQ,zonesQ,sessionsQ,paymentsQ,subscriptionsQ,demandQ,businessQ,calendarQ,spendQ,acquisitionQ,vehiclesQ,linksQ,customersQ] = await Promise.all([
-    supabase.from("parking_units").select("id,name,capacity,area_sqm,monthly_fixed_cost").in("id",selectedUnitIds),
+  // Fetch the vehicle pickers only when an existing B2B contract renders them.
+  const businessTask = Promise.resolve(supabase.from("business_parking_contracts").select("id,unit_id,status,price,name,business_id,max_registered_vehicles,max_simultaneous_vehicles,guaranteed_spaces").in("unit_id",selectedUnitIds));
+  const businessVehiclesTask = businessTask.then(async ({ data }) => {
+    const contractIds = (data ?? []).map(contract => contract.id);
+    if (!contractIds.length) return [{ data: [] }, { data: [] }] as const;
+    return Promise.all([
+      supabase.from("vehicles").select("id,normalized_plate,vehicle_type,customer_id").order("normalized_plate").limit(300),
+      supabase.from("business_contract_vehicles").select("id,contract_id,vehicle_id,valid_from,valid_until").in("contract_id", contractIds),
+    ]);
+  });
+
+  const [unitsQ,zonesQ,sessionsQ,paymentsQ,subscriptionsQ,demandQ,businessQ,calendarQ,spendQ,acquisitionQ,[vehiclesQ,linksQ],customersQ] = await Promise.all([
+    supabase.from("parking_units").select("id,name,capacity,area_sqm,monthly_fixed_cost").in("id",unitIds).order("name"),
     supabase.from("parking_zones").select("id,unit_id,name,code,capacity,zone_type,priority,is_active").in("unit_id",selectedUnitIds).order("priority"),
     supabase.from("parking_sessions").select("unit_id,status,entered_at,exited_at,entry_mode").in("unit_id",selectedUnitIds).gte("entered_at",since),
     supabase.from("payments").select("unit_id,status,amount,paid_at").in("unit_id",selectedUnitIds).eq("status","PAID").gte("paid_at",since),
     supabase.from("monthly_subscriptions").select("unit_id,status,contracted_price").in("unit_id",selectedUnitIds),
     supabase.from("parking_demand_events").select("unit_id,reason,occurred_at").in("unit_id",selectedUnitIds).gte("occurred_at",since),
-    supabase.from("business_parking_contracts").select("id,unit_id,status,price,name,business_id,max_registered_vehicles,max_simultaneous_vehicles,guaranteed_spaces").in("unit_id",selectedUnitIds),
+    businessTask,
     supabase.from("parking_calendar_dates").select("unit_id,calendar_date,label,is_holiday").in("unit_id",selectedUnitIds).gte("calendar_date",today).order("calendar_date").limit(12),
     supabase.from("marketing_spend").select("unit_id,source,campaign,amount,period_start,period_end").in("unit_id",selectedUnitIds).gte("period_end",sinceDate),
     supabase.from("customer_acquisition_attribution").select("unit_id,customer_id,source,campaign,first_touch_at").in("unit_id",selectedUnitIds).gte("first_touch_at",since),
-    supabase.from("vehicles").select("id,normalized_plate,vehicle_type,customer_id").order("normalized_plate").limit(300),
-    supabase.from("business_contract_vehicles").select("id,contract_id,vehicle_id,valid_from,valid_until"),
+    businessVehiclesTask,
     supabase.rpc("get_ceo_customer_directory"),
   ]);
 
-  const units = unitsQ.data ?? [];
+  const filterUnits = unitsQ.data ?? [];
+  const units = filterUnits.filter(unit => selectedUnitIds.includes(unit.id));
   const zones = zonesQ.data ?? [];
   const business = businessQ.data ?? [];
   const calendar = calendarQ.data ?? [];
@@ -90,7 +101,6 @@ export default async function StrategyPage({ searchParams }: { searchParams: Pro
   });
   const canManage = manageableUnitIds.length > 0;
   const manageableUnits=units.filter((u)=>manageableUnitIds.includes(u.id));
-  const filterUnits = (await supabase.from("parking_units").select("id,name").in("id",unitIds).order("name")).data ?? [];
   const periodLabel = periodConfig.label;
 
   return <DashboardShell nav={ceoNav} active="Estratégia" role="CEO">

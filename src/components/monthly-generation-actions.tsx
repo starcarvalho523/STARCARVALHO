@@ -36,7 +36,7 @@ export function MonthlyGenerationActions({ unitId }: { unitId: string }) {
       setResult(payload.result as Result);
       if (!dryRun) router.refresh();
     } catch {
-      setError("N\u00e3o foi poss\u00edvel executar a gera\u00e7\u00e3o agora.");
+      setError("Não foi possível executar a geração agora.");
     } finally {
       setBusy(null);
     }
@@ -44,13 +44,13 @@ export function MonthlyGenerationActions({ unitId }: { unitId: string }) {
 
   return (
     <section className="rounded-2xl border bg-white p-4">
-      <h2 className="font-bold">Compet\u00eancias autom\u00e1ticas</h2>
+      <h2 className="font-bold">Competências automáticas</h2>
       <p className="mt-1 text-sm text-slate-500">
-        A pr\u00e9via n\u00e3o grava dados. A execu\u00e7\u00e3o gera somente compet\u00eancias do m\u00eas corrente.
+        A prévia não grava dados. A execução gera somente competências do mês corrente.
       </p>
       <div className="mt-3 flex flex-wrap gap-2">
         <button type="button" disabled={!!busy} onClick={() => execute(true)} className="rounded-xl border px-4 py-2 text-sm font-semibold disabled:opacity-50">
-          {busy === "dry" ? "Calculando..." : "Pr\u00e9via (dry-run)"}
+          {busy === "dry" ? "Calculando..." : "Prévia (dry-run)"}
         </button>
         <button type="button" disabled={!!busy} onClick={() => execute(false)} className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white disabled:opacity-50">
           {busy === "run" ? "Executando..." : "Gerar agora"}
