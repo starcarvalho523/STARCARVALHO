@@ -34,7 +34,7 @@ export default async function Page({
   searchParams: Promise<{ period?: string; unit?: string; session?: string }>;
 }) {
   const query = await searchParams;
-  const data = await getCeoAnalytics(normalizeCeoFilters(query));
+  const data = await getCeoAnalytics(normalizeCeoFilters(query), "admin", "reports");
   const selected = data.sessions.find((session) => session.id === query.session);
   const sessionHref = (id: string) =>
     `/ceo/relatorios?period=${data.filters.period}&unit=${data.filters.unitId}&session=${id}`;

@@ -1,5 +1,5 @@
 import "server-only";
-import { getCeoAnalytics as getRawCeoAnalytics, normalizeCeoFilters, type CeoFilters, type CeoPayment, type CeoPeriod, type CeoSession } from "@/lib/ceo-analytics-raw";
+import { getCeoAnalytics as getRawCeoAnalytics, normalizeCeoFilters, type CeoAnalyticsView, type CeoFilters, type CeoPayment, type CeoPeriod, type CeoSession } from "@/lib/ceo-analytics-raw";
 import { requireCeoScope, type CeoScope } from "@/lib/auth";
 import { isOperationalFinancialPayment } from "@/lib/financial-environment";
 import { previousRevenueTotal } from "@/lib/ceo-analytics-domain";
@@ -7,9 +7,9 @@ import { previousRevenueTotal } from "@/lib/ceo-analytics-domain";
 export { normalizeCeoFilters };
 export type { CeoAlert, CeoFilters, CeoPayment, CeoPeriod, CeoSession, CeoShift, CeoUnit } from "@/lib/ceo-analytics-raw";
 
-export async function getCeoAnalytics(filters: CeoFilters, scope: CeoScope = "admin") {
+export async function getCeoAnalytics(filters: CeoFilters, scope: CeoScope = "admin", view: CeoAnalyticsView = "all") {
   await requireCeoScope(scope);
-  const data = await getRawCeoAnalytics(filters);
+  const data = await getRawCeoAnalytics(filters, view);
   const payments = data.payments.filter(isOperationalFinancialPayment);
   const paid = data.paid.filter(isOperationalFinancialPayment);
   const previousRevenue = filters.period === "all" ? 0 : previousRevenueTotal(data.previousPayments, isOperationalFinancialPayment);
@@ -20,7 +20,7 @@ export async function getCeoAnalytics(filters: CeoFilters, scope: CeoScope = "ad
     return { amount, count: rows.length, percentage: revenue ? amount / revenue * 100 : 0 };
   };
   const unitSummaries = data.unitSummaries.map((unit) => ({ ...unit, revenue: paid.filter((payment) => payment.unit_id === unit.id).reduce((sum, payment) => sum + Number(payment.amount), 0) }));
-  const buckets = makeBuckets(filters.period, new Date(data.periodStart), data.selectedUnits[0]?.timezone ?? data.units[0]?.timezone ?? "America/Bahia", paid, data.sessions, data.metrics.capacity);
+  const buckets = view === "all" || view === "dashboard" ? makeBuckets(filters.period, new Date(data.periodStart), data.selectedUnits[0]?.timezone ?? data.units[0]?.timezone ?? "America/Bahia", paid, data.sessions, data.metrics.capacity) : [];
   const casualRevenue = paid.filter((payment) => payment.payment_subject_type === "PARKING_SESSION").reduce((sum, payment) => sum + Number(payment.amount), 0);
   const monthlyRevenue = paid.filter((payment) => payment.payment_subject_type === "MONTHLY_BILLING_PERIOD").reduce((sum, payment) => sum + Number(payment.amount), 0);
   const alerts = data.alerts.map((alert) => ({ ...alert, href: normalizeAlertHref(alert.href) }));

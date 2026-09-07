@@ -71,27 +71,21 @@ export default async function AuditPage({
   const period = ["today", "7", "30", "90", "180", "365", "all"].includes(query.period ?? "") ? String(query.period) : "30";
   const scopedUnitIds = selectedUnit === "all" ? unitIds : [selectedUnit];
 
-  const { data: units } = unitIds.length
-    ? await supabase.from("parking_units").select("id,name").in("id", unitIds).order("name")
-    : { data: [] };
-
-  let rows: AuditRow[] = [];
-  if (scopedUnitIds.length) {
-    let since: string | null = null;
-    if (period !== "all") {
-      const threshold = new Date();
-      threshold.setUTCDate(threshold.getUTCDate() - (period === "today" ? 1 : Number(period)));
-      since = threshold.toISOString();
-    }
-
-    const { data: logs, error } = await supabase.rpc("get_audit_events", {
-      p_unit_ids: scopedUnitIds,
-      p_since: since,
-      p_limit: 500,
-    });
-
-    if (!error) rows = (logs ?? []) as AuditRow[];
+  let since: string | null = null;
+  if (period !== "all") {
+    const threshold = new Date();
+    threshold.setUTCDate(threshold.getUTCDate() - (period === "today" ? 1 : Number(period)));
+    since = threshold.toISOString();
   }
+  const [{ data: units }, logsResult] = await Promise.all([
+    unitIds.length
+      ? supabase.from("parking_units").select("id,name").in("id", unitIds).order("name")
+      : Promise.resolve({ data: [] }),
+    scopedUnitIds.length
+      ? supabase.rpc("get_audit_events", { p_unit_ids: scopedUnitIds, p_since: since, p_limit: 500 })
+      : Promise.resolve({ data: [], error: null }),
+  ]);
+  const rows: AuditRow[] = !logsResult.error ? (logsResult.data ?? []) as AuditRow[] : [];
 
   const unitNames = new Map((units ?? []).map((unit) => [unit.id, unit.name]));
   const normalizedQ = (query.q ?? "").trim().toLowerCase();

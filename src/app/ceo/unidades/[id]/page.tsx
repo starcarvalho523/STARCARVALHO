@@ -38,7 +38,7 @@ type Tone = "blue" | "green" | "violet" | "orange" | "slate";
 export default async function Page({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ sucesso?: string; erro?: string }> }) {
   const { id } = await params;
   const query = await searchParams;
-  const d = await getCeoAnalytics({ period: "30", unitId: id });
+  const d = await getCeoAnalytics({ period: "30", unitId: id }, "admin", "unit");
   const u = d.unitSummaries[0];
   if (!u) notFound();
 

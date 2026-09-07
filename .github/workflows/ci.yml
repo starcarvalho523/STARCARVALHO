@@ -37,6 +37,8 @@ jobs:
         run: node --experimental-strip-types --test src/lib/global-loading-store.test.ts
       - name: Customer page loading regression tests
         run: node --experimental-strip-types --test src/lib/customer-data-loader.test.ts
+      - name: CEO page loading regression tests
+        run: node --experimental-strip-types --test src/lib/ceo-analytics-loader.test.ts
       - name: Payment tests
         run: npm run test:payments
       - name: Security regression tests
