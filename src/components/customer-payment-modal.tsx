@@ -21,26 +21,24 @@ export function CustomerPaymentModal({open,onClose,sessionId,plate,unitName,amou
   const [method,setMethod]=useState<Method>(()=>defaultMethod(options));
   const busy=processing||switching;
 
-  const requestClose=()=>{if(!busy)onClose()};
-
-  useEffect(()=>{
-    if(!open)return;
-    setMethod(defaultMethod(options));
+  const requestClose=()=>{
+    if(busy)return;
     setSwitchError(null);
-    closeButtonRef.current?.focus();
-  },[open,options.pix,options.credit,options.efiCard,options.efiCardEnvironment]);
+    onClose();
+  };
 
   useEffect(()=>{
     if(!open)return;
+    const focusTimer=window.setTimeout(()=>closeButtonRef.current?.focus(),0);
     const listener=(event:KeyboardEvent)=>{if(event.key==="Escape"&&!busy)onClose()};
     document.addEventListener("keydown",listener);
     document.body.style.overflow="hidden";
-    return()=>{document.removeEventListener("keydown",listener);document.body.style.overflow=""};
+    return()=>{window.clearTimeout(focusTimer);document.removeEventListener("keydown",listener);document.body.style.overflow=""};
   },[open,onClose,busy]);
 
   if(!open||typeof document==="undefined")return null;
 
-  const finish=()=>{setProcessing(false);onClose();router.refresh()};
+  const finish=()=>{setProcessing(false);setSwitchError(null);onClose();router.refresh()};
 
   const selectMethod=async(target:Method)=>{
     if(target===method||busy)return;
