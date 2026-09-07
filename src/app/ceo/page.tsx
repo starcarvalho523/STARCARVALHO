@@ -37,7 +37,7 @@ export default async function Page({searchParams}:{searchParams:Promise<{period?
       <section className="grid gap-3 sm:grid-cols-3">
         <RevenueStrip label="Receita avulsa" value={formatMoney(data.metrics.casualRevenue)} icon={Banknote} detail="Estadias avulsas confirmadas no período" />
         <RevenueStrip label="Mensalidades recebidas" value={formatMoney(data.metrics.monthlyRevenue)} icon={UserRound} detail="PIX e cartão de assinaturas confirmados" />
-        <RevenueStrip label="MRR ativo" value={formatMoney(data.mrr.activeAmount)} icon={RefreshCcw} detail={`${data.mrr.activeContracts} ${data.mrr.activeContracts===1?"assinatura ativa":"assinaturas ativas"}`} />
+        <RevenueStrip label="MRR ativo" value={formatMoney(data.mrr.activeAmount)} icon={RefreshCcw} detail={`${data.mrr.contracts} ${data.mrr.contracts===1?"assinatura ativa":"assinaturas ativas"}`} />
       </section>
 
       <section className="grid gap-4 xl:grid-cols-2">
