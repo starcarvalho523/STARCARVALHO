@@ -4,9 +4,9 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-const MIN_VISIBLE_MS = 520;
-const NETWORK_SETTLE_MS = 120;
-const COMPLETE_MS = 260;
+const MIN_VISIBLE_MS = 680;
+const NETWORK_SETTLE_MS = 100;
+const FINISH_ANIMATION_MS = 180;
 
 type LoadingReason = "navigation" | "filter" | "action" | "data";
 
@@ -52,15 +52,15 @@ export function GlobalLoadingOverlay() {
       const elapsed = performance.now() - startedAtRef.current;
       let target: number;
 
-      if (elapsed < 450) {
-        target = 12 + elapsed * 0.125;
-      } else if (elapsed < 1600) {
-        target = 68 + (elapsed - 450) * 0.017;
+      if (elapsed < 500) {
+        target = 12 + elapsed * 0.105;
+      } else if (elapsed < 1800) {
+        target = 64 + (elapsed - 500) * 0.017;
       } else {
-        target = Math.min(94, 87.5 + (elapsed - 1600) * 0.0022);
+        target = Math.min(94, 86 + (elapsed - 1800) * 0.0022);
       }
 
-      const next = Math.min(94, progressRef.current + (target - progressRef.current) * 0.12);
+      const next = Math.min(94, progressRef.current + (target - progressRef.current) * 0.11);
       progressRef.current = next;
       setProgress(next);
       frameRef.current = requestAnimationFrame(tick);
@@ -84,6 +84,20 @@ export function GlobalLoadingOverlay() {
     animateAdaptiveProgress();
   }, [animateAdaptiveProgress, clearTimers]);
 
+  const finishAndReveal = useCallback(() => {
+    stopFrame();
+    progressRef.current = 100;
+    setProgress(100);
+
+    // O overlay some exatamente ao terminar o trecho visual até 100%.
+    // Não existe espera adicional depois que a animação conclui.
+    hideTimerRef.current = setTimeout(() => {
+      visibleRef.current = false;
+      setVisible(false);
+      setProgress(0);
+    }, FINISH_ANIMATION_MS);
+  }, [stopFrame]);
+
   const complete = useCallback(() => {
     if (!visibleRef.current) return;
     if (activeRequestsRef.current > 0 || awaitingRouteRef.current) return;
@@ -92,18 +106,8 @@ export function GlobalLoadingOverlay() {
     const wait = Math.max(0, MIN_VISIBLE_MS - elapsed);
 
     clearTimers();
-    hideTimerRef.current = setTimeout(() => {
-      stopFrame();
-      progressRef.current = 100;
-      setProgress(100);
-
-      hideTimerRef.current = setTimeout(() => {
-        visibleRef.current = false;
-        setVisible(false);
-        setProgress(0);
-      }, COMPLETE_MS);
-    }, wait);
-  }, [clearTimers, stopFrame]);
+    hideTimerRef.current = setTimeout(finishAndReveal, wait);
+  }, [clearTimers, finishAndReveal]);
 
   const scheduleComplete = useCallback(() => {
     if (activeRequestsRef.current > 0 || awaitingRouteRef.current) return;
