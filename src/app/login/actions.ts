@@ -28,7 +28,10 @@ export async function login(_: LoginState, formData: FormData): Promise<LoginSta
     const fullName = String(
       data.user.user_metadata.full_name ?? data.user.user_metadata.name ?? data.user.email?.split("@")[0] ?? "Cliente",
     ).trim().slice(0, 120);
-    const { error: customerError } = await supabase.from("customer_profiles").upsert({ user_id: data.user.id, full_name: fullName, is_active: true });
+    const { error: customerError } = await supabase.from("customer_profiles").upsert(
+      { user_id: data.user.id, full_name: fullName },
+      { onConflict: "user_id", ignoreDuplicates: true },
+    );
     if (customerError) {
       await supabase.auth.signOut();
       return { error: "Não foi possível concluir seu perfil de cliente. Tente novamente." };

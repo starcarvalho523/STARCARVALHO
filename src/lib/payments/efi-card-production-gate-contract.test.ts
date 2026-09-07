@@ -20,7 +20,7 @@ test("Efí card payment route fails closed before reading payment input outside 
   const qaGate = paymentRoute.indexOf("isEfiCardQaPreviewRuntime()");
   const productionGate = paymentRoute.indexOf("isEfiCardProductionRuntimeEnabled()");
   const failClosed = paymentRoute.indexOf("if (!isQa && !isProduction)");
-  const body = paymentRoute.indexOf("request.json()");
+  const body = paymentRoute.indexOf("readBoundedJson(request)");
   assert.ok(qaGate >= 0 && productionGate >= 0 && failClosed >= 0 && body > failClosed);
   assert.match(paymentRoute, /EFI_CARD_NOT_AVAILABLE/);
 });
@@ -46,7 +46,7 @@ test("Efí card notification route allows only QA or the explicit Production run
   const qaGate = notificationRoute.indexOf("isEfiCardQaPreviewRuntime()");
   const productionGate = notificationRoute.indexOf("isEfiCardProductionRuntimeEnabled()");
   const failClosed = notificationRoute.indexOf("if (!isQa && !isProduction)");
-  const form = notificationRoute.indexOf("request.formData()");
+  const form = notificationRoute.indexOf("readBoundedBody(request, 8192)");
 
   assert.ok(qaGate >= 0 && productionGate >= 0 && failClosed >= 0 && form > failClosed);
   assert.match(notificationRoute, /EFI_CARD_NOTIFICATION_NOT_AVAILABLE/);

@@ -11,8 +11,16 @@ export async function GET(request: Request) {
   let access = await getAccess();
   if (!access) {
     const name = String(data.user.user_metadata.full_name ?? data.user.user_metadata.name ?? data.user.email?.split("@")[0] ?? "Cliente").trim();
-    await supabase.from("customer_profiles").upsert({ user_id: data.user.id, full_name: name.slice(0, 120), is_active: true });
+    const { error: profileError } = await supabase.from("customer_profiles").upsert(
+      { user_id: data.user.id, full_name: name.slice(0, 120) },
+      { onConflict: "user_id", ignoreDuplicates: true },
+    );
+    if (profileError) {
+      await supabase.auth.signOut();
+      return NextResponse.redirect(new URL("/login?erro=sem-acesso", url.origin));
+    }
     access = await getAccess();
   }
+  if (!access) await supabase.auth.signOut();
   return NextResponse.redirect(new URL(access ? `/${access.area}` : "/login?erro=sem-acesso", url.origin));
 }

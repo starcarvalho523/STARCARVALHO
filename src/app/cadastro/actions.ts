@@ -19,7 +19,17 @@ export async function signup(_: SignupState, formData: FormData): Promise<Signup
   const supabase = await createClient(); const origin = await siteOrigin();
   const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { full_name: fullName }, emailRedirectTo: `${origin}/auth/callback` } });
   if (error) return { error: "Não foi possível criar a conta. Confira os dados e tente novamente." };
-  if (data.session && data.user) { await supabase.from("customer_profiles").upsert({ user_id: data.user.id, full_name: fullName }); redirect("/cliente"); }
+  if (data.session && data.user) {
+    const { error: profileError } = await supabase.from("customer_profiles").upsert(
+      { user_id: data.user.id, full_name: fullName },
+      { onConflict: "user_id", ignoreDuplicates: true },
+    );
+    if (profileError) {
+      await supabase.auth.signOut();
+      return { error: "Não foi possível concluir seu perfil de cliente. Tente novamente." };
+    }
+    redirect("/cliente");
+  }
   return { success: "Conta criada. Confira seu e-mail para confirmar o cadastro." };
 }
 export async function signInWithGoogle() {

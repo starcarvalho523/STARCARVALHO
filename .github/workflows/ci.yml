@@ -35,6 +35,8 @@ jobs:
         run: npm run build
       - name: Payment tests
         run: npm run test:payments
+      - name: Security regression tests
+        run: npm run test:security
       - name: Monthly domain tests
         run: npm run test:monthly
       - name: Monthly coverage tests

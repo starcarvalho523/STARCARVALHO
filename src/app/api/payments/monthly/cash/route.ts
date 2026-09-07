@@ -1,8 +1,9 @@
+import { readBoundedJson } from "@/lib/bounded-body";
 import { createClient } from "@/lib/supabase/server";
 
 export async function POST(request:Request){
   try{
-    const body=await request.json();const billingPeriodId=typeof body?.billingPeriodId==="string"?body.billingPeriodId:"";
+    const body=await readBoundedJson(request);const billingPeriodId=typeof body?.billingPeriodId==="string"?body.billingPeriodId:"";
     if(!billingPeriodId)return Response.json({error:"BILLING_PERIOD_ID_REQUIRED"},{status:400});
     const supabase=await createClient();const{data,error}=await supabase.rpc("record_monthly_cash_payment",{billing_period_id:billingPeriodId,request_key:crypto.randomUUID()});
     if(error)throw new Error(error.message);return Response.json({payment:{id:data,state:"PAID"}},{headers:{"cache-control":"no-store"}});

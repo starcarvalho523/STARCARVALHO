@@ -1,3 +1,4 @@
+import { readBoundedJson } from "@/lib/bounded-body";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
@@ -38,7 +39,7 @@ export async function POST(request: Request) {
   const isProduction = isEfiCardProductionRuntimeEnabled();
   if (!isQa && !isProduction) return Response.json({ error: "EFI_CARD_NOT_AVAILABLE" }, { status: 404 });
 
-  const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
+  const body = (await readBoundedJson(request).catch(() => null)) as Record<string, unknown> | null;
   if (!body || Object.keys(body).some((key) => forbidden.has(key) || !allowed.has(key))) return Response.json({ error: "EFI_CARD_INVALID_REQUEST" }, { status: 400 });
   if (typeof body.sessionId !== "string" || typeof body.paymentToken !== "string" || body.paymentToken.length < 8 || body.paymentToken.length > 4096) return Response.json({ error: "EFI_CARD_INVALID_REQUEST" }, { status: 400 });
   const payer = payerFrom(body.payer);

@@ -1,4 +1,5 @@
 import { EfiCardService } from "@/lib/payments/efi-card-service";
+import { BodyTooLargeError, readBoundedBody } from "@/lib/bounded-body";
 import {
   isEfiCardProductionRuntimeEnabled,
   isEfiCardQaPreviewRuntime,
@@ -22,7 +23,13 @@ export async function POST(request: Request) {
     return Response.json({ error: "EFI_CARD_NOTIFICATION_INVALID" }, { status: 415 });
   }
 
-  const form = await request.formData().catch(() => null);
+  let form: FormData;
+  try {
+    const bytes = await readBoundedBody(request, 8192);
+    form = await new Response(Buffer.from(bytes), { headers: { "content-type": contentType } }).formData();
+  } catch (error) {
+    return Response.json({ error: "EFI_CARD_NOTIFICATION_INVALID" }, { status: error instanceof BodyTooLargeError ? 413 : 400 });
+  }
   if (!form || [...form.keys()].some((key) => key !== "notification")) {
     return Response.json({ error: "EFI_CARD_NOTIFICATION_INVALID" }, { status: 400 });
   }

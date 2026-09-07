@@ -1,3 +1,4 @@
+import { readBoundedJson } from "@/lib/bounded-body";
 import { createClient } from "@/lib/supabase/server";
 import { PaymentService } from "@/lib/payments/payment-service";
 import { prepareMonthlyPaymentAttempt } from "@/lib/payments/monthly-payment-attempt-switch";
@@ -9,7 +10,7 @@ export async function GET(request:Request){
 }
 export async function POST(request:Request){
   try{
-    const body=await request.json();
+    const body=await readBoundedJson(request);
     const billingPeriodId=typeof body?.billingPeriodId==="string"?body.billingPeriodId:"";
     if(!billingPeriodId)return Response.json({error:"BILLING_PERIOD_ID_REQUIRED"},{status:400});
     const origin=new URL(request.url).origin;
