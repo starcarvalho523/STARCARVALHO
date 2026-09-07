@@ -1,67 +1,49 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
-import {
-  isEfiCardProductionRuntimeEnabled,
-  isEfiCardQaPreviewRuntime,
-  isEfiPixProductionRuntimeEnabled,
-} from "@/lib/supabase/env";
+import { isEfiCardProductionRuntimeEnabled,isEfiCardQaPreviewRuntime,isEfiPixProductionRuntimeEnabled } from "@/lib/supabase/env";
 import { isAsaasConfigured } from "./asaas-config";
 import { isEfiConfigured } from "./efi-config";
-import {
-  isEfiCreditCardConfigured,
-  isEfiCreditCardProductionConfigured,
-} from "./efi-credit-card-config";
-import type { PaymentCapability, PaymentChannel, PaymentMethod, PaymentProviderName } from "./payment-model";
+import { isEfiCreditCardConfigured,isEfiCreditCardProductionConfigured } from "./efi-credit-card-config";
+import type { PaymentCapability,PaymentChannel,PaymentMethod,PaymentProviderName } from "./payment-model";
 
-type AvailabilityRow = { payment_method:PaymentMethod; payment_channel:PaymentChannel; payment_provider:PaymentProviderName; enabled:boolean; configuration_state:"READY"|"DISABLED"|"UNCONFIGURED"|"AWAITING_TERMINAL"; legacy:boolean };
-export type EfiCardBrowserEnvironment = "sandbox" | "production";
-export type CustomerPaymentOptions = { pix:boolean; credit:boolean; efiCard:boolean; efiCardEnvironment:EfiCardBrowserEnvironment|null };
+type AvailabilityRow={payment_method:PaymentMethod;payment_channel:PaymentChannel;payment_provider:PaymentProviderName;enabled:boolean;configuration_state:"READY"|"DISABLED"|"UNCONFIGURED"|"AWAITING_TERMINAL";legacy:boolean};
+export type EfiCardBrowserEnvironment="sandbox"|"production";
+export type CustomerPaymentOptions={pix:boolean;credit:boolean;efiCard:boolean;efiCardEnvironment:EfiCardBrowserEnvironment|null};
 
-export async function getPaymentAvailability(unitId:string):Promise<PaymentCapability[]> {
-  const supabase=await createClient();
-  const {data,error}=await supabase.from("payment_method_availability").select("payment_method,payment_channel,payment_provider,enabled,configuration_state,legacy").eq("unit_id",unitId);
-  if(error)throw new Error("PAYMENT_AVAILABILITY_UNAVAILABLE");
-  return ((data??[]) as AvailabilityRow[]).map(row=>({method:row.payment_method,channel:row.payment_channel,provider:row.payment_provider,enabled:row.enabled,configured:row.configuration_state==="READY"&&providerConfigured(row.payment_provider,row.payment_channel),legacy:row.legacy}));
+export async function getPaymentAvailability(unitId:string):Promise<PaymentCapability[]>{
+ const supabase=await createClient();const{data,error}=await supabase.from("payment_method_availability").select("payment_method,payment_channel,payment_provider,enabled,configuration_state,legacy").eq("unit_id",unitId);
+ if(error)throw new Error("PAYMENT_AVAILABILITY_UNAVAILABLE");
+ return((data??[])as AvailabilityRow[]).map(row=>({method:row.payment_method,channel:row.payment_channel,provider:row.payment_provider,enabled:row.enabled,configured:row.configuration_state==="READY"&&providerConfigured(row.payment_provider,row.payment_channel),legacy:row.legacy}));
 }
-
 export function canUsePayment(capabilities:PaymentCapability[],method:PaymentMethod,channel:PaymentChannel,provider:PaymentProviderName){return capabilities.some(item=>item.method===method&&item.channel===channel&&item.provider===provider&&item.enabled&&item.configured)}
-
 function hasConfiguredCapability(capabilities:PaymentCapability[],method:PaymentMethod,channel:PaymentChannel,provider:PaymentProviderName){return capabilities.some(item=>item.method===method&&item.channel===channel&&item.provider===provider&&item.configured)}
 
-export function resolveCustomerPaymentOptions(
-  capabilities:PaymentCapability[],
-  options:{efiCardProductionCanary?:boolean;efiPixProductionCanary?:boolean}={},
-):CustomerPaymentOptions {
-  const qaEfiCard=isEfiCardQaPreviewRuntime()&&canUsePayment(capabilities,"CREDIT_CARD","TOKENIZED_CHECKOUT","EFI");
-  const productionCanaryEfiCard=
-    isEfiCardProductionRuntimeEnabled()&&
-    options.efiCardProductionCanary===true&&
-    hasConfiguredCapability(capabilities,"CREDIT_CARD","TOKENIZED_CHECKOUT","EFI");
-  const regularEfiPix=canUsePayment(capabilities,"PIX","QR","EFI");
-  const productionCanaryEfiPix=
-    isEfiPixProductionRuntimeEnabled()&&
-    options.efiPixProductionCanary===true&&
-    hasConfiguredCapability(capabilities,"PIX","QR","EFI");
-
-  return {
-    pix:regularEfiPix||productionCanaryEfiPix,
-    credit:canUsePayment(capabilities,"CREDIT_CARD","HOSTED_CHECKOUT","ASAAS"),
-    efiCard:qaEfiCard||productionCanaryEfiCard,
-    efiCardEnvironment:productionCanaryEfiCard?"production":qaEfiCard?"sandbox":null,
-  };
+export function resolveCustomerPaymentOptions(capabilities:PaymentCapability[],options:{efiCardProductionCanary?:boolean;efiPixProductionCanary?:boolean}={}):CustomerPaymentOptions{
+ const qaEfiCard=isEfiCardQaPreviewRuntime()&&canUsePayment(capabilities,"CREDIT_CARD","TOKENIZED_CHECKOUT","EFI");
+ const productionEfiCard=isEfiCardProductionRuntimeEnabled()&&canUsePayment(capabilities,"CREDIT_CARD","TOKENIZED_CHECKOUT","EFI");
+ const productionCanaryEfiCard=isEfiCardProductionRuntimeEnabled()&&options.efiCardProductionCanary===true&&hasConfiguredCapability(capabilities,"CREDIT_CARD","TOKENIZED_CHECKOUT","EFI");
+ const efiCard=qaEfiCard||productionEfiCard||productionCanaryEfiCard;
+ const regularEfiPix=canUsePayment(capabilities,"PIX","QR","EFI");
+ const productionCanaryEfiPix=isEfiPixProductionRuntimeEnabled()&&options.efiPixProductionCanary===true&&hasConfiguredCapability(capabilities,"PIX","QR","EFI");
+ return{
+  pix:regularEfiPix||productionCanaryEfiPix,
+  credit:efiCard?false:canUsePayment(capabilities,"CREDIT_CARD","HOSTED_CHECKOUT","ASAAS"),
+  efiCard,
+  efiCardEnvironment:productionEfiCard||productionCanaryEfiCard?"production":qaEfiCard?"sandbox":null,
+ };
 }
 
 function providerConfigured(provider:PaymentProviderName,channel:PaymentChannel){
-  if(provider==="INTERNAL")return channel==="MANUAL";
-  if(provider==="ASAAS"&&(channel==="QR"||channel==="HOSTED_CHECKOUT"))return isAsaasConfigured();
-  if(provider==="EFI"&&channel==="QR"){
-    const production=String(process.env.EFI_ENVIRONMENT??"").trim().toLowerCase()==="production";
-    return isEfiConfigured()&&(!production||isEfiPixProductionRuntimeEnabled());
-  }
-  if(provider==="EFI"&&channel==="TOKENIZED_CHECKOUT"){
-    if(isEfiCardQaPreviewRuntime())return isEfiCreditCardConfigured();
-    if(isEfiCardProductionRuntimeEnabled())return isEfiCreditCardProductionConfigured();
-    return false;
-  }
+ if(provider==="INTERNAL")return channel==="MANUAL";
+ if(provider==="ASAAS"&&(channel==="QR"||channel==="HOSTED_CHECKOUT"))return isAsaasConfigured();
+ if(provider==="EFI"&&channel==="QR"){
+  const production=String(process.env.EFI_ENVIRONMENT??"").trim().toLowerCase()==="production";
+  return isEfiConfigured()&&(!production||isEfiPixProductionRuntimeEnabled());
+ }
+ if(provider==="EFI"&&channel==="TOKENIZED_CHECKOUT"){
+  if(isEfiCardQaPreviewRuntime())return isEfiCreditCardConfigured();
+  if(isEfiCardProductionRuntimeEnabled())return isEfiCreditCardProductionConfigured();
   return false;
+ }
+ return false;
 }

@@ -19,7 +19,7 @@ test("Efí card tokenization is constrained to a client-only panel", () => {
 });
 
 test("Efí card browser environment is supplied by the server-rendered payment option", () => {
-  assert.match(modal, /options\.efiCard && options\.efiCardEnvironment/);
+  assert.match(modal, /options\.efiCard&&Boolean\(options\.efiCardEnvironment\)/);
   assert.match(modal, /environment=\{options\.efiCardEnvironment\}/);
   assert.doesNotMatch(panel, /VERCEL_ENV/);
   assert.doesNotMatch(panel, /EFI_CARD_PRODUCTION_ENABLED/);
@@ -43,13 +43,22 @@ test("uncertain and pending Efí card outcomes leave the spinner and show a term
   assert.match(panel, /Não tente realizar um novo pagamento/);
 });
 
-test("customer payment modal cannot be dismissed during critical card processing", () => {
+test("customer payment modal cannot be dismissed during critical card processing or method switching", () => {
   assert.match(panel, /onProcessingChange\?\.\(true\)/);
   assert.match(panel, /onProcessingChange\?\.\(false\)/);
-  assert.match(modal, /disabled=\{processing\}/);
-  assert.match(modal, /event\.key === "Escape" && !processing/);
-  assert.match(modal, /if \(!processing\) onClose\(\)/);
+  assert.match(modal, /const busy=processing\|\|switching/);
+  assert.match(modal, /disabled=\{busy\}/);
+  assert.match(modal, /event\.key==="Escape"&&!busy/);
+  assert.match(modal, /if\(busy\)return/);
   assert.match(modal, /onProcessingChange=\{setProcessing\}/);
+});
+
+test("casual payment modal renders one selected payment method at a time", () => {
+  assert.match(modal, /method==="PIX"&&options\.pix/);
+  assert.match(modal, /method==="EFI_CARD"&&nativeCard&&options\.efiCardEnvironment/);
+  assert.match(modal, /method==="CREDIT"&&legacyCredit/);
+  assert.match(modal, /method:"DELETE"/);
+  assert.match(modal, /\/api\/payments\/efi-pix/);
 });
 
 test("temporary sanitized browser-stage diagnostics are not shipped", () => {
