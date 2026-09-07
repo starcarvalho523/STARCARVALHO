@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ComponentType } from "react";
-import { Banknote, CircleDollarSign, CircleGauge, CreditCard, LogIn, LogOut, WalletCards } from "lucide-react";
+import { Banknote, CircleDollarSign, CircleGauge, CreditCard, LogIn, LogOut, RefreshCcw, UserRound, WalletCards } from "lucide-react";
 import { DashboardShell } from "@/components/dashboard-shell";
 import { CeoPageHeader } from "@/components/ceo-page-header";
 import { CeoFilters } from "@/components/ceo-filters";
@@ -32,6 +32,12 @@ export default async function Page({searchParams}:{searchParams:Promise<{period?
         <ExecutiveMetric label="Entradas" value={String(data.metrics.entries)} icon={LogIn} tone="blue" note="No período"/>
         <ExecutiveMetric label="Saídas" value={String(data.metrics.exits)} icon={LogOut} tone="orange" note="No período"/>
         <ExecutiveMetric label="Ticket médio" value={data.metrics.ticket?formatMoney(data.metrics.ticket):"—"} icon={WalletCards} tone="blue" note="No período"/>
+      </section>
+
+      <section className="grid gap-3 sm:grid-cols-3">
+        <RevenueStrip label="Receita avulsa" value={formatMoney(data.metrics.casualRevenue)} icon={Banknote} detail="Estadias avulsas confirmadas no período" />
+        <RevenueStrip label="Mensalidades recebidas" value={formatMoney(data.metrics.monthlyRevenue)} icon={UserRound} detail="PIX e cartão de assinaturas confirmados" />
+        <RevenueStrip label="MRR ativo" value={formatMoney(data.mrr.activeAmount)} icon={RefreshCcw} detail={`${data.mrr.contracts} ${data.mrr.contracts===1?"assinatura ativa":"assinaturas ativas"}`} />
       </section>
 
       <section className="grid gap-4 xl:grid-cols-2">
@@ -68,14 +74,21 @@ function ExecutiveMetric({label,value,icon:Icon,tone,note}:{label:string;value:s
   return <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><div className="flex items-center gap-3"><span className={`grid size-11 shrink-0 place-items-center rounded-2xl ${palette}`}><Icon className="size-5"/></span><div className="min-w-0"><p className="text-xs font-medium text-slate-500">{label}</p><p className="mt-0.5 truncate text-xl font-extrabold tracking-tight text-slate-950">{value}</p><p className="mt-0.5 text-[10px] font-medium text-slate-400">{note}</p></div></div></div>;
 }
 
+function RevenueStrip({label,value,detail,icon:Icon}:{label:string;value:string;detail:string;icon:ComponentType<{className?:string}>}){
+  return <article className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm"><span className="grid size-10 shrink-0 place-items-center rounded-xl bg-blue-50 text-blue-600"><Icon className="size-4.5"/></span><div className="min-w-0"><p className="text-xs font-semibold text-slate-500">{label}</p><p className="mt-0.5 text-lg font-extrabold text-slate-950">{value}</p><p className="mt-0.5 truncate text-[10px] text-slate-400">{detail}</p></div></article>;
+}
+
 function VehicleMetric({total,cars,motorcycles}:{total:number;cars:number;motorcycles:number}){
   return <div className="rounded-2xl border border-blue-200 bg-gradient-to-br from-white via-white to-blue-50/60 p-4 shadow-sm sm:col-span-2 xl:col-span-1"><div className="flex h-full items-center gap-3"><span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-blue-50 text-blue-600"><VehicleGroupIcon className="size-8"/></span><div className="min-w-0 flex-1"><p className="text-xs font-medium text-slate-500">Veículos no pátio</p><div className="mt-1.5 grid grid-cols-[1fr_auto_1fr_auto_1fr] items-center gap-2.5"><VehicleCount label="Carros" value={cars} type="CAR"/><span className="h-9 w-px bg-slate-200"/><VehicleCount label="Motos" value={motorcycles} type="MOTORCYCLE"/><span className="h-9 w-px bg-slate-200"/><div className="text-center"><p className="text-xl font-extrabold leading-none text-blue-700">{total}</p><p className="mt-1 text-[10px] font-semibold text-slate-400">Total</p></div></div></div></div></div>;
 }
 function VehicleCount({label,value,type}:{label:string;value:number;type:"CAR"|"MOTORCYCLE"}){return <div className="text-center"><div className="flex items-center justify-center gap-1.5 text-blue-600"><VehicleTypeIcon vehicleType={type} className="size-4"/><span className="text-lg font-extrabold leading-none text-slate-950">{value}</span></div><p className="mt-1 text-[10px] font-semibold text-slate-400">{label}</p></div>}
 
-function PaymentMethods({methods}:{methods:{CASH:{amount:number;count:number;percentage:number};CARD:{amount:number;count:number;percentage:number};PIX:{amount:number;count:number;percentage:number}}}){
-  const rows=[{label:"Dinheiro",icon:Banknote,data:methods.CASH,tone:"bg-emerald-50 text-emerald-600",bar:"bg-emerald-500"},{label:"Cartão",icon:CreditCard,data:methods.CARD,tone:"bg-blue-50 text-blue-600",bar:"bg-blue-500"},{label:"PIX",icon:CircleDollarSign,data:methods.PIX,tone:"bg-cyan-50 text-cyan-600",bar:"bg-cyan-500",pending:true}];
-  const total=rows.reduce((sum,row)=>sum+row.data.amount,0);
-  return <section className="flex min-h-full flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><div><h2 className="font-bold text-slate-950">Formas de pagamento</h2><p className="mt-0.5 text-xs text-slate-400">Distribuição da receita confirmada</p></div><div className="mt-4 flex-1 space-y-3">{rows.map(({label,icon:Icon,data:method,tone,bar,pending})=><div key={label} className="flex items-center gap-3"><span className={`grid size-9 shrink-0 place-items-center rounded-xl ${tone}`}><Icon className="size-4"/></span><div className="min-w-0 flex-1"><div className="flex items-center justify-between gap-3 text-sm"><div><span className="font-semibold text-slate-800">{label}</span><span className="ml-1 text-xs text-slate-400">· {method.count}</span></div><b className="shrink-0">{formatMoney(method.amount)}</b></div><div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-100"><div className={`h-full rounded-full transition-[width] ${bar}`} style={{width:method.amount>0?`${Math.max(6,Math.min(100,method.percentage))}%`:"0%"}}/></div>{pending?<p className="mt-1 text-[10px] text-slate-400">Integração real ainda pendente</p>:null}</div></div>)}</div><div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3 text-sm"><span className="font-semibold text-slate-500">Total</span><b>{formatMoney(total)}</b></div></section>;
+function PaymentMethods({methods}:{methods:{CASH:{amount:number;count:number;percentage:number};CARD:{amount:number;count:number;percentage:number};PIX:{amount:number;count:number;percentage:number};DEBIT_CARD:{amount:number;count:number;percentage:number};CREDIT_CARD:{amount:number;count:number;percentage:number}}}){
+  const cardAmount=methods.CARD.amount+methods.DEBIT_CARD.amount+methods.CREDIT_CARD.amount;
+  const cardCount=methods.CARD.count+methods.DEBIT_CARD.count+methods.CREDIT_CARD.count;
+  const total=methods.CASH.amount+cardAmount+methods.PIX.amount;
+  const pct=(value:number)=>total?value/total*100:0;
+  const rows=[{label:"Dinheiro",icon:Banknote,amount:methods.CASH.amount,count:methods.CASH.count,percentage:pct(methods.CASH.amount),tone:"bg-emerald-50 text-emerald-600",bar:"bg-emerald-500"},{label:"Cartão",icon:CreditCard,amount:cardAmount,count:cardCount,percentage:pct(cardAmount),tone:"bg-blue-50 text-blue-600",bar:"bg-blue-500"},{label:"PIX",icon:CircleDollarSign,amount:methods.PIX.amount,count:methods.PIX.count,percentage:pct(methods.PIX.amount),tone:"bg-cyan-50 text-cyan-600",bar:"bg-cyan-500"}];
+  return <section className="flex min-h-full flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><div><h2 className="font-bold text-slate-950">Formas de pagamento</h2><p className="mt-0.5 text-xs text-slate-400">Distribuição da receita confirmada, incluindo mensalidades</p></div><div className="mt-4 flex-1 space-y-3">{rows.map(({label,icon:Icon,amount,count,percentage,tone,bar})=><div key={label} className="flex items-center gap-3"><span className={`grid size-9 shrink-0 place-items-center rounded-xl ${tone}`}><Icon className="size-4"/></span><div className="min-w-0 flex-1"><div className="flex items-center justify-between gap-3 text-sm"><div><span className="font-semibold text-slate-800">{label}</span><span className="ml-1 text-xs text-slate-400">· {count}</span></div><b className="shrink-0">{formatMoney(amount)}</b></div><div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-100"><div className={`h-full rounded-full transition-[width] ${bar}`} style={{width:amount>0?`${Math.max(6,Math.min(100,percentage))}%`:"0%"}}/></div></div></div>)}</div><div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3 text-sm"><span className="font-semibold text-slate-500">Total</span><b>{formatMoney(total)}</b></div></section>;
 }
 function MiniStat({label,value}:{label:string;value:string}){return <div className="rounded-xl bg-slate-50 px-2 py-2"><p className="text-[10px] text-slate-400">{label}</p><p className="mt-0.5 text-sm font-bold text-slate-900">{value}</p></div>}
