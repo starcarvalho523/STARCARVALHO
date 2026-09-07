@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/global-link";
 import { AlertTriangle, CheckCircle2 } from "lucide-react";
 import { CeoPageHeader } from "@/components/ceo-page-header";
 import { DashboardShell } from "@/components/dashboard-shell";

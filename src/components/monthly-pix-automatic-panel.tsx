@@ -1,9 +1,11 @@
 "use client";
 
+import { useGlobalPending } from "@/components/global-loading-provider";
+
 import Image from "next/image";
 import { Check, Copy, LoaderCircle, QrCode, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useGlobalRouter as useRouter } from "@/components/global-loading-provider";
 
 type View = {
   state: "PENDING" | "ACTIVE" | "PAID" | "SUSPENDED" | "REFUSED" | "EXPIRED";
@@ -18,6 +20,7 @@ export function MonthlyPixAutomaticPanel({ billingPeriodId }: { billingPeriodId:
   const [view, setView] = useState<View | null>(null);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  useGlobalPending(loading || refreshing);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

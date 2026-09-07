@@ -1,6 +1,6 @@
 /* Request-scoped Server Components intentionally evaluate elapsed time. */
 /* eslint-disable react-hooks/purity */
-import Link from "next/link";
+import Link from "@/components/global-link";
 import {
   CalendarDays,
   CarFront,

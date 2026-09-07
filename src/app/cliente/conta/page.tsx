@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/global-link";
 import { ShieldCheck } from "lucide-react";
 import { CustomerShell } from "@/components/customer-shell";
 import { CustomerBillingDocumentForm } from "@/components/customer-billing-document-form";

@@ -1,5 +1,10 @@
 "use client";
 
+import { useGlobalPending } from "@/components/global-loading-provider";
+
+import { GlobalForm } from "@/components/global-form";
+
+
 import { CheckCircle2, LoaderCircle, ShieldCheck } from "lucide-react";
 import { FormEvent, useRef, useState } from "react";
 import type { EfiCardBrowserEnvironment } from "@/lib/payments/payment-availability";
@@ -63,6 +68,7 @@ export function EfiCardPaymentPanel({
   const [expirationMonth, setExpirationMonth] = useState("");
   const [expirationYear, setExpirationYear] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  useGlobalPending(submitting);
   const [stage, setStage] = useState<CheckoutStage>("FORM");
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [generalError, setGeneralError] = useState<string | null>(null);
@@ -286,7 +292,7 @@ export function EfiCardPaymentPanel({
     <section>
       <div className="mb-4 flex items-center gap-2"><ShieldCheck className="size-5 text-blue-700" /><div><h3 className="font-bold text-blue-950">Cartão de crédito</h3><p className="text-xs text-slate-500">Pagamento protegido pela Efí. Os dados completos do cartão não são armazenados pela Star Carvalhos.</p></div></div>
       {generalError ? <div role="alert" className="mb-3 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm font-semibold text-rose-700">{generalError}</div> : null}
-      <form onSubmit={submit} className="grid gap-3 text-sm" noValidate>
+      <GlobalForm onSubmit={submit} className="grid gap-3 text-sm" noValidate>
         <label className="grid gap-1"><span className="font-semibold text-slate-700">Nome do titular</span><input ref={holderNameRef} value={holderName} onChange={(event) => { setHolderName(event.target.value); setFieldErrors((current) => ({ ...current, holderName: undefined })); }} autoComplete="cc-name" className={inputClass(!!fieldErrors.holderName)} />{fieldErrors.holderName ? <span className="text-xs font-semibold text-rose-600">{fieldErrors.holderName}</span> : null}</label>
         <label className="grid gap-1"><span className="font-semibold text-slate-700">CPF</span><input ref={holderDocumentRef} value={holderDocument} onChange={(event) => { setHolderDocument(event.target.value); setFieldErrors((current) => ({ ...current, holderDocument: undefined })); }} inputMode="numeric" autoComplete="off" className={inputClass(!!fieldErrors.holderDocument)} />{fieldErrors.holderDocument ? <span className="text-xs font-semibold text-rose-600">{fieldErrors.holderDocument}</span> : null}</label>
         <label className="grid gap-1"><span className="font-semibold text-slate-700">E-mail</span><input ref={emailRef} type="email" value={email} onChange={(event) => { setEmail(event.target.value); setFieldErrors((current) => ({ ...current, email: undefined })); }} autoComplete="email" className={inputClass(!!fieldErrors.email)} />{fieldErrors.email ? <span className="text-xs font-semibold text-rose-600">{fieldErrors.email}</span> : null}</label>
@@ -298,7 +304,7 @@ export function EfiCardPaymentPanel({
           <label className="grid gap-1"><span className="font-semibold text-slate-700">CVV</span><input ref={cvvRef} value={cvv} onChange={(event) => { setCvv(event.target.value); setFieldErrors((current) => ({ ...current, cvv: undefined })); }} inputMode="numeric" autoComplete="cc-csc" className={inputClass(!!fieldErrors.cvv)} />{fieldErrors.cvv ? <span className="text-xs font-semibold text-rose-600">{fieldErrors.cvv}</span> : null}</label>
         </div>
         <button type="submit" disabled={submitting} className="mt-1 flex min-h-12 items-center justify-center gap-2 rounded-xl bg-blue-700 px-4 font-bold text-white disabled:opacity-50">{submitting ? <LoaderCircle className="size-4 animate-spin" /> : null}{amountLabel ? `Pagar ${amountLabel}` : "Pagar com cartão"}</button>
-      </form>
+      </GlobalForm>
     </section>
   );
 }

@@ -1,5 +1,6 @@
 "use client";
-import {usePathname,useRouter,useSearchParams} from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
+import { useGlobalRouter as useRouter } from "@/components/global-loading-provider";
 
 export function CeoFilters({units}:{units:Array<{id:string;name:string}>}){
   const router=useRouter(),path=usePathname(),params=useSearchParams();

@@ -1,4 +1,5 @@
-import Link from "next/link";
+import { GlobalForm } from "@/components/global-form";
+import Link from "@/components/global-link";
 import { Building2, CircleDollarSign, Map, ParkingSquare, Save, ShieldCheck } from "lucide-react";
 
 export type UnitFormValues = {
@@ -23,7 +24,7 @@ export function UnitForm({
   cancelHref: string;
 }) {
   return (
-    <form action={action} className="space-y-4">
+    <GlobalForm action={action} className="space-y-4">
       {values?.id ? <input type="hidden" name="unitId" value={values.id} /> : null}
 
       <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -64,7 +65,7 @@ export function UnitForm({
         <Link href={cancelHref} className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-5 text-sm font-bold text-slate-700 transition hover:bg-slate-50">Cancelar</Link>
         <button className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700"><Save className="size-4" />{submitLabel}</button>
       </div>
-    </form>
+    </GlobalForm>
   );
 }
 

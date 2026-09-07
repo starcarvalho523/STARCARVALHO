@@ -1,9 +1,12 @@
 "use client";
+
+import { GlobalForm } from "@/components/global-form";
+
 import { useActionState,useRef,useState } from "react";
 import { AlertTriangle,CheckCircle2,Clock3,Info,LoaderCircle,LogIn,ReceiptText,ShieldCheck } from "lucide-react";
 import { VehicleTypeIcon } from "@/components/vehicle-type-icon";
 import { registerEntry,requestMonthlyEntryAuthorization,type OperatorActionState } from "@/app/frentista/actions";
-import Link from "next/link";
+import Link from "@/components/global-link";
 const initial:OperatorActionState={};
 
 type VehicleType="CAR"|"MOTORCYCLE";
@@ -22,7 +25,7 @@ export function EntryForm({carEnabled,motorcycleEnabled,compact=false}:{carEnabl
   const selectedTypeLabel=vehicleType==="CAR"?"Carro":"Moto";
 
   return <div className={compact?"space-y-2":"space-y-4"}>
-    <form action={action} className={`grid items-end ${compact?"gap-2.5 lg:grid-cols-[minmax(0,1fr)_280px_280px]":"gap-4 lg:grid-cols-[minmax(0,1fr)_260px_280px]"}`}>
+    <GlobalForm action={action} className={`grid items-end ${compact?"gap-2.5 lg:grid-cols-[minmax(0,1fr)_280px_280px]":"gap-4 lg:grid-cols-[minmax(0,1fr)_260px_280px]"}`}>
       <input type="hidden" name="entryDecision" value="REQUIRE_DECISION"/>
 
       <div className={compact?"space-y-0":"space-y-2"}>
@@ -54,7 +57,7 @@ export function EntryForm({carEnabled,motorcycleEnabled,compact=false}:{carEnabl
         </button>
         {!compact?<p className="flex items-center justify-center gap-1.5 text-xs text-slate-500"><ShieldCheck className="size-3.5 text-slate-500"/>Entrada registrada em tempo real</p>:null}
       </div>
-    </form>
+    </GlobalForm>
 
     {compact?<p className="flex items-center gap-1.5 text-[11px] leading-4 text-slate-500"><ShieldCheck className="size-3.5 text-slate-500"/>Horário, tarifa e operador serão registrados automaticamente.</p>:null}
 
@@ -87,19 +90,19 @@ export function EntryForm({carEnabled,motorcycleEnabled,compact=false}:{carEnabl
       </div>
       <div className="border-t border-amber-100 px-5 py-5 sm:px-6">
         <div className="grid gap-3 md:grid-cols-2">
-          <form action={action}>
+          <GlobalForm action={action}>
             <input type="hidden" name="plate" value={state.plate}/><input type="hidden" name="vehicleType" value={state.vehicleType}/><input type="hidden" name="entryDecision" value="CASUAL"/>
             <button disabled={pending} className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-slate-950 px-4 font-bold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"><ReceiptText className="size-5"/>{pending?"Registrando...":"Cobrar como avulso"}</button>
-          </form>
+          </GlobalForm>
           <button type="button" onClick={()=>setShowAuthorizationForm(value=>!value)} aria-expanded={showAuthorizationForm} className="flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-blue-300 bg-white px-4 font-bold text-blue-700 shadow-sm transition hover:border-blue-400 hover:bg-blue-50"><ShieldCheck className="size-5"/>{showAuthorizationForm?"Ocultar liberação":"Solicitar liberação"}</button>
         </div>
-        {showAuthorizationForm?<form action={requestAction} className="mt-4 rounded-xl border border-blue-100 bg-blue-50/50 p-4">
+        {showAuthorizationForm?<GlobalForm action={requestAction} className="mt-4 rounded-xl border border-blue-100 bg-blue-50/50 p-4">
           <input type="hidden" name="plate" value={state.plate}/>
           <label htmlFor="exceptionReason" className="text-sm font-bold text-slate-800">Motivo da liberação</label>
           <p className="mt-1 text-xs text-slate-600">Explique brevemente por que esta entrada deve ser liberada.</p>
           <textarea id="exceptionReason" name="reason" required minLength={5} maxLength={500} rows={3} placeholder="Ex.: cliente regular aguardando confirmação da mensalidade" className="mt-3 w-full resize-none rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"/>
           <div className="mt-3 flex justify-end"><button disabled={requestPending} className="flex h-11 items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 font-bold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"><ShieldCheck className="size-4"/>{requestPending?"Solicitando...":"Enviar solicitação"}</button></div>
-        </form>:null}
+        </GlobalForm>:null}
       </div>
     </section>:null}
     {(requestState.error||requestState.success)&&<p role="status" className={`rounded-xl px-4 py-3 text-sm font-semibold ${requestState.error?"bg-red-50 text-red-700":"bg-emerald-50 text-emerald-700"}`}>{requestState.error??requestState.success}</p>}

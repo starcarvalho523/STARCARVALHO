@@ -1,4 +1,5 @@
-import Link from "next/link";
+import { GlobalForm } from "@/components/global-form";
+import Link from "@/components/global-link";
 import {
   CalendarDays,
   CarFront,
@@ -62,12 +63,12 @@ export function CustomerShell({
                   <ProfileLink href="/cliente/pagamentos" icon={<CreditCard className="size-4" />} label="Pagamentos" />
                   <ProfileLink href="/cliente/veiculos" icon={<WalletCards className="size-4" />} label="Meus veículos" />
                 </div>
-                <form action={logout} className="border-t border-slate-100 pt-1">
+                <GlobalForm action={logout} className="border-t border-slate-100 pt-1">
                   <button className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-semibold text-red-600 transition hover:bg-red-50">
                     <LogOut className="size-4" />
                     Sair
                   </button>
-                </form>
+                </GlobalForm>
               </div>
             </details>
           </div>

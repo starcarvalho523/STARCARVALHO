@@ -1,5 +1,5 @@
 import Image from "next/image";
-import Link from "next/link";
+import Link from "@/components/global-link";
 import { Banknote,Calculator,CheckCircle2,CircleDollarSign,CreditCard,LayoutDashboard,LayoutGrid,PartyPopper,Plus,Scale,Wallet } from "lucide-react";
 import { DashboardShell } from "@/components/dashboard-shell";
 import { CloseShiftForm,OpenShiftForm } from "@/components/cash-shift-forms";

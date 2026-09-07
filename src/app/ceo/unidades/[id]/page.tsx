@@ -1,4 +1,5 @@
-import Link from "next/link";
+import { GlobalForm } from "@/components/global-form";
+import Link from "@/components/global-link";
 import { notFound } from "next/navigation";
 import type { ComponentType } from "react";
 import {
@@ -60,11 +61,11 @@ export default async function Page({ params, searchParams }: { params: Promise<{
           <CeoPageHeader title={u.name} description="Detalhe administrativo, financeiro e gerencial da unidade.">
             <div className="flex flex-wrap items-center gap-2">
               <Link href={`/ceo/unidades/${id}/editar`} className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-700 shadow-sm transition hover:bg-slate-50"><Pencil className="size-4" />Editar unidade</Link>
-              <form action={toggleUnitStatus}>
+              <GlobalForm action={toggleUnitStatus}>
                 <input type="hidden" name="unitId" value={id} />
                 <input type="hidden" name="nextActive" value={isActive ? "false" : "true"} />
                 <button className={`inline-flex h-10 items-center justify-center gap-2 rounded-xl px-4 text-sm font-bold shadow-sm transition ${isActive ? "border border-rose-200 bg-white text-rose-700 hover:bg-rose-50" : "bg-emerald-600 text-white hover:bg-emerald-700"}`}><Power className="size-4" />{isActive ? "Desativar" : "Ativar"}</button>
-              </form>
+              </GlobalForm>
             </div>
           </CeoPageHeader>
         </div>

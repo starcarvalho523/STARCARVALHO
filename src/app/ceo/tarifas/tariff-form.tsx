@@ -1,5 +1,8 @@
 "use client";
 
+import { GlobalForm } from "@/components/global-form";
+
+
 import { Building2, Clock3, Coins, Play, RotateCcw, Save, ShieldCheck } from "lucide-react";
 import { useActionState, useState } from "react";
 import { createTariffVersion, previewTariff, type TariffActionState } from "./actions";
@@ -21,7 +24,7 @@ export function TariffForm({ units }: { units: Array<{ id: string; name: string 
         <button type="reset" form="tariff-version-form" className="inline-flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-bold text-blue-600 transition hover:bg-slate-50"><RotateCcw className="size-4" />Restaurar campos</button>
       </div>
 
-      <form id="tariff-version-form" action={createAction} className="space-y-5">
+      <GlobalForm id="tariff-version-form" action={createAction} className="space-y-5">
         <div className="grid gap-4 xl:grid-cols-4">
           <FormGroup title="Identificação" icon={Building2} description="Onde e para qual veículo a versão será aplicada.">
             <Field label="Unidade"><select name="unitId" required className={inputClass}>{units.map((unit) => <option key={unit.id} value={unit.id}>{unit.name}</option>)}</select></Field>
@@ -60,7 +63,7 @@ export function TariffForm({ units }: { units: Array<{ id: string; name: string 
 
         {!confirming ? <button type="button" onClick={() => setConfirming(true)} className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-blue-600 font-bold text-white shadow-sm transition hover:bg-blue-700"><Save className="size-4" />Salvar nova versão</button> : <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4"><div className="flex items-start gap-3"><ShieldCheck className="mt-0.5 size-5 shrink-0 text-amber-700" /><p className="font-semibold text-amber-900">A nova regra valerá apenas para novas entradas. Sessões já iniciadas manterão integralmente a tarifa congelada na entrada.</p></div><div className="mt-4 flex flex-col gap-3 sm:flex-row"><button type="button" onClick={() => setConfirming(false)} className="h-11 flex-1 rounded-xl border border-slate-200 bg-white font-bold">Cancelar</button><button disabled={createPending} className="h-11 flex-1 rounded-xl bg-blue-600 font-bold text-white disabled:opacity-50">{createPending ? "Salvando..." : "Confirmar nova tarifa"}</button></div></div>}
         {(creation.error || creation.success) && <p role="status" className={`rounded-xl p-3 text-sm font-semibold ${creation.error ? "bg-red-50 text-red-700" : "bg-emerald-50 text-emerald-700"}`}>{creation.error ?? creation.success}</p>}
-      </form>
+      </GlobalForm>
     </section>
   );
 }

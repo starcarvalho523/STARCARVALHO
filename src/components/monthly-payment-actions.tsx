@@ -1,6 +1,8 @@
 "use client";
+
+import { useGlobalPending } from "@/components/global-loading-provider";
 import { Banknote,LoaderCircle } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useGlobalRouter as useRouter } from "@/components/global-loading-provider";
 import { useState } from "react";
 import { CreditCheckoutPanel } from "@/components/credit-checkout-panel";
 import { PixPaymentPanel } from "@/components/pix-payment-panel";
@@ -13,6 +15,7 @@ export function MonthlyPaymentActions({billingPeriodId,allowCash=false,pendingMe
  const[activeMethod,setActiveMethod]=useState<ActiveMethod>(initialMethod);
  const[switchingTo,setSwitchingTo]=useState<Exclude<ActiveMethod,null>|null>(null);
  const[loading,setLoading]=useState(false);
+  useGlobalPending(loading);
  const[error,setError]=useState<string|null>(null);
 
  const cash=async()=>{if(loading)return;setLoading(true);setError(null);try{const response=await fetch("/api/payments/monthly/cash",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({billingPeriodId})});const body=await response.json().catch(()=>({}));if(!response.ok)throw new Error(typeof body.error==="string"?body.error:"Falha ao registrar pagamento.");router.refresh()}catch(cause){setError(cause instanceof Error?cause.message:"Falha ao registrar pagamento.")}finally{setLoading(false)}};

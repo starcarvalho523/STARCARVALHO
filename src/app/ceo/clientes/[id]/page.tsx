@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/global-link";
 import { ArrowLeft, ArrowUpRight, CarFront, CircleCheckBig, Clock3, CreditCard, UserRound, WalletCards } from "lucide-react";
 import { notFound } from "next/navigation";
 import { DashboardShell } from "@/components/dashboard-shell";

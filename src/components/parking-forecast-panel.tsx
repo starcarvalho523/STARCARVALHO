@@ -1,4 +1,5 @@
 "use client";
+import { useGlobalPending } from "@/components/global-loading-provider";
 import { useCallback, useEffect, useMemo, useState } from "react";
 type Forecast = {
   state: string;
@@ -28,6 +29,9 @@ export function ParkingForecastPanel({
   initialAmount: number;
   compact?: boolean;
 }) {
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [initialError, setInitialError] = useState(false);
+  useGlobalPending(initialLoading);
   const [forecast, setForecast] = useState<Forecast | null>(null);
   const [seconds, setSeconds] = useState<number | null>(null);
   const refresh = useCallback(async () => {
@@ -35,14 +39,17 @@ export function ParkingForecastPanel({
       `/api/customer/parking-forecast?sessionId=${encodeURIComponent(sessionId)}`,
       { cache: "no-store" },
     );
-    if (!response.ok) return;
+    if (!response.ok) throw new Error("Forecast unavailable");
     const body = (await response.json()) as { forecast: Forecast };
     setForecast(body.forecast);
     setSeconds(body.forecast.secondsUntilNext);
   }, [sessionId]);
   useEffect(() => {
-    const timer=window.setTimeout(()=>void refresh(),0);
-    return()=>window.clearTimeout(timer);
+    let cancelled = false;
+    const timer=window.setTimeout(()=>{
+      void refresh().catch(() => { if (!cancelled) setInitialError(true); }).finally(() => { if (!cancelled) setInitialLoading(false); });
+    },0);
+    return()=>{ cancelled = true; window.clearTimeout(timer); };
   }, [refresh]);
   useEffect(() => {
     if (!forecast?.shouldPoll) return;
@@ -50,14 +57,14 @@ export function ParkingForecastPanel({
     const schedule = () => {
       timer = window.setTimeout(
         () => {
-          if (document.visibilityState === "visible") void refresh();
+          if (document.visibilityState === "visible") void refresh().catch(() => {});
           schedule();
         },
         (forecast.secondsUntilNext ?? 9999) <= 600 ? 30000 : 120000,
       );
     };
     const visible = () => {
-      if (document.visibilityState === "visible") void refresh();
+      if (document.visibilityState === "visible") void refresh().catch(() => {});
     };
     document.addEventListener("visibilitychange", visible);
     schedule();
@@ -156,7 +163,7 @@ export function ParkingForecastPanel({
               Alerta interno configurado para {forecast.alertMinutes} minutos antes da próxima mudança de valor. Valores futuros são estimativas; o servidor confirma o valor oficial.
             </p>
           ) : (
-            <p className="text-xs text-slate-500">Valores futuros são estimativas. O servidor confirma o valor oficial.</p>
+            <p className="text-xs text-slate-500">{initialError ? "Não foi possível atualizar a previsão. O valor inicial foi mantido." : "Valores futuros são estimativas. O servidor confirma o valor oficial."}</p>
           )}
         </>
       )}

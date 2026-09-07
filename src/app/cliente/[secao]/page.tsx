@@ -1,6 +1,7 @@
+import { GlobalForm } from "@/components/global-form";
 /* Request-scoped Server Components intentionally evaluate dates and elapsed time. */
 /* eslint-disable react-hooks/purity, @typescript-eslint/no-unused-vars */
-import Link from "next/link";
+import Link from "@/components/global-link";
 import { notFound, redirect } from "next/navigation";
 import {
   CarFront,
@@ -115,7 +116,7 @@ function Stays({
         title="Estadias"
         description="Seu histórico de entradas e saídas na Star Carvalhos."
       />
-      <form className="flex flex-wrap gap-2 rounded-2xl border bg-white p-3">
+      <GlobalForm className="flex flex-wrap gap-2 rounded-2xl border bg-white p-3">
         <select
           name="period"
           defaultValue={query.period ?? "365"}
@@ -143,7 +144,7 @@ function Stays({
         <button className="min-h-11 rounded-xl bg-blue-600 px-4 text-sm font-bold text-white">
           Filtrar
         </button>
-      </form>
+      </GlobalForm>
       {selected ? <StayDetail session={selected} paymentOptions={data.active?.id===selected.id?data.activePaymentOptions:{pix:false,credit:false,efiCard:false}} /> : null}
       {rows.length ? (
         <div className="grid gap-3 md:grid-cols-2">

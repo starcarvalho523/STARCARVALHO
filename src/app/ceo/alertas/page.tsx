@@ -1,4 +1,5 @@
-import Link from "next/link";
+import { GlobalForm } from "@/components/global-form";
+import Link from "@/components/global-link";
 import { AlertTriangle, ArrowUpRight, BellRing, CircleDollarSign, Search, ShieldAlert, Siren, Wrench } from "lucide-react";
 import { DashboardShell } from "@/components/dashboard-shell";
 import { CeoPageHeader } from "@/components/ceo-page-header";
@@ -60,7 +61,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ u
           <Metric label="Financeiros" value={counts.financial} icon={CircleDollarSign} tone="green" />
         </section>
 
-        <form className="grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm lg:grid-cols-[minmax(0,1fr)_auto_auto_auto]">
+        <GlobalForm className="grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm lg:grid-cols-[minmax(0,1fr)_auto_auto_auto]">
           <label className="flex h-11 min-w-0 items-center gap-2 rounded-xl border border-slate-200 px-3 focus-within:border-blue-500 focus-within:ring-4 focus-within:ring-blue-100">
             <Search className="size-4 shrink-0 text-slate-400" />
             <span className="sr-only">Buscar alerta</span>
@@ -78,7 +79,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ u
           </select>
           <input type="hidden" name="filter" value={filter} />
           <button className="h-11 rounded-xl bg-blue-600 px-5 text-sm font-bold text-white shadow-sm hover:bg-blue-700">Filtrar</button>
-        </form>
+        </GlobalForm>
 
         <nav className="flex max-w-full gap-1 overflow-x-auto rounded-2xl border border-slate-200 bg-white p-1 shadow-sm sm:w-fit" aria-label="Categorias de alertas">
           <Tab href={tabHref("all", selectedUnit, severity, p.q)} active={filter === "all"} label="Todos" count={counts.all} />

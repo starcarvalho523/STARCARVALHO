@@ -1,7 +1,9 @@
 "use client";
 
+import { useGlobalPending } from "@/components/global-loading-provider";
+
 import { CalendarClock, CheckCircle2, LoaderCircle, RefreshCw, XCircle } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useGlobalRouter as useRouter } from "@/components/global-loading-provider";
 import { useState } from "react";
 import { MonthlyRenewalCardDialog } from "@/components/monthly-renewal-card-dialog";
 
@@ -22,6 +24,7 @@ export function MonthlyRenewalControls({
 }){
   const router=useRouter();
   const[loading,setLoading]=useState<"ENABLE"|"DISABLE"|"CANCEL_AT_PERIOD_END"|null>(null);
+  useGlobalPending(loading !== null);
   const[error,setError]=useState<string|null>(null);
   const[errorAttempt,setErrorAttempt]=useState<string|null>(null);
   const[cardSetup,setCardSetup]=useState<CardSetup|null>(null);

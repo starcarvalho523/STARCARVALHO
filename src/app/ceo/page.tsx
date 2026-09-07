@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/global-link";
 import type { ComponentType } from "react";
 import { Banknote, CircleDollarSign, CircleGauge, CreditCard, LogIn, LogOut, RefreshCcw, UserRound, WalletCards } from "lucide-react";
 import { DashboardShell } from "@/components/dashboard-shell";

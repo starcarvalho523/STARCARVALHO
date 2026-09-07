@@ -1,4 +1,5 @@
-import Link from "next/link";
+import { GlobalForm } from "@/components/global-form";
+import Link from "@/components/global-link";
 import {
   AlertTriangle,
   ArrowUpRight,
@@ -108,13 +109,13 @@ export default async function MonthlySubscribersPage({ searchParams }: { searchP
 
         {pendingActivation ? <p className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-800">{pendingActivation} assinatura(s) aguardando primeiro pagamento/autorização.</p> : null}
 
-        <form className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:flex-row">
+        <GlobalForm className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:flex-row">
           <label className="min-w-0 flex-1"><span className="sr-only">Buscar assinatura</span><input name="q" defaultValue={query.q} placeholder="Buscar cliente, placa ou plano" className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100" /></label>
           <select name="status" defaultValue={query.status} className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-blue-500">
             <option value="">Todos os status</option><option value="PENDING_ACTIVATION">Aguardando ativação</option><option value="ACTIVE">Ativas</option><option value="SUSPENDED">Suspensas</option><option value="CANCELED">Canceladas</option><option value="ENDED">Encerradas</option>
           </select>
           <button className={primary}>Filtrar</button>
-        </form>
+        </GlobalForm>
 
         <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-5 py-4"><div><h2 className="font-bold text-slate-950">Assinaturas</h2><p className="mt-0.5 text-xs text-slate-500">{filtered.length} {filtered.length === 1 ? "resultado" : "resultados"} no filtro atual</p></div></div>

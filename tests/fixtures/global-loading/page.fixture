@@ -1,0 +1,21 @@
+import { cookies } from "next/headers";
+import { revalidatePath } from "next/cache";
+import Controls from "./controls";
+export const dynamic = "force-dynamic";
+export default async function Page({ searchParams }: { searchParams: Promise<{ period?: string; delay?: string }> }) {
+  const params = await searchParams;
+  await new Promise(resolve => setTimeout(resolve, Math.min(3000, Number(params.delay) || 0)));
+  const revision = (await cookies()).get("loader-fixture-revision")?.value ?? "0";
+  async function save() {
+    "use server";
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    (await cookies()).set("loader-fixture-revision", String(Number(revision) + 1));
+    revalidatePath("/loader-verification");
+  }
+  return <main style={{padding: 40, minHeight: "100vh", background: "linear-gradient(60deg,#bfdbfe,#86efac)", color: "#172554"}}>
+    <h1>Loader verification</h1>
+    <p data-testid="period">{params.period ?? "today"}</p>
+    <p data-testid="revision">{revision}</p>
+    <Controls save={save} />
+  </main>;
+}

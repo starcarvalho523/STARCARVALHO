@@ -1,5 +1,8 @@
 "use client";
 
+import { GlobalForm } from "@/components/global-form";
+
+
 import { useEffect, useState } from "react";
 import { ShieldAlert, ShieldCheck, X } from "lucide-react";
 import { setEmployeeAccess } from "./actions";
@@ -65,7 +68,7 @@ export function AccessAction({
                   : "Este vínculo voltará a participar da autorização do sistema para esta unidade."}
               </div>
             </div>
-            <form action={setEmployeeAccess} className="flex flex-col-reverse gap-2 border-t border-slate-100 px-5 py-4 sm:flex-row sm:justify-end">
+            <GlobalForm action={setEmployeeAccess} className="flex flex-col-reverse gap-2 border-t border-slate-100 px-5 py-4 sm:flex-row sm:justify-end">
               <input type="hidden" name="userId" value={userId} />
               <input type="hidden" name="unitId" value={unitId} />
               <input type="hidden" name="role" value={role} />
@@ -74,7 +77,7 @@ export function AccessAction({
               <button className={`h-11 rounded-xl px-5 text-sm font-bold text-white shadow-sm ${active ? "bg-red-600 hover:bg-red-700" : "bg-emerald-600 hover:bg-emerald-700"}`}>
                 {active ? "Bloquear nesta unidade" : "Reativar acesso"}
               </button>
-            </form>
+            </GlobalForm>
           </section>
         </div>
       ) : null}

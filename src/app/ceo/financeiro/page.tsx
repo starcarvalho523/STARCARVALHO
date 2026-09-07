@@ -1,4 +1,5 @@
-import Link from "next/link";
+import { GlobalForm } from "@/components/global-form";
+import Link from "@/components/global-link";
 import type { ComponentType } from "react";
 import {
   AlertTriangle,
@@ -78,7 +79,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ p
         <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
             <h2 className="font-bold text-slate-950">Pagamentos</h2>
-            <form className="flex flex-wrap gap-2">
+            <GlobalForm className="flex flex-wrap gap-2">
               <input type="hidden" name="period" value={data.filters.period} />
               <input type="hidden" name="unit" value={data.filters.unitId} />
               <select name="method" defaultValue={query.method ?? "all"} className="h-9 rounded-xl border border-slate-200 bg-white px-3 text-sm">
@@ -88,7 +89,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ p
                 <option value="all">Todos os status</option><option value="PAID">Pago</option><option value="PENDING">Pendente</option><option value="FAILED">Falhou</option>
               </select>
               <button className="rounded-xl bg-blue-600 px-4 text-sm font-bold text-white shadow-sm">Filtrar</button>
-            </form>
+            </GlobalForm>
           </div>
           {payments.length ? (
             <div className="overflow-x-auto">

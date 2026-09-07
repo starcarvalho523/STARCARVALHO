@@ -1,7 +1,9 @@
 "use client";
 
+import { useGlobalPending } from "@/components/global-loading-provider";
+
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { useGlobalRouter as useRouter } from "@/components/global-loading-provider";
 import { Check, Copy, LoaderCircle, QrCode, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -31,6 +33,7 @@ export function PixPaymentPanel({ sessionId, billingPeriodId, resumeExisting=fal
   const [charge, setCharge] = useState<PixCharge | null>(null);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  useGlobalPending(loading || refreshing);
   const [copied, setCopied] = useState(false);
   const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);

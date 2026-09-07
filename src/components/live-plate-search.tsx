@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useGlobalRouter as useRouter } from "@/components/global-loading-provider";
 import { Search } from "lucide-react";
 
 export function LivePlateSearch({ initialQuery = "" }: { initialQuery?: string }) {

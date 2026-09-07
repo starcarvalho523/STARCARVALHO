@@ -1,4 +1,5 @@
-import Link from "next/link";
+import { GlobalForm } from "@/components/global-form";
+import Link from "@/components/global-link";
 import type { ComponentType } from "react";
 import { redirect } from "next/navigation";
 import { Banknote,CreditCard,Gauge,LogIn,LogOut,Users } from "lucide-react";
@@ -48,7 +49,7 @@ export default async function OperatorPage(){
         <EntryForm compact carEnabled={data.has_active_car_tariff} motorcycleEnabled={data.has_active_motorcycle_tariff}/>
       </section>
 
-      {data.available_spaces===0&&<section className="rounded-xl border border-red-200 bg-red-50 p-4 text-red-800"><p className="font-semibold">Estacionamento lotado. Não registre novas entradas.</p><p className="mt-1 text-sm text-red-700">Quando um veículo for embora por falta de vaga, registre abaixo. Esse dado alimenta a análise de expansão do CEO.</p><div className="mt-3 flex flex-wrap gap-2"><form action={recordFullDemand}><input type="hidden" name="unitId" value={data.unit.id}/><input type="hidden" name="vehicleType" value="CAR"/><button className="rounded-lg bg-red-700 px-4 py-2 text-sm font-bold text-white hover:bg-red-800">+ 1 carro recusado</button></form><form action={recordFullDemand}><input type="hidden" name="unitId" value={data.unit.id}/><input type="hidden" name="vehicleType" value="MOTORCYCLE"/><button className="rounded-lg border border-red-300 bg-white px-4 py-2 text-sm font-bold text-red-700 hover:bg-red-100">+ 1 moto recusada</button></form></div></section>}
+      {data.available_spaces===0&&<section className="rounded-xl border border-red-200 bg-red-50 p-4 text-red-800"><p className="font-semibold">Estacionamento lotado. Não registre novas entradas.</p><p className="mt-1 text-sm text-red-700">Quando um veículo for embora por falta de vaga, registre abaixo. Esse dado alimenta a análise de expansão do CEO.</p><div className="mt-3 flex flex-wrap gap-2"><GlobalForm action={recordFullDemand}><input type="hidden" name="unitId" value={data.unit.id}/><input type="hidden" name="vehicleType" value="CAR"/><button className="rounded-lg bg-red-700 px-4 py-2 text-sm font-bold text-white hover:bg-red-800">+ 1 carro recusado</button></GlobalForm><GlobalForm action={recordFullDemand}><input type="hidden" name="unitId" value={data.unit.id}/><input type="hidden" name="vehicleType" value="MOTORCYCLE"/><button className="rounded-lg border border-red-300 bg-white px-4 py-2 text-sm font-bold text-red-700 hover:bg-red-100">+ 1 moto recusada</button></GlobalForm></div></section>}
 
       <section className="overflow-hidden rounded-2xl border bg-white shadow-sm">
         <div className="flex items-center justify-between border-b px-5 py-4"><h2 className="font-bold">Veículos no pátio</h2><Link href="/frentista/veiculos" className="text-sm font-semibold text-blue-600">Ver todos</Link></div>

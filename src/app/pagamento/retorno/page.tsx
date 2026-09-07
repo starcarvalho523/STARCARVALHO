@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/global-link";
 import { PaymentReturnStatus } from "@/components/payment-return-status";
 
 const messages={

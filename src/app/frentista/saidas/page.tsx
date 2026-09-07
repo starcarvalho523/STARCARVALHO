@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/global-link";
 import { CircleDollarSign, Clock3, Info, Tag, Zap } from "lucide-react";
 import { DashboardShell } from "@/components/dashboard-shell";
 import { LivePlateSearch } from "@/components/live-plate-search";

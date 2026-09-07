@@ -1,206 +1,104 @@
 "use client";
 
 import Image from "next/image";
-import { usePathname } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
-
-const MIN_VISIBLE_MS = 680;
-const NETWORK_SETTLE_MS = 100;
-const FINISH_ANIMATION_MS = 180;
-
-type LoadingReason = "navigation" | "filter" | "action" | "data";
-
-function labelFor(reason: LoadingReason) {
-  if (reason === "filter") return "Atualizando filtros";
-  if (reason === "action") return "Salvando alterações";
-  if (reason === "data") return "Atualizando dados";
-  return "Carregando página";
-}
+import { useEffect, useRef, useState } from "react";
+import { adaptiveProgress, globalLoadingStore, MIN_VISIBLE_MS, FINISH_ANIMATION_MS } from "@/lib/global-loading-store";
 
 export function GlobalLoadingOverlay() {
-  const pathname = usePathname();
   const [visible, setVisible] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [reason, setReason] = useState<LoadingReason>("navigation");
+  const overlay = useRef<HTMLDivElement>(null);
 
-  const visibleRef = useRef(false);
-  const progressRef = useRef(0);
-  const startedAtRef = useRef(0);
-  const frameRef = useRef<number | null>(null);
-  const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const settleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const activeRequestsRef = useRef(0);
-  const awaitingRouteRef = useRef(false);
-
-  const clearTimers = useCallback(() => {
-    if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
-    if (settleTimerRef.current) clearTimeout(settleTimerRef.current);
-    hideTimerRef.current = null;
-    settleTimerRef.current = null;
-  }, []);
-
-  const stopFrame = useCallback(() => {
-    if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
-    frameRef.current = null;
-  }, []);
-
-  const animateAdaptiveProgress = useCallback(() => {
-    stopFrame();
-
-    const tick = () => {
-      if (!visibleRef.current) return;
-      const elapsed = performance.now() - startedAtRef.current;
-      let target: number;
-
-      if (elapsed < 500) {
-        target = 12 + elapsed * 0.105;
-      } else if (elapsed < 1800) {
-        target = 64 + (elapsed - 500) * 0.017;
+  useEffect(() => {
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    let frame = 0;
+    let startedAt: number | null = null;
+    let finishAt: number | null = null;
+    let finishFrom = 0;
+    let readyFrames = 0;
+    const tick = (now: number) => {
+      if (startedAt === null) return;
+      setVisible(true);
+      const pending = globalLoadingStore.getSnapshot() > 0;
+      const elapsed = now - startedAt;
+      if (pending) {
+        finishAt = null;
+        readyFrames = 0;
       } else {
-        target = Math.min(94, 86 + (elapsed - 1800) * 0.0022);
+        readyFrames += 1;
       }
-
-      const next = Math.min(94, progressRef.current + (target - progressRef.current) * 0.11);
-      progressRef.current = next;
-      setProgress(next);
-      frameRef.current = requestAnimationFrame(tick);
+      // Two paint opportunities after the final React commit, not a network-idle timeout.
+      if (!pending && readyFrames >= 2 && elapsed >= MIN_VISIBLE_MS) {
+        if (finishAt === null) {
+          finishAt = now;
+          finishFrom = adaptiveProgress(elapsed);
+        }
+        const fraction = Math.min(1, (now - finishAt) / FINISH_ANIMATION_MS);
+        if (fraction === 1 && globalLoadingStore.getSnapshot() === 0) {
+          setProgress(100);
+          setVisible(false);
+          startedAt = null;
+          frame = 0;
+          return;
+        }
+        setProgress(reducedMotion ? 0 : finishFrom + (100 - finishFrom) * (1 - Math.pow(1 - fraction, 3)));
+      } else {
+        setProgress(reducedMotion ? 0 : adaptiveProgress(elapsed));
+      }
+      frame = requestAnimationFrame(tick);
     };
-
-    frameRef.current = requestAnimationFrame(tick);
-  }, [stopFrame]);
-
-  const begin = useCallback((nextReason: LoadingReason, awaitsRoute = false) => {
-    clearTimers();
-    awaitingRouteRef.current = awaitingRouteRef.current || awaitsRoute;
-    setReason(nextReason);
-
-    if (visibleRef.current) return;
-
-    visibleRef.current = true;
-    startedAtRef.current = performance.now();
-    progressRef.current = 8;
-    setProgress(8);
-    setVisible(true);
-    animateAdaptiveProgress();
-  }, [animateAdaptiveProgress, clearTimers]);
-
-  const finishAndReveal = useCallback(() => {
-    stopFrame();
-    progressRef.current = 100;
-    setProgress(100);
-
-    // O overlay some exatamente ao terminar o trecho visual até 100%.
-    // Não existe espera adicional depois que a animação conclui.
-    hideTimerRef.current = setTimeout(() => {
-      visibleRef.current = false;
-      setVisible(false);
-      setProgress(0);
-    }, FINISH_ANIMATION_MS);
-  }, [stopFrame]);
-
-  const complete = useCallback(() => {
-    if (!visibleRef.current) return;
-    if (activeRequestsRef.current > 0 || awaitingRouteRef.current) return;
-
-    const elapsed = performance.now() - startedAtRef.current;
-    const wait = Math.max(0, MIN_VISIBLE_MS - elapsed);
-
-    clearTimers();
-    hideTimerRef.current = setTimeout(finishAndReveal, wait);
-  }, [clearTimers, finishAndReveal]);
-
-  const scheduleComplete = useCallback(() => {
-    if (activeRequestsRef.current > 0 || awaitingRouteRef.current) return;
-    if (settleTimerRef.current) clearTimeout(settleTimerRef.current);
-    settleTimerRef.current = setTimeout(complete, NETWORK_SETTLE_MS);
-  }, [complete]);
-
-  const routeCommitted = useCallback(() => {
-    if (!visibleRef.current) return;
-    awaitingRouteRef.current = false;
-    scheduleComplete();
-  }, [scheduleComplete]);
+    const start = () => {
+      if (globalLoadingStore.getSnapshot() === 0 || startedAt !== null) return;
+      startedAt = performance.now();
+      finishAt = null;
+      readyFrames = 0;
+      frame = requestAnimationFrame(tick);
+    };
+    const unsubscribe = globalLoadingStore.subscribe(start);
+    start();
+    return () => { unsubscribe(); cancelAnimationFrame(frame); };
+  }, []);
 
   useEffect(() => {
-    routeCommitted();
-  }, [pathname, routeCommitted]);
-
-  useEffect(() => {
-    const originalFetch = window.fetch.bind(window);
-    const originalPushState = history.pushState.bind(history);
-    const originalReplaceState = history.replaceState.bind(history);
-
-    window.fetch = async (...args: Parameters<typeof fetch>) => {
-      const [input, init] = args;
-      const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
-      const method = (init?.method ?? (input instanceof Request ? input.method : "GET")).toUpperCase();
-      const isStatic = /\.(?:png|jpe?g|gif|webp|svg|ico|woff2?)(?:\?|$)/i.test(url);
-      const isWebhook = url.includes("/api/webhooks/");
-      const shouldTrack = !isStatic && !isWebhook;
-
-      if (!shouldTrack) return originalFetch(...args);
-
-      activeRequestsRef.current += 1;
-      begin(method === "GET" ? "data" : "action");
-
-      try {
-        return await originalFetch(...args);
-      } finally {
-        activeRequestsRef.current = Math.max(0, activeRequestsRef.current - 1);
-        scheduleComplete();
+    if (!visible || !overlay.current) return;
+    const node = overlay.current;
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const previousOverflow = document.body.style.overflow;
+    const previousBusy = document.body.getAttribute("aria-busy");
+    const inert = new Map<HTMLElement, boolean>();
+    const blockSiblings = () => {
+      for (const child of Array.from(document.body.children)) {
+        if (!(child instanceof HTMLElement) || child === node || child.contains(node) || inert.has(child)) continue;
+        inert.set(child, child.inert);
+        child.inert = true;
       }
     };
-
-    history.pushState = (...args: Parameters<History["pushState"]>) => {
-      originalPushState(...args);
-      routeCommitted();
+    blockSiblings();
+    const observer = new MutationObserver(blockSiblings);
+    observer.observe(document.body, { childList: true });
+    document.body.style.overflow = "hidden";
+    document.body.setAttribute("aria-busy", "true");
+    node.focus({ preventScroll: true });
+    const keepFocus = (event: FocusEvent) => {
+      if (event.target instanceof Node && !node.contains(event.target)) node.focus({ preventScroll: true });
     };
-
-    history.replaceState = (...args: Parameters<History["replaceState"]>) => {
-      originalReplaceState(...args);
-      routeCommitted();
+    const blockKeys = (event: KeyboardEvent) => {
+      event.preventDefault();
+      event.stopImmediatePropagation();
     };
-
-    const onClick = (event: MouseEvent) => {
-      if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-      const target = event.target instanceof Element ? event.target.closest("a[href]") : null;
-      if (!(target instanceof HTMLAnchorElement)) return;
-      if (target.target === "_blank" || target.hasAttribute("download")) return;
-
-      const next = new URL(target.href, window.location.href);
-      if (next.origin !== window.location.origin) return;
-      if (next.pathname === window.location.pathname && next.search === window.location.search && next.hash) return;
-      if (next.pathname === window.location.pathname && next.search === window.location.search) return;
-
-      begin(next.pathname === window.location.pathname ? "filter" : "navigation", true);
-    };
-
-    const onSubmit = (event: SubmitEvent) => {
-      if (!(event.target instanceof HTMLFormElement)) return;
-      const method = (event.target.method || "get").toLowerCase();
-      begin(method === "get" ? "filter" : "action", method === "get");
-    };
-
-    const onPopState = () => {
-      begin("navigation", true);
-      requestAnimationFrame(routeCommitted);
-    };
-
-    document.addEventListener("click", onClick, true);
-    document.addEventListener("submit", onSubmit, true);
-    window.addEventListener("popstate", onPopState);
-
+    document.addEventListener("focusin", keepFocus, true);
+    document.addEventListener("keydown", blockKeys, true);
     return () => {
-      window.fetch = originalFetch;
-      history.pushState = originalPushState;
-      history.replaceState = originalReplaceState;
-      document.removeEventListener("click", onClick, true);
-      document.removeEventListener("submit", onSubmit, true);
-      window.removeEventListener("popstate", onPopState);
-      clearTimers();
-      stopFrame();
+      observer.disconnect();
+      document.removeEventListener("focusin", keepFocus, true);
+      document.removeEventListener("keydown", blockKeys, true);
+      inert.forEach((value, element) => { element.inert = value; });
+      document.body.style.overflow = previousOverflow;
+      if (previousBusy === null) document.body.removeAttribute("aria-busy");
+      else document.body.setAttribute("aria-busy", previousBusy);
+      if (previousFocus?.isConnected && !previousFocus.closest("[inert]")) previousFocus.focus({ preventScroll: true });
     };
-  }, [begin, clearTimers, routeCommitted, scheduleComplete, stopFrame]);
+  }, [visible]);
 
   if (!visible) return null;
 
@@ -208,7 +106,7 @@ export function GlobalLoadingOverlay() {
   const dashOffset = circumference * (1 - progress / 100);
 
   return (
-    <div className="star-loader-overlay" role="status" aria-live="polite" aria-label={`${labelFor(reason)}. ${Math.round(progress)}%`}>
+    <div ref={overlay} tabIndex={-1} className="star-loader-overlay" role="status" aria-live="polite" aria-label="Atualizando dados da plataforma">
       <div className="star-loader-backdrop" aria-hidden="true" />
       <div className="star-loader-card">
         <div className="star-loader-orbit" aria-hidden="true">
@@ -223,7 +121,7 @@ export function GlobalLoadingOverlay() {
         </div>
         <div className="star-loader-copy">
           <p className="star-loader-title">Carregando...</p>
-          <p className="star-loader-subtitle">{labelFor(reason)} da plataforma</p>
+          <p className="star-loader-subtitle">Atualizando dados da plataforma</p>
         </div>
         <div className="star-loader-dots" aria-hidden="true"><span /><span className="is-active" /><span /></div>
         <div className="star-loader-brand" aria-hidden="true"><strong>STAR CARVALHOS</strong><span>MAIS CONTROLE PARA O SEU ESTACIONAMENTO</span></div>

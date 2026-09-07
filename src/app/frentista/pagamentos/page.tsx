@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/global-link";
 import { DashboardShell } from "@/components/dashboard-shell";
 import { OperationBadge } from "@/components/operation-badge";
 import { getOperatorContext } from "@/lib/operator-data";

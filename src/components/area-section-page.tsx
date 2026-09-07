@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/global-link";
 import { ArrowLeft, CheckCircle2, Clock3, type LucideIcon } from "lucide-react";
 import { DashboardShell, type NavItem } from "@/components/dashboard-shell";
 
