@@ -67,7 +67,7 @@ export default async function AuditPage({
   const supabase = await createClient();
   const unitIds = [...new Set(access.assignments.map((assignment) => String(assignment.unit_id)))];
   const selectedUnit = query.unit && unitIds.includes(query.unit) ? query.unit : "all";
-  const period = ["7", "30", "90", "all"].includes(query.period ?? "") ? String(query.period) : "30";
+  const period = ["today", "7", "30", "90", "180", "365", "all"].includes(query.period ?? "") ? String(query.period) : "30";
   const scopedUnitIds = selectedUnit === "all" ? unitIds : [selectedUnit];
 
   const { data: units } = unitIds.length
@@ -79,7 +79,7 @@ export default async function AuditPage({
     let since: string | null = null;
     if (period !== "all") {
       const threshold = new Date();
-      threshold.setUTCDate(threshold.getUTCDate() - Number(period));
+      threshold.setUTCDate(threshold.getUTCDate() - (period === "today" ? 1 : Number(period)));
       since = threshold.toISOString();
     }
 
@@ -147,10 +147,13 @@ export default async function AuditPage({
             <option value="Sistema">Sistema</option>
           </select>
           <select name="period" defaultValue={period} className={filterClass}>
-            <option value="7">Últimos 7 dias</option>
-            <option value="30">Últimos 30 dias</option>
-            <option value="90">Últimos 90 dias</option>
-            <option value="all">Todo o histórico carregado</option>
+            <option value="today">Hoje</option>
+            <option value="7">7 dias</option>
+            <option value="30">30 dias</option>
+            <option value="90">3 meses</option>
+            <option value="180">6 meses</option>
+            <option value="365">1 ano</option>
+            <option value="all">Todo o período</option>
           </select>
           <button className="h-11 rounded-xl bg-blue-600 px-5 text-sm font-bold text-white shadow-sm hover:bg-blue-700">Filtrar</button>
         </form>

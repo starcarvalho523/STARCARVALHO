@@ -12,7 +12,7 @@ export async function getCeoAnalytics(filters: CeoFilters, scope: CeoScope = "ad
   const data = await getRawCeoAnalytics(filters);
   const payments = data.payments.filter(isOperationalFinancialPayment);
   const paid = data.paid.filter(isOperationalFinancialPayment);
-  const previousRevenue = previousRevenueTotal(data.previousPayments, isOperationalFinancialPayment);
+  const previousRevenue = filters.period === "all" ? 0 : previousRevenueTotal(data.previousPayments, isOperationalFinancialPayment);
   const revenue = paid.reduce((sum, payment) => sum + Number(payment.amount), 0);
   const method = (name: string) => {
     const rows = paid.filter((payment) => payment.method === name);
@@ -34,15 +34,24 @@ function normalizeAlertHref(href: string) {
 }
 
 function makeBuckets(period: CeoPeriod, since: Date, timezone: string, paid: CeoPayment[], sessions: CeoSession[], capacity: number) {
-  const count = period === "today" ? 24 : Number(period);
+  const dates=[...paid.map(p=>p.paid_at),...sessions.map(s=>s.entered_at),...sessions.map(s=>s.exited_at)].filter(Boolean).map(v=>new Date(v as string).getTime());
+  const effectiveStart=period==="all"&&dates.length?new Date(Math.min(...dates)):since;
+  if(period==="today") return bucketSeries(effectiveStart,24,1,"hour",timezone,paid,sessions,capacity);
+  const totalDays=Math.max(1,Math.ceil((Date.now()-effectiveStart.getTime())/86400000));
+  const numeric=period==="all"?totalDays:Number(period);
+  const stepDays=period==="all"?Math.max(1,Math.ceil(totalDays/30)):numeric<=30?1:numeric<=90?7:numeric<=180?14:30;
+  return bucketSeries(effectiveStart,Math.max(1,Math.ceil(totalDays/stepDays)),stepDays,"day",timezone,paid,sessions,capacity);
+}
+
+function bucketSeries(since:Date,count:number,step:number,unit:"hour"|"day",timezone:string,paid:CeoPayment[],sessions:CeoSession[],capacity:number){
   return Array.from({ length: count }, (_, index) => {
-    const start = new Date(since); if (period === "today") start.setUTCHours(start.getUTCHours() + index); else start.setUTCDate(start.getUTCDate() + index);
-    const end = new Date(start); if (period === "today") end.setUTCHours(end.getUTCHours() + 1); else end.setUTCDate(end.getUTCDate() + 1);
+    const start = new Date(since); if (unit === "hour") start.setUTCHours(start.getUTCHours() + index*step); else start.setUTCDate(start.getUTCDate() + index*step);
+    const end = new Date(start); if (unit === "hour") end.setUTCHours(end.getUTCHours() + step); else end.setUTCDate(end.getUTCDate() + step);
     const inRange = (value: string | null) => Boolean(value && new Date(value) >= start && new Date(value) < end);
     const entries = sessions.filter((session) => inRange(session.entered_at)).length;
     const exits = sessions.filter((session) => inRange(session.exited_at)).length;
     const bucketPayments = paid.filter((payment) => inRange(payment.paid_at));
-    const label = period === "today" ? new Intl.DateTimeFormat("pt-BR", { timeZone: timezone, hour: "2-digit" }).format(start) : new Intl.DateTimeFormat("pt-BR", { timeZone: timezone, day: "2-digit", month: "2-digit" }).format(start);
+    const label = unit === "hour" ? new Intl.DateTimeFormat("pt-BR", { timeZone: timezone, hour: "2-digit" }).format(start) : new Intl.DateTimeFormat("pt-BR", { timeZone: timezone, day: "2-digit", month: "2-digit" }).format(start);
     return { label, revenue: bucketPayments.reduce((sum, payment) => sum + Number(payment.amount), 0), payments: bucketPayments.length, entries, exits, occupancy: capacity ? Math.max(0, entries - exits) / capacity * 100 : 0 };
   });
 }
