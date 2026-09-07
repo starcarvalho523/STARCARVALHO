@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/global-link";
 import { AlertTriangle, ArrowUpRight, BarChart3, CircleDollarSign, Clock3, UsersRound } from "lucide-react";
 import type { CeoAlert } from "@/lib/ceo-analytics";
 import { formatMoney, formatDuration } from "@/lib/operator-format";

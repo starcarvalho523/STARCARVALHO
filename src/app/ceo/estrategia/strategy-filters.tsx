@@ -1,6 +1,7 @@
 "use client";
 
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
+import { useGlobalRouter as useRouter } from "@/components/global-loading-provider";
 import { CalendarRange, Building2 } from "lucide-react";
 
 export function StrategyFilters({ units }: { units: Array<{ id: string; name: string }> }) {

@@ -1,12 +1,15 @@
 "use client";
 
+import { useGlobalPending } from "@/components/global-loading-provider";
+
 import { ArrowRight, CalendarClock, LoaderCircle, WalletCards } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useGlobalRouter as useRouter } from "@/components/global-loading-provider";
 import { useState } from "react";
 
 export function MonthlyAutomaticChargeGuard({subscriptionId,nextBillingDate,compact=false}:{subscriptionId:string;nextBillingDate:string|null;compact?:boolean}){
   const router=useRouter();
   const[loading,setLoading]=useState(false);
+  useGlobalPending(loading);
   const[error,setError]=useState<string|null>(null);
 
   const enableManualPayment=async()=>{

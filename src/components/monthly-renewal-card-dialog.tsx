@@ -1,5 +1,10 @@
 "use client";
 
+import { useGlobalPending } from "@/components/global-loading-provider";
+
+import { GlobalForm } from "@/components/global-form";
+
+
 import { CalendarClock, CreditCard, LoaderCircle, ShieldCheck, X } from "lucide-react";
 import { FormEvent, useState } from "react";
 
@@ -30,6 +35,7 @@ const empty:Fields={number:"",holderName:"",expiryMonth:"",expiryYear:"",ccv:"",
 export function MonthlyRenewalCardDialog({subscriptionId,amount,nextBillingDate,onClose,onSuccess}:Props){
   const[fields,setFields]=useState<Fields>(empty);
   const[loading,setLoading]=useState(false);
+  useGlobalPending(loading);
   const[error,setError]=useState<string|null>(null);
   const set=(name:keyof Fields,value:string)=>setFields((current)=>({...current,[name]:value}));
 
@@ -68,7 +74,7 @@ export function MonthlyRenewalCardDialog({subscriptionId,amount,nextBillingDate,
         <button type="button" onClick={onClose} disabled={loading} aria-label="Fechar" className="grid size-10 place-items-center rounded-full border text-slate-600 hover:bg-slate-50 disabled:opacity-50"><X className="size-5"/></button>
       </div>
 
-      <form onSubmit={submit} className="p-5 sm:p-6">
+      <GlobalForm onSubmit={submit} className="p-5 sm:p-6">
         <div className="grid gap-3 sm:grid-cols-3">
           <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4"><p className="text-xs font-bold uppercase tracking-wide text-emerald-700">Hoje</p><p className="mt-1 text-2xl font-black text-emerald-800">R$ 0,00</p><p className="mt-1 text-xs text-emerald-700">Nenhuma mensalidade será cobrada agora.</p></div>
           <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4"><p className="text-xs font-bold uppercase tracking-wide text-blue-700">Primeira cobrança</p><p className="mt-1 text-xl font-black text-blue-950">{date(nextBillingDate)}</p><p className="mt-1 text-xs text-blue-700">Somente nesta data.</p></div>
@@ -108,7 +114,7 @@ export function MonthlyRenewalCardDialog({subscriptionId,amount,nextBillingDate,
           <button type="submit" disabled={loading} className="flex h-12 items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 font-black text-white disabled:cursor-wait disabled:opacity-50">{loading?<LoaderCircle className="size-5 animate-spin"/>:<CalendarClock className="size-5"/>}{loading?"Validando e sincronizando...":"Autorizar renovação automática"}</button>
         </div>
         <p className="mt-3 text-center text-xs text-slate-500">Os dados completos do cartão não são armazenados pelo Star Carvalhos.</p>
-      </form>
+      </GlobalForm>
     </div>
   </div>;
 }

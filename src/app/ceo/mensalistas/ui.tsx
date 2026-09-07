@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/global-link";
 
 export function Notice({ error, success }: { error?: string; success?: string }) {
   if (!error && !success) return null;

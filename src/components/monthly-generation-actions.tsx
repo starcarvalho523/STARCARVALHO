@@ -1,6 +1,9 @@
 "use client";
 
+import { useGlobalPending } from "@/components/global-loading-provider";
+
 import { useState } from "react";
+import { useGlobalRouter } from "@/components/global-loading-provider";
 
 type Result = {
   processed: number;
@@ -13,7 +16,9 @@ type Result = {
 };
 
 export function MonthlyGenerationActions({ unitId }: { unitId: string }) {
+  const router = useGlobalRouter();
   const [busy, setBusy] = useState<"dry" | "run" | null>(null);
+  useGlobalPending(busy !== null);
   const [result, setResult] = useState<Result | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -29,7 +34,7 @@ export function MonthlyGenerationActions({ unitId }: { unitId: string }) {
       const payload = await response.json();
       if (!response.ok) throw new Error(payload?.error ?? "MONTHLY_AUTOMATION_FAILED");
       setResult(payload.result as Result);
-      if (!dryRun) window.location.reload();
+      if (!dryRun) router.refresh();
     } catch {
       setError("N\u00e3o foi poss\u00edvel executar a gera\u00e7\u00e3o agora.");
     } finally {

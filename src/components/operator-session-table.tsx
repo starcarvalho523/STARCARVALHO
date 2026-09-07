@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/global-link";
 import { ArrowRight,CalendarDays,CircleDollarSign,Clock3,Play } from "lucide-react";
 import { OperationBadge } from "@/components/operation-badge";
 import { VehicleGroupIcon, VehicleTypeIcon } from "@/components/vehicle-type-icon";

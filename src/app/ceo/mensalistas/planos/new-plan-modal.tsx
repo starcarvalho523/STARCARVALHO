@@ -1,5 +1,8 @@
 "use client";
 
+import { GlobalForm } from "@/components/global-form";
+
+
 import { useEffect, useRef, useState } from "react";
 import { CircleDollarSign, Plus, X } from "lucide-react";
 import { createPlan } from "../actions";
@@ -32,7 +35,7 @@ export function NewPlanModal({ units, defaultOpen = false }: { units: UnitOption
           <div className="flex min-w-0 gap-3"><span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-blue-50 text-blue-600"><CircleDollarSign className="size-5" /></span><div><h2 id="new-plan-title" className="text-lg font-bold text-slate-950 sm:text-xl">Criar plano comercial 2.0</h2><p className="mt-0.5 max-w-3xl text-xs leading-5 text-slate-500 sm:text-sm">Preço, cobertura, simultaneidade, garantia de vaga, dias e horários de acesso. Cada pagamento cobre 30 dias corridos.</p></div></div>
           <button type="button" aria-label="Fechar modal" onClick={() => setOpen(false)} className="grid size-9 shrink-0 place-items-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-800"><X className="size-5" /></button>
         </div>
-        <form action={createPlan} className="flex min-h-0 flex-1 flex-col">
+        <GlobalForm action={createPlan} className="flex min-h-0 flex-1 flex-col">
           <div className="grid min-h-0 flex-1 gap-3 overflow-y-auto overscroll-contain p-4 md:grid-cols-2 lg:grid-cols-3 sm:p-5">
             <Label text="Unidade"><select name="unitId" required className={field}>{units.map((unit)=><option key={unit.id} value={unit.id}>{unit.name}</option>)}</select></Label>
             <Label text="Nome do plano"><input ref={nameInputRef} name="name" minLength={2} required className={field} placeholder="Ex.: Mensal Garantido" /></Label>
@@ -54,7 +57,7 @@ export function NewPlanModal({ units, defaultOpen = false }: { units: UnitOption
             {guaranteed && <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 md:col-span-2 lg:col-span-3">Planos com vaga garantida devem ser vendidos apenas dentro da capacidade reservada da unidade/zona. O dashboard de capacidade acompanha esse limite.</div>}
           </div>
           <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-slate-100 bg-white px-4 py-3 sm:flex-row sm:justify-end sm:px-5"><button type="button" className={secondary} onClick={() => setOpen(false)}>Cancelar</button><button className={primary}>Criar plano</button></div>
-        </form>
+        </GlobalForm>
       </section>
     </div> : null}
   </>;

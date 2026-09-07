@@ -1,5 +1,8 @@
 "use client";
 
+import { GlobalForm } from "@/components/global-form";
+
+
 import { useActionState, useEffect, useMemo, useState } from "react";
 import { Building2, Mail, ShieldCheck, UserPlus, UserRound, X } from "lucide-react";
 import { inviteEmployee, type TeamState } from "./actions";
@@ -96,7 +99,7 @@ export function InviteForm({ units }: { units: UnitOption[] }) {
               </button>
             </div>
 
-            <form action={action} className="grid gap-4 p-5 sm:grid-cols-2 sm:p-6">
+            <GlobalForm action={action} className="grid gap-4 p-5 sm:grid-cols-2 sm:p-6">
               <Label text="Nome completo" icon={UserRound}>
                 <input name="fullName" required minLength={2} placeholder="Nome do funcionário" className={field} />
               </Label>
@@ -133,7 +136,7 @@ export function InviteForm({ units }: { units: UnitOption[] }) {
                   {pending ? "Enviando..." : "Enviar convite"}
                 </button>
               </div>
-            </form>
+            </GlobalForm>
           </section>
         </div>
       ) : null}

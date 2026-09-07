@@ -1,0 +1,35 @@
+"use client";
+import { useState } from "react";
+import GlobalLink from "@/components/global-link";
+import { GlobalForm } from "@/components/global-form";
+import { useGlobalPending, useGlobalRouter } from "@/components/global-loading-provider";
+export default function Controls({save}: {save: () => Promise<void>}) {
+  const router = useGlobalRouter();
+  const [pending, setPending] = useState(false);
+  const [result, setResult] = useState("initial");
+  useGlobalPending(pending);
+  async function load() {
+    setPending(true);
+    try {
+      const [first, second] = await Promise.all([
+        fetch("/loader-data-a").then(response => response.json()),
+        fetch("/loader-data-b").then(response => response.json()),
+      ]);
+      setResult(first.value + second.value);
+    } catch { setResult("visible error"); }
+    finally { setPending(false); }
+  }
+  return <div style={{display:"grid",gap:20}}>
+    <GlobalLink href="/loader-verification?period=7&delay=1800" prefetch={false}>Slow navigation</GlobalLink>
+    <GlobalLink href="/loader-verification?period=30" prefetch={false}>Fast navigation</GlobalLink>
+    <select aria-label="Period" defaultValue="today" onChange={event => router.replace("/loader-verification?period=" + event.target.value + "&delay=1600")}>
+      {["today","7","30","90","180","365","all"].map(value => <option key={value}>{value}</option>)}
+    </select>
+    <GlobalForm action={save}><button>Save and refresh</button></GlobalForm>
+    <GlobalForm><input name="period" defaultValue="all"/><input type="hidden" name="delay" value="1200"/><button>GET filter</button></GlobalForm>
+    <button onClick={() => router.refresh()}>Refresh route</button>
+    <button onClick={() => void load()}>Load overlapping data</button>
+    <button onClick={() => void fetch("/loader-background")}>Background request</button>
+    <p data-testid="result">{result}</p>
+  </div>;
+}

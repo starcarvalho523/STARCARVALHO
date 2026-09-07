@@ -1,4 +1,5 @@
-import Link from "next/link";
+import { GlobalForm } from "@/components/global-form";
+import Link from "@/components/global-link";
 import { ArrowLeft, CarFront, CreditCard, ShieldCheck, UserRound } from "lucide-react";
 import { DashboardShell } from "@/components/dashboard-shell";
 import { CeoPageHeader } from "@/components/ceo-page-header";
@@ -31,7 +32,7 @@ export default async function NewSubscriptionPage({ searchParams }: { searchPara
         {!plans?.length ? (
           <EmptyState title="Nenhum plano ativo disponível" description="Crie e ative um plano antes de cadastrar uma assinatura. Contratos não podem existir sem uma oferta válida." primaryHref="/ceo/mensalistas/planos?novo=1" primaryLabel="Criar plano" secondaryHref="/ceo/mensalistas" secondaryLabel="Voltar para Assinaturas" />
         ) : !customers.length ? <EligibilityEmptyState /> : (
-          <form action={createSubscription} className="space-y-4">
+          <GlobalForm action={createSubscription} className="space-y-4">
             <Step n="1" title="Escolha o plano" description="A unidade é definida automaticamente no servidor a partir do plano selecionado." icon={<CreditCard className="size-5" />}>
               <div className="grid gap-3 md:grid-cols-2">
                 {(plans ?? []).map((plan) => <label key={plan.id} className="cursor-pointer rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50 has-[:checked]:ring-2 has-[:checked]:ring-blue-100"><div className="flex items-start gap-3"><input type="radio" name="planId" value={plan.id} required className="mt-1 size-4 accent-blue-600"/><div className="min-w-0"><p className="text-xs font-bold uppercase tracking-wide text-blue-600">{unitMap.get(plan.unit_id)}</p><p className="mt-1 font-bold text-slate-950">{plan.name}</p><p className="mt-1 text-sm font-semibold text-slate-700">{money(plan.price)}/30 dias</p><p className="mt-1 text-xs leading-5 text-slate-500">Renova a cada 30 dias corridos · carência de {plan.grace_days} dia(s) · até {plan.max_vehicles} veículo(s)</p></div></div></label>)}
@@ -42,7 +43,7 @@ export default async function NewSubscriptionPage({ searchParams }: { searchPara
             </Step>
             <Step n="3" title="Início do contrato" description="Esta data será a âncora do primeiro ciclo. A próxima renovação ocorrerá exatamente 30 dias depois." icon={<CarFront className="size-5" />}><Label text="Data de início"><input name="startsOn" type="date" required defaultValue={new Date().toISOString().slice(0, 10)} className={field}/></Label></Step>
             <section className="flex flex-col gap-4 rounded-2xl border border-emerald-200 bg-emerald-50/70 p-5 sm:flex-row sm:items-center sm:justify-between"><div className="flex gap-3"><span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-white text-emerald-600 shadow-sm"><ShieldCheck className="size-5" /></span><div><p className="font-bold text-emerald-950">Criação protegida pelo servidor</p><p className="mt-1 text-sm leading-5 text-emerald-800">Preço, ciclo fixo de 30 dias e carência são controlados pelo servidor. A unidade não pode ser alterada pelo navegador.</p></div></div><button className={`${primary} shrink-0`}>Criar assinatura</button></section>
-          </form>
+          </GlobalForm>
         )}
       </div>
     </DashboardShell>

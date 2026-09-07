@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { useRouter } from "next/navigation";
+import { useGlobalRouter as useRouter } from "@/components/global-loading-provider";
 import { LockKeyhole, ShieldCheck, X } from "lucide-react";
 import { EfiCardPaymentPanel } from "@/components/efi-card-payment-panel";
 import { PixPaymentPanel } from "@/components/pix-payment-panel";

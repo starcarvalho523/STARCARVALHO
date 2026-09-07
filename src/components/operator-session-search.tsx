@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import Link from "@/components/global-link";
 import type { ComponentType } from "react";
 import { useMemo, useState } from "react";
 import { ArrowRight, CheckCircle2, CircleDollarSign, Clock3, Gauge, Search, WalletCards } from "lucide-react";

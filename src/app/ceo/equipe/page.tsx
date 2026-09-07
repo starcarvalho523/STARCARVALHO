@@ -1,3 +1,4 @@
+import { GlobalForm } from "@/components/global-form";
 import { Search, ShieldCheck, ShieldOff, UserPlus, UsersRound } from "lucide-react";
 import { DashboardShell } from "@/components/dashboard-shell";
 import { CeoPageHeader } from "@/components/ceo-page-header";
@@ -121,7 +122,7 @@ export default async function TeamPage({
           <Metric label="Convites pendentes" value={String(pendingInvites)} icon={UserPlus} tone="violet" />
         </section>
 
-        <form className="grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:grid-cols-[minmax(0,1fr)_auto_auto_auto_auto]">
+        <GlobalForm className="grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:grid-cols-[minmax(0,1fr)_auto_auto_auto_auto]">
           <label className="flex h-11 min-w-0 items-center gap-2 rounded-xl border border-slate-200 px-3 focus-within:border-blue-500 focus-within:ring-4 focus-within:ring-blue-100">
             <Search className="size-4 shrink-0 text-slate-400" />
             <span className="sr-only">Buscar pessoa ou e-mail</span>
@@ -146,7 +147,7 @@ export default async function TeamPage({
             <option value="account_blocked">Conta inativa</option>
           </select>
           <button className="h-11 rounded-xl bg-blue-600 px-5 text-sm font-bold text-white shadow-sm hover:bg-blue-700">Filtrar</button>
-        </form>
+        </GlobalForm>
 
         <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
           <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">

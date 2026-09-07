@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import Link from "@/components/global-link";
 import { Bell, Check, LoaderCircle, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
