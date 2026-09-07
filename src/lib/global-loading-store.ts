@@ -22,8 +22,8 @@ export function createLoadingStore() {
 
 export const globalLoadingStore = createLoadingStore();
 export const beginGlobalLoading = globalLoadingStore.begin;
-export const MIN_VISIBLE_MS = 900;
-export const FINISH_ANIMATION_MS = 280;
+export const MIN_VISIBLE_MS = 180;
+export const FINISH_ANIMATION_MS = 120;
 
 /** Time-based (not frame-rate-based), monotonic, and capped until real work commits. */
 export function adaptiveProgress(elapsed: number) {

@@ -20,12 +20,13 @@ test("slow RSC navigation holds old page, frosted backdrop and focus until final
   await expect(page.locator("main")).not.toHaveAttribute("inert");
   expect(errors).toEqual([]);
 });
-test("fast routes still have a perceptible minimum", async ({ page }) => {
+test("fast routes reveal committed data without a one-second artificial hold", async ({ page }) => {
   const start = Date.now();
   await page.getByText("Fast navigation", { exact: true }).click();
   await expect(overlay(page)).toBeVisible();
-  await expect(overlay(page)).toBeHidden();
-  expect(Date.now() - start).toBeGreaterThanOrEqual(900);
+  await expect(page.getByTestId("period")).toHaveText("30");
+  await expect(overlay(page)).toBeHidden({ timeout: 650 });
+  expect(Date.now() - start).toBeGreaterThanOrEqual(180);
   await expect(page.getByTestId("period")).toHaveText("30");
 });
 test("all period filters finish with the final server data", async ({ page }) => {

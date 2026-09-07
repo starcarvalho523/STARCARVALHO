@@ -56,7 +56,7 @@ export default async function Page({
   if (secao === "recibos") redirect("/cliente/pagamentos");
   if (!["estadias", "veiculos", "pagamentos", "conta"].includes(secao))
     notFound();
-  const data = await getCustomerData();
+  const data = await getCustomerData(secao === "estadias" ? "stays" : secao === "veiculos" ? "vehicles" : secao === "pagamentos" ? "payments" : "account");
   const active = {
     estadias: "Estadias",
     veiculos: "Veículos",
