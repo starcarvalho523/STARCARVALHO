@@ -1,3 +1,4 @@
+import { readBoundedJson } from "@/lib/bounded-body";
 import { PaymentService } from "@/lib/payments/payment-service";
 import { resolveEfiPixRuntimeConfig } from "@/lib/payments/efi-config";
 import { isEfiPixProductionRuntimeEnabled } from "@/lib/supabase/env";
@@ -6,7 +7,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getOperatorContext } from "@/lib/operator-data";
 
 export async function POST(request: Request) {
-  const body = await request.json().catch(() => null) as { sessionId?: unknown } | null;
+  const body = await readBoundedJson(request).catch(() => null) as { sessionId?: unknown } | null;
   if (!body || Object.keys(body).length !== 1 || typeof body.sessionId !== "string") {
     return Response.json({ error: "SESSION_ID_REQUIRED" }, { status: 400 });
   }

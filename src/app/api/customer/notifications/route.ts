@@ -1,3 +1,4 @@
+import { readBoundedJson } from "@/lib/bounded-body";
 import { createClient } from "@/lib/supabase/server";
 
 export async function GET() {
@@ -19,7 +20,7 @@ export async function GET() {
 }
 
 export async function PATCH(request: Request) {
-  const body = await request.json().catch(() => ({}));
+  const body = await readBoundedJson(request).catch(() => ({}));
   const notificationId = typeof body?.notificationId === "string" ? body.notificationId : "";
   if (!notificationId) {
     return Response.json({ error: "NOTIFICATION_ID_REQUIRED" }, { status: 400 });

@@ -1,3 +1,4 @@
+import { BodyTooLargeError, readBoundedJson } from "@/lib/bounded-body";
 import { getPaymentProvider } from "@/lib/payments/provider-factory";
 import { PaymentService } from "@/lib/payments/payment-service";
 import { safeTokenEquals } from "@/lib/payments/asaas-provider";
@@ -21,10 +22,10 @@ export async function POST(request: Request) {
     }
 
     const provider = getPaymentProvider();
-    const payload = await request.json();
+    const payload = await readBoundedJson(request, 1024 * 1024);
     eventName = payload && typeof payload === "object" && "event" in payload ? String(payload.event) : "";
 
-    if (!eventName) {
+    if (!/^[A-Z][A-Z0-9_]{0,79}$/.test(eventName)) {
       console.warn("ASAAS_WEBHOOK_INVALID_EVENT");
       return Response.json({ error: "INVALID_WEBHOOK" }, { status: 400 });
     }
@@ -68,18 +69,21 @@ export async function POST(request: Request) {
 
     return Response.json({ received: true }, { status: 200 });
   } catch (error) {
+    if (error instanceof BodyTooLargeError) {
+      return Response.json({ error: "PAYLOAD_TOO_LARGE" }, { status: 413 });
+    }
     const errorCode = error instanceof Error ? error.message : "UNKNOWN_ERROR";
     const invalid =
-      error instanceof Error &&
+      error instanceof SyntaxError || (error instanceof Error &&
       (error.message === "INVALID_ASAAS_WEBHOOK" ||
         error.message.startsWith("ASAAS_SUBSCRIPTION_INVALID_") ||
         error.message.startsWith("ASAAS_PIX_AUTOMATIC_INVALID_") ||
         error.message.startsWith("ASAAS_RENEWAL_SETUP_") ||
-        error.message.includes("EVENT_ID_REQUIRED"));
+        error.message.includes("EVENT_ID_REQUIRED")));
 
     console.warn("ASAAS_WEBHOOK_PROCESSING_ERROR", {
-      eventName,
-      errorCode: errorCode.slice(0, 120),
+      eventName: /^[A-Z][A-Z0-9_]{0,79}$/.test(eventName) ? eventName : "INVALID_EVENT",
+      errorCode: /^[A-Z][A-Z0-9_]{0,119}$/.test(errorCode) ? errorCode : "REDACTED_PROCESSING_ERROR",
       status: invalid ? 400 : 500,
     });
 

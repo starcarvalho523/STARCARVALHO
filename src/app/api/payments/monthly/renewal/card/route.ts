@@ -1,3 +1,4 @@
+import { readBoundedJson } from "@/lib/bounded-body";
 import { createClient } from "@/lib/supabase/server";
 import { AsaasPublicError } from "@/lib/payments/asaas-provider";
 import { activateMonthlyRenewalWithNativeCard } from "@/lib/payments/monthly-renewal-native-card";
@@ -6,7 +7,7 @@ export const runtime="nodejs";
 
 export async function POST(request:Request){
   try{
-    const body=await request.json().catch(()=>null);
+    const body=await readBoundedJson(request).catch(()=>null);
     if(!isRecord(body))return Response.json({error:"Dados inválidos."},{status:400});
     const subscriptionId=text(body.subscriptionId,80);
     if(!/^[0-9a-f-]{36}$/i.test(subscriptionId))return Response.json({error:"Assinatura inválida."},{status:400});

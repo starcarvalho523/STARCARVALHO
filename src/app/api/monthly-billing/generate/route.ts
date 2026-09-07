@@ -1,8 +1,9 @@
+import { readBoundedJson } from "@/lib/bounded-body";
 import { createClient } from "@/lib/supabase/server";
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
+    const body = await readBoundedJson(request);
     const unitId = typeof body?.unitId === "string" ? body.unitId : "";
     const dryRun = body?.dryRun === true;
     if (!unitId) return Response.json({ error: "UNIT_ID_REQUIRED" }, { status: 400 });

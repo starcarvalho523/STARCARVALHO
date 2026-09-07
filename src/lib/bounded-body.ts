@@ -1,5 +1,11 @@
 export class BodyTooLargeError extends Error {}
 
+/** Same JSON semantics as Request.json(), but bounded before parsing. */
+export async function readBoundedJson(request: Request, limit = 64 * 1024): ReturnType<Request["json"]> {
+  const bytes = await readBoundedBody(request, limit);
+  return JSON.parse(new TextDecoder().decode(bytes));
+}
+
 /** Enforce the byte limit even when Content-Length is absent or forged. */
 export async function readBoundedBody(request: Request, limit: number): Promise<Uint8Array> {
   const length = request.headers.get("content-length");

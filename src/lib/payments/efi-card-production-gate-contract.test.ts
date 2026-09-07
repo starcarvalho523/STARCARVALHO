@@ -20,7 +20,7 @@ test("Efí card payment route fails closed before reading payment input outside 
   const qaGate = paymentRoute.indexOf("isEfiCardQaPreviewRuntime()");
   const productionGate = paymentRoute.indexOf("isEfiCardProductionRuntimeEnabled()");
   const failClosed = paymentRoute.indexOf("if (!isQa && !isProduction)");
-  const body = paymentRoute.indexOf("request.json()");
+  const body = paymentRoute.indexOf("readBoundedJson(request)");
   assert.ok(qaGate >= 0 && productionGate >= 0 && failClosed >= 0 && body > failClosed);
   assert.match(paymentRoute, /EFI_CARD_NOT_AVAILABLE/);
 });

@@ -1,3 +1,4 @@
+import { readBoundedJson } from "@/lib/bounded-body";
 import { createClient } from "@/lib/supabase/server";
 import { PaymentService } from "@/lib/payments/payment-service";
 import { prepareMonthlyPaymentAttempt } from "@/lib/payments/monthly-payment-attempt-switch";
@@ -6,7 +7,7 @@ export async function GET(request:Request){
   try{const billingPeriodId=new URL(request.url).searchParams.get("billingPeriodId");if(!billingPeriodId)return Response.json({error:"BILLING_PERIOD_ID_REQUIRED"},{status:400});const payment=await new PaymentService().getMonthlyPix(billingPeriodId,await createClient());return Response.json({payment},{headers:{"cache-control":"no-store"}})}catch(error){return failure(error)}
 }
 export async function POST(request:Request){
-  try{const body=await request.json();const billingPeriodId=typeof body?.billingPeriodId==="string"?body.billingPeriodId:"";if(!billingPeriodId)return Response.json({error:"BILLING_PERIOD_ID_REQUIRED"},{status:400});const client=await createClient();await prepareMonthlyPaymentAttempt(billingPeriodId,"PIX",client);const payment=await new PaymentService().createMonthlyPix(billingPeriodId,client);return Response.json({payment},{headers:{"cache-control":"no-store"}})}catch(error){return failure(error)}
+  try{const body=await readBoundedJson(request);const billingPeriodId=typeof body?.billingPeriodId==="string"?body.billingPeriodId:"";if(!billingPeriodId)return Response.json({error:"BILLING_PERIOD_ID_REQUIRED"},{status:400});const client=await createClient();await prepareMonthlyPaymentAttempt(billingPeriodId,"PIX",client);const payment=await new PaymentService().createMonthlyPix(billingPeriodId,client);return Response.json({payment},{headers:{"cache-control":"no-store"}})}catch(error){return failure(error)}
 }
 export async function DELETE(request:Request){
   try{const billingPeriodId=new URL(request.url).searchParams.get("billingPeriodId");if(!billingPeriodId)return Response.json({error:"BILLING_PERIOD_ID_REQUIRED"},{status:400});const result=await prepareMonthlyPaymentAttempt(billingPeriodId,"PIX",await createClient());return Response.json(result,{headers:{"cache-control":"no-store"}})}catch(error){return failure(error)}

@@ -1,3 +1,4 @@
+import { readBoundedJson } from "@/lib/bounded-body";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getPaymentProvider } from "@/lib/payments/provider-factory";
@@ -37,7 +38,7 @@ function todayInBahia(){
 export async function POST(request:Request){
   const attemptId=attemptIdFrom(request);
   try{
-    const body=await request.json().catch(()=>({}));
+    const body=await readBoundedJson(request).catch(()=>({}));
     const subscriptionId=typeof body?.subscriptionId==="string"?body.subscriptionId:"";
     const action=typeof body?.action==="string"?body.action:"";
     if(!subscriptionId||!["ENABLE","DISABLE","CANCEL_AT_PERIOD_END"].includes(action))return Response.json({error:"Solicitação de renovação inválida.",code:"INVALID_RENEWAL_REQUEST",retryable:false,attemptId},{status:400});
