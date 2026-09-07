@@ -25,12 +25,18 @@ export function CustomerPaymentModal({open,onClose,sessionId,plate,unitName,amou
 
   useEffect(()=>{
     if(!open)return;
-    setMethod(defaultMethod(options));setSwitchError(null);
+    setMethod(defaultMethod(options));
+    setSwitchError(null);
     closeButtonRef.current?.focus();
+  },[open,options.pix,options.credit,options.efiCard,options.efiCardEnvironment]);
+
+  useEffect(()=>{
+    if(!open)return;
     const listener=(event:KeyboardEvent)=>{if(event.key==="Escape"&&!busy)onClose()};
-    document.addEventListener("keydown",listener);document.body.style.overflow="hidden";
+    document.addEventListener("keydown",listener);
+    document.body.style.overflow="hidden";
     return()=>{document.removeEventListener("keydown",listener);document.body.style.overflow=""};
-  },[open,onClose,busy,options]);
+  },[open,onClose,busy]);
 
   if(!open||typeof document==="undefined")return null;
 
@@ -45,7 +51,11 @@ export function CustomerPaymentModal({open,onClose,sessionId,plate,unitName,amou
         const response=await fetch("/api/payments/efi-pix",{method:"DELETE",headers:{"content-type":"application/json"},body:JSON.stringify({sessionId}),cache:"no-store"});
         const body=await response.json().catch(()=>({}));
         if(!response.ok)throw new Error(typeof body.error==="string"?body.error:"Não foi possível trocar o meio de pagamento.");
-      }catch(cause){setSwitchError(cause instanceof Error?cause.message:"Não foi possível trocar o meio de pagamento.");setSwitching(false);return}
+      }catch(cause){
+        setSwitchError(cause instanceof Error?cause.message:"Não foi possível trocar o meio de pagamento.");
+        setSwitching(false);
+        return;
+      }
       setSwitching(false);
     }
     setMethod(target);
