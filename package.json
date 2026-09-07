@@ -20,7 +20,7 @@
     "test:pre-golive": "node --experimental-strip-types --experimental-transform-types --test --experimental-test-isolation=none src/lib/pre-golive-hardening.test.ts src/lib/customer-notifications.test.ts src/lib/supabase/env.test.ts"
   },
   "dependencies": {
-    "@supabase/ssr": "^0.12.4",
+    "@supabase/ssr": "^0.12.5",
     "@supabase/supabase-js": "^2.115.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
