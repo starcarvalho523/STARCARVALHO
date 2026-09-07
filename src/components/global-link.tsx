@@ -1,19 +1,15 @@
 "use client";
 
 import NextLink from "next/link";
-import { useRef, type ComponentProps } from "react";
+import { useImperativeHandle, useRef, type ComponentProps } from "react";
 import { useGlobalRouter } from "@/components/global-loading-provider";
 
 /** Keep Next's link semantics/prefetch; own only the actual same-origin navigation. */
-export default function GlobalLink({ onNavigate, children, ...props }: ComponentProps<typeof NextLink>) {
+export default function GlobalLink({ onNavigate, children, ref, ...props }: ComponentProps<typeof NextLink>) {
   const router = useGlobalRouter();
   const anchor = useRef<HTMLAnchorElement | null>(null);
-  return <NextLink {...props} ref={(element) => {
-    anchor.current = element;
-    const ref = props.ref;
-    if (typeof ref === "function") return ref(element);
-    if (ref) ref.current = element;
-  }} onNavigate={(event) => {
+  useImperativeHandle(ref, () => anchor.current!, []);
+  return <NextLink {...props} ref={anchor} onNavigate={(event) => {
     let cancelled = false;
     onNavigate?.({ preventDefault() { cancelled = true; event.preventDefault(); } });
     if (cancelled || !anchor.current) return;
