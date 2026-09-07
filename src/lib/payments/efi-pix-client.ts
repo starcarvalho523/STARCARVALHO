@@ -46,7 +46,7 @@ export class EfiPixClient {
         headers: { "content-type": "application/json", authorization: `Bearer ${access.accessToken}` },
         body: JSON.stringify({ status: "REMOVIDA_PELO_USUARIO_RECEBEDOR" }),
       });
-      if ((response.status < 200 || response.status >= 300) && response.status !== 404) throw new Error("EFI_PIX_CANCEL_FAILED");
+      if ((response.status < 200 || response.status >= 300) && ![400, 404, 409].includes(response.status)) throw new Error("EFI_PIX_CANCEL_FAILED");
     } catch (error) {
       const code = error instanceof Error ? error.message : "";
       if (code === "EFI_AUTH_FAILED" || code === "EFI_CERTIFICATE_INVALID" || code === "EFI_TIMEOUT") throw error;
