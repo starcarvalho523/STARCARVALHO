@@ -1,7 +1,8 @@
 import { timingSafeEqual } from "node:crypto";
 
 import { PaymentService } from "@/lib/payments/payment-service";
-import { parseEfiPixWebhook } from "@/lib/payments/efi-pix-webhook-contract";
+import { parseEfiPixWebhook, type EfiPixWebhookEvent } from "@/lib/payments/efi-pix-webhook-contract";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -10,11 +11,18 @@ const MAX_BODY_BYTES = 64 * 1024;
 const DEFAULT_EFI_WEBHOOK_IP = "34.193.116.226";
 
 type Processor = Pick<PaymentService, "processEfiPixWebhook">;
+type FinancialEnricher = (events: readonly EfiPixWebhookEvent[]) => Promise<void>;
 let processorFactory: () => Processor = () => new PaymentService();
+let financialEnricher: FinancialEnricher = enrichEfiPixFinancials;
 
 /** Test seam only. Production uses PaymentService. */
 export function setEfiPixPublicWebhookProcessorForTests(factory: (() => Processor) | null) {
   processorFactory = factory ?? (() => new PaymentService());
+}
+
+/** Test seam only. Production persists provider reference and optional tariff. */
+export function setEfiPixFinancialEnricherForTests(enricher: FinancialEnricher | null) {
+  financialEnricher = enricher ?? enrichEfiPixFinancials;
 }
 
 export function GET() {
@@ -53,6 +61,7 @@ export async function POST(request: Request) {
 
     const events = parseEfiPixWebhook(parsed);
     await processorFactory().processEfiPixWebhook(events);
+    await financialEnricher(events);
     return Response.json({ ok: true, result: "EFI_WEBHOOK_ACCEPTED" });
   } catch (error) {
     if (error instanceof BodyTooLargeError) {
@@ -77,6 +86,19 @@ export function isAuthorizedOrigin(request: Request, env: NodeJS.ProcessEnv = pr
 
   const sourceIp = getSourceIp(request.headers);
   return sourceIp !== null && allowedIps.includes(sourceIp);
+}
+
+async function enrichEfiPixFinancials(events: readonly EfiPixWebhookEvent[]) {
+  const admin = createAdminClient();
+  for (const event of events) {
+    const { error } = await admin.rpc("enrich_efi_pix_payment_financials", {
+      event_txid: event.txid,
+      event_end_to_end_id: event.endToEndId,
+      event_amount_cents: event.amountCents,
+      event_fee_cents: event.feeCents ?? null,
+    });
+    if (error) throw new Error("EFI_PIX_FINANCIAL_ENRICHMENT_FAILED");
+  }
 }
 
 function getSourceIp(headers: Headers): string | null {
