@@ -31,8 +31,12 @@ export async function POST(request: Request) {
   }
   if (!authorized) return Response.json({ error: "PIX_PAYMENT_NOT_FOUND" }, { status: 404 });
 
-  const { data: payment } = await admin.from("payments").select("id").eq("parking_session_id", body.sessionId).eq("provider", "EFI").eq("method", "PIX").eq("payment_channel", "QR").eq("provider_environment", providerEnvironment).order("created_at", { ascending: false }).limit(1).maybeSingle();
+  const { data: payment } = await admin.from("payments").select("id,status,amount").eq("parking_session_id", body.sessionId).eq("provider", "EFI").eq("method", "PIX").eq("payment_channel", "QR").eq("provider_environment", providerEnvironment).order("created_at", { ascending: false }).limit(1).maybeSingle();
   if (!payment?.id) return Response.json({ error: "PIX_PAYMENT_NOT_FOUND" }, { status: 404 });
+
+  if (payment.status === "CANCELLED") {
+    return Response.json({ payment: { state: "CANCELLED", amount: Number(payment.amount), qrCodePayload: null, qrCodeImageBase64: null, expiresAt: null } }, { headers: { "cache-control": "no-store" } });
+  }
 
   try {
     const service = new PaymentService();
@@ -42,6 +46,10 @@ export async function POST(request: Request) {
     const value = context && typeof context === "object" ? context as Record<string, unknown> : {};
     return Response.json({ payment: { ...result, expiresAt: typeof value.expiresAt === "string" ? value.expiresAt : result.expiresAt } }, { headers: { "cache-control": "no-store" } });
   } catch {
+    const { data: latest } = await admin.from("payments").select("status,amount").eq("id", payment.id).maybeSingle();
+    if (latest?.status === "CANCELLED") {
+      return Response.json({ payment: { state: "CANCELLED", amount: Number(latest.amount), qrCodePayload: null, qrCodeImageBase64: null, expiresAt: null } }, { headers: { "cache-control": "no-store" } });
+    }
     return Response.json({ error: "EFI_PIX_RECONCILIATION_FAILED" }, { status: 502 });
   }
 }
