@@ -73,6 +73,12 @@ export async function POST(request: Request) {
         providerCode: cause.providerCode,
         environment,
       });
+      if (cause.providerCode === "4600222") {
+        return Response.json(
+          { error: "EFI_CARD_PAYER_MATCHES_RECEIVER", stage: cause.stage, uncertain: false },
+          { status: 422 },
+        );
+      }
       return Response.json({ error: cause.publicCode, stage: cause.stage, uncertain: cause.uncertain }, { status: 502 });
     }
     if (cause instanceof EfiCardServiceError) {
