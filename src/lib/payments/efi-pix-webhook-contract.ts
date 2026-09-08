@@ -1,5 +1,5 @@
 import { assertEfiTxid, parseEfiAmountToCents } from "./efi-contracts.ts";
-export type EfiPixWebhookEvent={txid:string;endToEndId:string;amountCents:number;paidAt:string;feeCents:number|null};
+export type EfiPixWebhookEvent={txid:string;endToEndId:string;amountCents:number;paidAt:string;feeCents?:number|null};
 /** Pure parser only; inbound mTLS termination and database effects are intentionally out of scope. */
 export function parseEfiPixWebhook(payload:unknown):EfiPixWebhookEvent[]{if(!payload||typeof payload!=="object"||!Array.isArray((payload as Record<string,unknown>).pix))throw new Error("EFI_WEBHOOK_INVALID");return (payload as {pix:unknown[]}).pix.map(parseEvent)}
 export function efiPixIdempotencyKey(event:Pick<EfiPixWebhookEvent,"endToEndId">):string{if(!isEfiEndToEndId(event.endToEndId))throw new Error("EFI_WEBHOOK_INVALID");return`efi:pix:${event.endToEndId}`}
