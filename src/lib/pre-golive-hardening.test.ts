@@ -2,10 +2,10 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-const migrationPath = "supabase/migrations/20260815132350_pre_golive_customer_hardening.sql";
-const policyCleanupPath = "supabase/migrations/20260815132410_historical_session_policy_cleanup.sql";
-const pendingReasonPath = "supabase/migrations/20260815132420_pending_activation_coverage_reason.sql";
-const snapshotFixPath = "supabase/migrations/20260815193500_complete_tariff_snapshot.sql";
+const migrationPath = "supabase/migrations/20260817022207_pre_golive_customer_hardening.sql";
+const policyCleanupPath = "supabase/migrations/20260817022235_historical_session_policy_cleanup.sql";
+const pendingReasonPath = "supabase/migrations/20260817022256_pending_activation_coverage_reason.sql";
+const snapshotFixPath = "supabase/migrations/20260817022411_complete_tariff_snapshot.sql";
 const read = (path: string) => readFile(path, "utf8");
 
 test("cash opening rejects zero and negatives at every layer", async () => {

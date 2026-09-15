@@ -2,10 +2,10 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-const migration = "supabase/migrations/20260815135024_customer_tariff_notifications.sql";
-const paymentInsertFix = "supabase/migrations/20260815135030_payment_confirmed_insert_notification.sql";
-const capAlertFix = "supabase/migrations/20260815194500_fix_customer_forecast_cap_alerts.sql";
-const preferences = "supabase/migrations/20260815195800_customer_forecast_preferences_monthly_alerts.sql";
+const migration = "supabase/migrations/20260817022335_customer_tariff_notifications.sql";
+const paymentInsertFix = "supabase/migrations/20260817022354_payment_confirmed_insert_notification.sql";
+const capAlertFix = "supabase/migrations/20260817022432_fix_customer_forecast_cap_alerts.sql";
+const preferences = "supabase/migrations/20260817022511_customer_forecast_preferences_monthly_alerts.sql";
 const read = (path: string) => readFile(path, "utf8");
 
 test("notifications are isolated, read-only and deduplicated", async () => {
@@ -99,7 +99,7 @@ test("polling is visibility-aware and stops outside relevant sessions", async ()
 test("pending activation becomes active only on paid and then uses existing recurrence", async () => {
   const [notifications, hardening, automation] = await Promise.all([
     read(migration),
-    read("supabase/migrations/20260815132350_pre_golive_customer_hardening.sql"),
+    read("supabase/migrations/20260817022207_pre_golive_customer_hardening.sql"),
     read("supabase/migrations/20260812235933_monthly_billing_automation.sql"),
   ]);
   assert.match(hardening, /values\(actor,p\.unit_id,p\.id,p\.name,'PENDING_ACTIVATION'/);
