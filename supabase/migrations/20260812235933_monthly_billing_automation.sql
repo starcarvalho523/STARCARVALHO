@@ -1,5 +1,5 @@
--- Fase 8A: gera somente competências do mês civil corrente para assinaturas ACTIVE.
--- Não cria payments, não chama providers e não gera competências retroativas ou futuras.
+-- Fase 8A: gera somente competÃªncias do mÃªs civil corrente para assinaturas ACTIVE.
+-- NÃ£o cria payments, nÃ£o chama providers e nÃ£o gera competÃªncias retroativas ou futuras.
 
 create table public.monthly_billing_generation_runs (
   id uuid primary key default gen_random_uuid(),
@@ -67,8 +67,8 @@ begin
     returning id into run_id;
   end if;
 
-  -- O lock por assinatura protege o snapshot contra alteração concorrente de plano/status.
-  -- A constraint única da competência é a segunda barreira de idempotência entre workers.
+  -- O lock por assinatura protege o snapshot contra alteraÃ§Ã£o concorrente de plano/status.
+  -- A constraint Ãºnica da competÃªncia Ã© a segunda barreira de idempotÃªncia entre workers.
   for item in
     select s.id, s.unit_id, s.starts_on, s.ends_on, s.due_day, s.grace_days, s.contracted_price
       from public.monthly_subscriptions s
@@ -79,7 +79,7 @@ begin
   loop
     p_processed_count := p_processed_count + 1;
 
-    -- Reativação, suspensão e cancelamento nunca produzem backfill: somente mês corrente.
+    -- ReativaÃ§Ã£o, suspensÃ£o e cancelamento nunca produzem backfill: somente mÃªs corrente.
     if item.starts_on is null or item.starts_on > month_end
        or (item.ends_on is not null and item.ends_on < month_start) then
       p_skipped_count := p_skipped_count + 1;
@@ -123,7 +123,7 @@ begin
         p_contracted_amount := p_contracted_amount + item.contracted_price;
       end if;
     exception when others then
-      -- O lote termina as demais assinaturas; a execução agrega apenas a contagem de falhas.
+      -- O lote termina as demais assinaturas; a execuÃ§Ã£o agrega apenas a contagem de falhas.
       p_failed_count := p_failed_count + 1;
     end;
   end loop;
@@ -217,3 +217,5 @@ revoke all on function public.run_monthly_billing_generation(uuid, boolean) from
 revoke all on function public.run_monthly_billing_generation_cron(boolean) from public, anon, authenticated;
 grant execute on function public.run_monthly_billing_generation(uuid, boolean) to authenticated;
 grant execute on function public.run_monthly_billing_generation_cron(boolean) to service_role;
+
+;

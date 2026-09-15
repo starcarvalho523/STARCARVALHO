@@ -496,3 +496,4 @@ grant execute on function public.confirm_provider_payment_subject(uuid,boolean) 
 revoke execute on function private.record_manual_payment(uuid,public.parking_payment_method,uuid),
   private.reserve_pix_payment(uuid,uuid),private.reserve_credit_checkout(uuid,uuid)
   from public,anon,authenticated;
+;

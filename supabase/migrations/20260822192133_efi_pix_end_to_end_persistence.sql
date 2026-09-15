@@ -10,7 +10,6 @@ create table private.efi_pix_payment_references (
   created_at timestamptz not null default clock_timestamp(),
   updated_at timestamptz not null default clock_timestamp()
 );
-
 create table private.efi_pix_webhook_events (
   id bigint generated always as identity primary key,
   idempotency_key text not null unique check (idempotency_key ~ '^efi:pix:[A-Za-z0-9]{1,64}$'),
@@ -23,13 +22,11 @@ create table private.efi_pix_webhook_events (
   created_at timestamptz not null default clock_timestamp(),
   processed_at timestamptz
 );
-
 create index efi_pix_payment_references_pending_idx on private.efi_pix_payment_references(provider_status) where paid_at is null;
 create index efi_pix_webhook_events_txid_idx on private.efi_pix_webhook_events(txid, created_at desc);
 alter table private.efi_pix_payment_references enable row level security;
 alter table private.efi_pix_webhook_events enable row level security;
 revoke all on private.efi_pix_payment_references, private.efi_pix_webhook_events from public, anon, authenticated;
-
 create or replace function private.process_efi_pix_webhook(
   event_key text, event_txid text, event_end_to_end_id text, event_amount_cents bigint, event_paid_at timestamptz
 ) returns jsonb
@@ -68,9 +65,7 @@ begin
   update private.efi_pix_webhook_events set processing_status='PROCESSED',processed_at=clock_timestamp() where id=event_id;
   return jsonb_build_object('result',case when payment.status='PAID' then 'already_paid' else 'processed' end);
 end $$;
-
 revoke all on function private.process_efi_pix_webhook(text,text,text,bigint,timestamptz) from public, anon, authenticated;
-
 create or replace function private.get_efi_pix_payment_context(target_payment uuid)
 returns jsonb language plpgsql stable security definer set search_path = pg_catalog, public, private
 as $$
@@ -82,7 +77,6 @@ begin
   select * into r from private.efi_pix_payment_references where payment_id=p.id;
   return jsonb_build_object('paymentId',p.id,'status',p.status,'amountCents',(p.amount*100)::bigint,'txid',r.txid,'locationId',r.location_id,'providerStatus',r.provider_status);
 end $$;
-
 create or replace function private.reserve_efi_pix_reference(target_payment uuid, target_txid text, target_location_id bigint, target_status text)
 returns jsonb language plpgsql security definer set search_path = pg_catalog, public, private
 as $$
@@ -102,9 +96,7 @@ begin
   values(p.id,target_txid,target_location_id,target_status,(p.amount*100)::bigint);
   return jsonb_build_object('result','reserved','txid',target_txid,'locationId',target_location_id);
 end $$;
-
 revoke all on function private.get_efi_pix_payment_context(uuid), private.reserve_efi_pix_reference(uuid,text,bigint,text) from public, anon, authenticated;
-
 create or replace function private.authorize_efi_pix_session(target_session uuid)
 returns public.parking_sessions language plpgsql stable security definer set search_path=pg_catalog,public,private
 as $$
@@ -123,7 +115,6 @@ begin
   return session_row;
 end $$;
 revoke all on function private.authorize_efi_pix_session(uuid) from public,anon,authenticated;
-
 create or replace function public.authorize_efi_pix_payment(target_payment uuid)
 returns void language plpgsql security definer set search_path = pg_catalog, public, private
 as $$
@@ -136,7 +127,6 @@ begin
 end $$;
 revoke all on function public.authorize_efi_pix_payment(uuid) from public, anon, authenticated;
 grant execute on function public.authorize_efi_pix_payment(uuid) to authenticated;
-
 create or replace function public.get_or_reserve_efi_pix_payment(target_session uuid)
 returns uuid language plpgsql security definer set search_path = pg_catalog, public, private
 as $$
@@ -166,7 +156,6 @@ begin
 end $$;
 revoke all on function public.get_or_reserve_efi_pix_payment(uuid) from public, anon, authenticated;
 grant execute on function public.get_or_reserve_efi_pix_payment(uuid) to authenticated;
-
 create or replace function public.get_efi_pix_payment_for_session(target_session uuid)
 returns uuid language plpgsql security definer set search_path = pg_catalog, public, private
 as $$

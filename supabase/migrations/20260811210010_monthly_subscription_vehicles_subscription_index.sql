@@ -1,2 +1,0 @@
-create index if not exists monthly_subscription_vehicles_subscription_idx
-  on public.monthly_subscription_vehicles(subscription_id);

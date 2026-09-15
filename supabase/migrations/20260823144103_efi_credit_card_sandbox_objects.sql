@@ -160,4 +160,4 @@ end $$;
 
 revoke all on function private.get_efi_card_payment_context(uuid) from public,anon,authenticated;
 revoke all on function private.reserve_efi_card_reference(uuid,text,text,text,text) from public,anon,authenticated;
-revoke all on function private.process_efi_card_settlement(text,text,bigint,text) from public,anon,authenticated;
+revoke all on function private.process_efi_card_settlement(text,text,bigint,text) from public,anon,authenticated;;
