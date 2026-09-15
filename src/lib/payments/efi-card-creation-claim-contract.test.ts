@@ -4,7 +4,7 @@ import test from "node:test";
 
 const service = readFileSync(new URL("./efi-card-service.ts", import.meta.url), "utf8");
 const client = readFileSync(new URL("./efi-credit-card-client.ts", import.meta.url), "utf8");
-const migration = readFileSync(new URL("../../../supabase/migrations/20260824032500_efi_card_creation_claim.sql", import.meta.url), "utf8");
+const migration = readFileSync(new URL("../../../supabase/migrations/20260826102003_efi_card_creation_claim.sql", import.meta.url), "utf8");
 
 test("Efí card creation is claimed before the provider POST", () => {
   const claim = service.indexOf('rpc("claim_efi_card_creation"');
