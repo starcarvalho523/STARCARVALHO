@@ -1,0 +1,320 @@
+{
+  "name": "STAR - Scheduled Image Publisher (draft)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 1
+            }
+          ]
+        }
+      },
+      "id": "publisher-schedule",
+      "name": "01 - Schedule Every Minute",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        220,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ 'https://badqfmtfasrvqyelvfyc.supabase.co/rest/v1/social_content_items?select=id,unit_id,title,caption,content_type,media_url,platforms,status,scheduled_for&status=eq.scheduled&content_type=eq.image&scheduled_for=lte.' + encodeURIComponent(new Date().toISOString()) + '&order=scheduled_for.asc&limit=10' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": []
+        },
+        "options": {},
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpCustomAuth"
+      },
+      "id": "publisher-load",
+      "name": "02 - Load Due Scheduled Posts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        450,
+        300
+      ],
+      "notes": "Configure Custom Auth exclusiva da Star com apikey e Authorization no cofre n8n. Nenhum segredo no workflow.",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "publisher-loop",
+      "name": "03 - Loop Posts",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        680,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ 'https://badqfmtfasrvqyelvfyc.supabase.co/rest/v1/social_content_items?id=eq.' + $json.id + '&status=eq.scheduled' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { status: 'publishing', updated_at: new Date().toISOString() } }}",
+        "options": {},
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpCustomAuth"
+      },
+      "id": "publisher-claim",
+      "name": "04 - Claim Post",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        910,
+        300
+      ],
+      "notes": "Configure Custom Auth exclusiva da Star com apikey e Authorization no cofre n8n. Nenhum segredo no workflow.",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const claimed = $json;\nif (Array.isArray(claimed) && claimed.length === 0) return [];\nconst item = Array.isArray(claimed) ? claimed[0] : claimed;\nif (!item.id || !item.unit_id || item.content_type !== 'image' || !Array.isArray(item.platforms) || item.platforms.length === 0) throw new Error('STAR_CLAIM_INVALID');\nreturn [{ json: { scheduled_post_id: item.id, unit_id: item.unit_id, title: item.title, caption: item.caption, media_type: 'IMAGE', media_url: item.media_url, platforms: item.platforms, attempt: 1 } }];"
+      },
+      "id": "publisher-build",
+      "name": "05 - Build WF-07 Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1140,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "REPLACE_WITH_WF_07_SOCIAL_PUBLISHER_MASTER_ID",
+          "mode": "list",
+          "cachedResultName": "STAR - Social Publisher Master (IMAGE)"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "onError": "continueRegularOutput",
+      "id": "publisher-execute",
+      "name": "06 - Execute WF-07 Social Publisher Master",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        1370,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const original = $('05 - Build WF-07 Input').first().json;\nconst result = $json || {};\nconst failed = (platform) => ({ platform, status: 'failed', success: false, attempt: 1, error_code: 'STAR_PUBLISHER_FAILED', error_message: 'Check the n8n execution and platform before retrying.' });\nconst records = Array.isArray(result.publication_records) && result.publication_records.length ? result.publication_records : original.platforms.map(failed);\nconst successes = records.filter((r) => r.success === true && r.status === 'published');\nconst finalStatus = successes.length === records.length ? 'published' : successes.length ? 'partially_published' : 'failed';\nreturn [{ json: { scheduled_post_id: original.scheduled_post_id, unit_id: original.unit_id, final_status: finalStatus, published_at: finalStatus === 'published' ? new Date().toISOString() : null, last_error: finalStatus === 'published' ? null : 'Review platform result before retrying', records } }];"
+      },
+      "id": "publisher-normalize",
+      "name": "07 - Normalize Publication Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1600,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ 'https://badqfmtfasrvqyelvfyc.supabase.co/rest/v1/social_content_items?id=eq.' + $json.scheduled_post_id + '&status=eq.publishing' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { status: $json.final_status, published_at: $json.published_at, last_error: $json.last_error, updated_at: new Date().toISOString() } }}",
+        "options": {},
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpCustomAuth"
+      },
+      "id": "publisher-update",
+      "name": "08 - Update Scheduled Post",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1830,
+        300
+      ],
+      "notes": "Configure Custom Auth exclusiva da Star com apikey e Authorization no cofre n8n. Nenhum segredo no workflow.",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://badqfmtfasrvqyelvfyc.supabase.co/rest/v1/social_publication_logs' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $('07 - Normalize Publication Result').first().json.records.map((record) => ({ unit_id: $('07 - Normalize Publication Result').first().json.unit_id, content_item_id: $('07 - Normalize Publication Result').first().json.scheduled_post_id, platform: record.platform, status: record.status === 'published' ? 'published' : 'failed', external_post_id: record.external_post_id || null, external_url: record.external_url || null, attempt: record.attempt || 1, error_code: record.error_code || null, error_message: record.error_message || null, response_sanitized: { status: record.status, external_post_id: record.external_post_id || null, error_code: record.error_code || null } })) }}",
+        "options": {},
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpCustomAuth"
+      },
+      "id": "publisher-logs",
+      "name": "09 - Insert Publication Logs",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2060,
+        300
+      ],
+      "notes": "Configure Custom Auth exclusiva da Star com apikey e Authorization no cofre n8n. Nenhum segredo no workflow.",
+      "notesInFlow": true
+    }
+  ],
+  "connections": {
+    "01 - Schedule Every Minute": {
+      "main": [
+        [
+          {
+            "node": "02 - Load Due Scheduled Posts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "02 - Load Due Scheduled Posts": {
+      "main": [
+        [
+          {
+            "node": "03 - Loop Posts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "03 - Loop Posts": {
+      "main": [
+        [],
+        [
+          {
+            "node": "04 - Claim Post",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "04 - Claim Post": {
+      "main": [
+        [
+          {
+            "node": "05 - Build WF-07 Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "05 - Build WF-07 Input": {
+      "main": [
+        [
+          {
+            "node": "06 - Execute WF-07 Social Publisher Master",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "06 - Execute WF-07 Social Publisher Master": {
+      "main": [
+        [
+          {
+            "node": "07 - Normalize Publication Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "07 - Normalize Publication Result": {
+      "main": [
+        [
+          {
+            "node": "08 - Update Scheduled Post",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "08 - Update Scheduled Post": {
+      "main": [
+        [
+          {
+            "node": "09 - Insert Publication Logs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "09 - Insert Publication Logs": {
+      "main": [
+        [
+          {
+            "node": "03 - Loop Posts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false,
+  "versionId": "",
+  "meta": {},
+  "tags": []
+}

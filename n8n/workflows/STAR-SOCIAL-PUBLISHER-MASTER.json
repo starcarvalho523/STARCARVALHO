@@ -1,0 +1,911 @@
+{
+  "name": "STAR - Social Publisher Master (IMAGE)",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "id": "n01",
+      "name": "01 - Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        220,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Validate and normalize WF-07 input\nconst input = $input.first().json || {};\n\nif (!input.scheduled_post_id) {\n  throw new Error('MISSING_SCHEDULED_POST_ID');\n}\n\nlet platforms = input.platforms || [];\nif (!Array.isArray(platforms)) platforms = [platforms];\nplatforms = [...new Set(platforms.map(p => String(p).toLowerCase().trim().replace(/^\\s+|\\s+$/g, '')))];\nplatforms = platforms.filter(p => p.length > 0);\n\nconst mediaType = (input.media_type || '').toUpperCase();\nconst supported = ['IMAGE'];\nconst unsupported = !mediaType ? null : !supported.includes(mediaType);\n\nreturn [{ json: {\n  scheduled_post_id: input.scheduled_post_id,\n  title: input.title || null,\n  caption: input.caption || null,\n  media_type: mediaType || null,\n  media_url: input.media_url || null,\n  platforms,\n  attempt: Number(input.attempt || 1) || 1,\n  unsupported_media: unsupported\n}}];"
+      },
+      "id": "n02",
+      "name": "02 - Validate/Normalize Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        460,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\n\nlet route = 'platforms';\n\nif (!data.platforms || data.platforms.length === 0) {\n  route = 'empty';\n} else if (data.unsupported_media) {\n  route = 'unsupported';\n}\n\nreturn [{\n  json: {\n    ...data,\n    wf07_route: route\n  }\n}];"
+      },
+      "id": "n03",
+      "name": "03 - Route Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        700,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "function sanitize(val) {\n  const keys = ['access_token','refresh_token','client_secret','authorization',\n                'apikey','api_key','secret','password','token'];\n  if (Array.isArray(val)) return val.map(sanitize);\n  if (val && typeof val === 'object') {\n    return Object.fromEntries(\n      Object.entries(val).map(([k,v]) => [\n        k,\n        keys.includes(k.toLowerCase()) ? '[REDACTED]' : sanitize(v)\n      ])\n    );\n  }\n  return val;\n}\nconst inData = $input.first().json;\nconst igErr = inData.ig_error || {};\n\nreturn [{ json: {\n  scheduled_post_id: inData.scheduled_post_id,\n  publication_records: [{\n    platform: 'instagram',\n    status: igErr.status || 'failed',\n    success: false,\n    external_post_id: null,\n    external_publish_id: igErr.creation_id || null,\n    external_url: null,\n    attempt: inData.attempt || 1,\n    error_code: igErr.error_code || 'IG_ERROR',\n    error_message: igErr.error_message || igErr.status || 'Instagram operation failed'\n  }],\n  ig_response_sanitized: sanitize(igErr)\n}}];"
+      },
+      "id": "n04",
+      "name": "04 - IG Normalize Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1740,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "function sanitize(val) {\n  const keys = ['access_token','refresh_token','client_secret','authorization',\n                'apikey','api_key','secret','password','token'];\n  if (Array.isArray(val)) return val.map(sanitize);\n  if (val && typeof val === 'object') {\n    return Object.fromEntries(\n      Object.entries(val).map(([k,v]) => [\n        k,\n        keys.includes(k.toLowerCase()) ? '[REDACTED]' : sanitize(v)\n      ])\n    );\n  }\n  return val;\n}\nconst inData = $input.first().json;\nconst fbErr = inData.fb_error || {};\n\nreturn [{ json: {\n  scheduled_post_id: inData.scheduled_post_id,\n  publication_records: [{\n    platform: 'facebook',\n    status: 'failed',\n    success: false,\n    external_post_id: null,\n    external_publish_id: null,\n    external_url: null,\n    attempt: inData.attempt || 1,\n    error_code: fbErr.error_code || 'FACEBOOK_CONFIGURATION_INCOMPLETE',\n    error_message: fbErr.error_message || 'Facebook publishing failed'\n  }],\n  fb_response_sanitized: sanitize(fbErr)\n}}];"
+      },
+      "id": "n05",
+      "name": "05 - FB Normalize Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1740,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const inData = $input.first().json || {};\n\nreturn [{\n  json: {\n    scheduled_post_id: inData.scheduled_post_id,\n    publication_records: [{\n      platform: 'tiktok',\n      status: 'not_configured',\n      success: false,\n      external_post_id: null,\n      external_publish_id: null,\n      external_url: null,\n      attempt: inData.attempt || 1,\n      error_code: 'TIKTOK_NOT_CONFIGURED',\n      error_message: 'TikTok publishing is not configured'\n    }]\n  }\n}];"
+      },
+      "id": "n06",
+      "name": "06 - TT Not Configured",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        940,
+        520
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst recordsMap = new Map();\n\nlet scheduledPostId = null;\n\nfor (const item of items) {\n  if (!scheduledPostId && item.json.scheduled_post_id) {\n    scheduledPostId = item.json.scheduled_post_id;\n  }\n\n  const recs = item.json.publication_records;\n\n  if (Array.isArray(recs)) {\n    for (const r of recs) {\n      if (r && r.platform) {\n        recordsMap.set(r.platform, r);\n      }\n    }\n  }\n}\n\nconst records = Array.from(recordsMap.values());\n\nreturn [{\n  json: {\n    scheduled_post_id: scheduledPostId,\n    publication_records: records\n  }\n}];"
+      },
+      "id": "n07",
+      "name": "07 - Aggregate Publication Records",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2000,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://graph.instagram.com/me/media",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {},
+        "authentication": "genericCredentialType",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { image_url: $json.media_url, caption: $json.caption } }}",
+        "genericAuthType": "oAuth2Api"
+      },
+      "id": "n08",
+      "name": "08 - IG Create Media",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        960,
+        100
+      ],
+      "retryOnFail": true,
+      "maxTries": 1,
+      "notes": "Configure a credencial Meta exclusiva da Star Carvalhos antes de homologar. Nunca reutilize credenciais da Prontusfy.",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ 'https://graph.instagram.com/' + $json.ig_creation_id + '?fields=status_code,status_message,media_type,permalink,media_url,timestamp' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {},
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api"
+      },
+      "id": "n09",
+      "name": "09 - IG Get Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1180,
+        100
+      ],
+      "retryOnFail": true,
+      "maxTries": 1,
+      "notes": "Configure a credencial Meta exclusiva da Star Carvalhos antes de homologar. Nunca reutilize credenciais da Prontusfy.",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const MAX_ATTEMPTS = 12;\n\nconst statusResp = $input.first().json || {};\nconst context = $('37 - IG Prepare Status Context').item.json;\n\nconst attempts = Number(context.ig_poll_attempts || 0) + 1;\nconst status = statusResp.status_code || statusResp.status || 'UNKNOWN';\n\nconst result = {\n  ...context,\n  ig_poll_attempts: attempts,\n  ig_status: status,\n  ig_status_message: statusResp.status_message || null,\n  ig_media_type: statusResp.media_type || null,\n  ig_permalink: statusResp.permalink || null,\n  ig_media_url: statusResp.media_url || null,\n  ig_timestamp: statusResp.timestamp || null\n};\n\nif (status === 'FINISHED') {\n  result.ig_route = 'publish';\n} else if (['ERROR','EXPIRED','REJECTED'].includes(status)) {\n  result.ig_route = 'error';\n  result.ig_error = {\n    error_code: 'IG_STATUS_' + status,\n    error_message: 'Instagram media status: ' + status +\n      (statusResp.status_message ? ' - ' + statusResp.status_message : ''),\n    creation_id: result.ig_creation_id,\n    status\n  };\n} else if (attempts >= MAX_ATTEMPTS) {\n  result.ig_route = 'error';\n  result.ig_error = {\n    error_code: 'IG_STATUS_TIMEOUT',\n    error_message: 'Instagram media status did not reach FINISHED within ' +\n      MAX_ATTEMPTS + ' polling attempts',\n    creation_id: result.ig_creation_id,\n    status\n  };\n} else {\n  result.ig_route = 'poll_again';\n}\n\nreturn [{ json: result }];"
+      },
+      "id": "n10",
+      "name": "10 - IG Poll Decision",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1400,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://graph.instagram.com/me/media_publish",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {},
+        "authentication": "genericCredentialType",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { creation_id: $json.ig_creation_id } }}",
+        "genericAuthType": "oAuth2Api"
+      },
+      "id": "n11",
+      "name": "11 - IG Publish Media",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1620,
+        100
+      ],
+      "retryOnFail": true,
+      "maxTries": 1,
+      "notes": "Configure a credencial Meta exclusiva da Star Carvalhos antes de homologar. Nunca reutilize credenciais da Prontusfy.",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ 'https://graph.instagram.com/' + $json.id + '?fields=id,permalink,media_type,timestamp' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {},
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api"
+      },
+      "id": "n12",
+      "name": "12 - IG Get Published",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1840,
+        100
+      ],
+      "retryOnFail": true,
+      "maxTries": 1,
+      "notes": "Configure a credencial Meta exclusiva da Star Carvalhos antes de homologar. Nunca reutilize credenciais da Prontusfy.",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "jsCode": "function sanitize(val) {\n  const keys = ['access_token','refresh_token','client_secret','authorization',\n                'apikey','api_key','secret','password','token'];\n  if (Array.isArray(val)) return val.map(sanitize);\n  if (val && typeof val === 'object') {\n    return Object.fromEntries(\n      Object.entries(val).map(([k,v]) => [\n        k,\n        keys.includes(k.toLowerCase()) ? '[REDACTED]' : sanitize(v)\n      ])\n    );\n  }\n  return val;\n}\n\nconst pub = $json;\nconst context = $('10 - IG Poll Decision').item.json;\n\nconst record = {\n  platform: 'instagram',\n  status: 'published',\n  success: true,\n  external_post_id: pub.id || null,\n  external_publish_id: context.ig_creation_id || null,\n  external_url: pub.permalink || null,\n  attempt: context.attempt || 1,\n  error_code: null,\n  error_message: null\n};\n\nreturn [{\n  json: {\n    scheduled_post_id: context.scheduled_post_id,\n    publication_records: [record],\n    ig_response_sanitized: sanitize(pub)\n  }\n}];"
+      },
+      "id": "n13",
+      "name": "13 - IG Finalize Record",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2060,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://graph.facebook.com/v18.0/me/accounts?fields=id,name,access_token,permissions{permission},category",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {},
+        "authentication": "predefinedCredentialType",
+        "credentialType": "facebookGraphApiOAuth2Api"
+      },
+      "id": "n14",
+      "name": "14 - FB Audit Pages",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        960,
+        300
+      ],
+      "retryOnFail": true,
+      "maxTries": 1,
+      "notes": "Configure a credencial Meta exclusiva da Star Carvalhos antes de homologar. Nunca reutilize credenciais da Prontusfy.",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const auditResp = $input.first().json || {};\nconst input = $('35 - Platform Loop').item.json;\n\nconst accounts = auditResp.data || [];\n\nconst eligible = accounts.filter(a =>\n  a.permissions &&\n  a.permissions.data &&\n  a.permissions.data.some(p =>\n    p.permission === 'pages_manage_posts' ||\n    p.permission === 'publish_pages'\n  )\n);\n\nif (!eligible.length) {\n  return [{\n    json: {\n      ...input,\n      fb_route: 'error',\n      fb_error: {\n        error_code: 'FACEBOOK_CONFIGURATION_INCOMPLETE',\n        error_message: 'Facebook publisher configuration is incomplete',\n        success: false\n      }\n    }\n  }];\n}\n\nconst page = eligible[0];\n\nreturn [{\n  json: {\n    ...input,\n    fb_route: 'publish',\n    fb_page_id: page.id,\n    fb_page_name: page.name,\n    fb_page_category: page.category || null\n  }\n}];"
+      },
+      "id": "n15",
+      "name": "15 - FB Validate Config",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1180,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://graph.facebook.com/v18.0/' + $json.fb_page_id + '/photos' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {},
+        "authentication": "predefinedCredentialType",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { url: $json.media_url, caption: $json.caption } }}",
+        "credentialType": "facebookGraphApiOAuth2Api"
+      },
+      "id": "n16",
+      "name": "16 - FB Create Photo Post",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1400,
+        300
+      ],
+      "retryOnFail": true,
+      "maxTries": 1,
+      "notes": "Configure a credencial Meta exclusiva da Star Carvalhos antes de homologar. Nunca reutilize credenciais da Prontusfy.",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "jsCode": "function sanitize(val) {\n  const keys = ['access_token','refresh_token','client_secret','authorization',\n                'apikey','api_key','secret','password','token'];\n  if (Array.isArray(val)) return val.map(sanitize);\n  if (val && typeof val === 'object') {\n    return Object.fromEntries(\n      Object.entries(val).map(([k,v]) => [\n        k,\n        keys.includes(k.toLowerCase()) ? '[REDACTED]' : sanitize(v)\n      ])\n    );\n  }\n  return val;\n}\n\nconst createResp = $json;\nconst input = $('15 - FB Validate Config').item.json;\n\nconst record = {\n  platform: 'facebook',\n  status: createResp.id ? 'published' : 'failed',\n  success: !!createResp.id,\n  external_post_id: createResp.id || null,\n  external_publish_id: null,\n  external_url: null,\n  attempt: input.attempt || 1,\n  error_code: createResp.id ? null : (createResp.error ? 'FACEBOOK_POST_FAILED' : null),\n  error_message: createResp.id ? null : (\n    createResp.error\n      ? String(createResp.error).slice(0, 500)\n      : 'Facebook post creation failed'\n  )\n};\n\nif (createResp.error) {\n  record.success = false;\n  record.error_code = 'FACEBOOK_POST_FAILED';\n  record.error_message = String(createResp.error).slice(0, 500);\n}\n\nreturn [{\n  json: {\n    scheduled_post_id: input.scheduled_post_id,\n    publication_records: [record],\n    fb_response_sanitized: sanitize(createResp)\n  }\n}];"
+      },
+      "id": "n17",
+      "name": "17 - FB Finalize Record",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1620,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $('03 - Route Input').first().json;\n\nreturn [{ json: {\n  scheduled_post_id: input.scheduled_post_id,\n  media_type: input.media_type,\n  attempt: input.attempt,\n  platforms: input.platforms,\n  publication_records: [{\n    platform: input.platforms && input.platforms[0] || 'unknown',\n    status: 'failed',\n    success: false,\n    external_post_id: null,\n    external_publish_id: null,\n    external_url: null,\n    attempt: input.attempt || 1,\n    error_code: 'UNSUPPORTED_MEDIA_TYPE',\n    error_message: 'Media type ' + (input.media_type || 'UNKNOWN') +\n      ' is not supported by WF-07. Supported: IMAGE'\n  }]\n}}];"
+      },
+      "id": "n18",
+      "name": "18 - Unsupported Media Type",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        940,
+        520
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $('03 - Route Input').first().json;\n\nreturn [{ json: {\n  scheduled_post_id: input.scheduled_post_id,\n  publication_records: []\n}}];"
+      },
+      "id": "n19",
+      "name": "19 - Empty Platforms Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        940,
+        60
+      ]
+    },
+    {
+      "id": "route-switch",
+      "name": "30 - Route Switch",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 1,
+      "position": [
+        900,
+        120
+      ],
+      "parameters": {
+        "mode": "rules",
+        "dataType": "string",
+        "value1": "={{$json.wf07_route}}",
+        "rules": {
+          "rules": [
+            {
+              "operation": "equal",
+              "value2": "empty",
+              "output": 0
+            },
+            {
+              "operation": "equal",
+              "value2": "unsupported",
+              "output": 1
+            },
+            {
+              "operation": "equal",
+              "value2": "platforms",
+              "output": 2
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "platform-switch",
+      "name": "31 - Platform Switch",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 1,
+      "position": [
+        1120,
+        220
+      ],
+      "parameters": {
+        "mode": "rules",
+        "dataType": "string",
+        "value1": "={{$json.platform}}",
+        "rules": {
+          "rules": [
+            {
+              "operation": "equal",
+              "value2": "instagram",
+              "output": 0
+            },
+            {
+              "operation": "equal",
+              "value2": "facebook",
+              "output": 1
+            },
+            {
+              "operation": "equal",
+              "value2": "tiktok",
+              "output": 2
+            }
+          ]
+        },
+        "fallbackOutput": 3
+      }
+    },
+    {
+      "id": "ig-switch",
+      "name": "32 - IG Poll Switch",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 1,
+      "position": [
+        1580,
+        100
+      ],
+      "parameters": {
+        "mode": "rules",
+        "dataType": "string",
+        "value1": "={{$json.ig_route}}",
+        "rules": {
+          "rules": [
+            {
+              "operation": "equal",
+              "value2": "poll_again",
+              "output": 0
+            },
+            {
+              "operation": "equal",
+              "value2": "publish",
+              "output": 1
+            },
+            {
+              "operation": "equal",
+              "value2": "error",
+              "output": 2
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "fb-switch",
+      "name": "33 - FB Validation Switch",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 1,
+      "position": [
+        1580,
+        360
+      ],
+      "parameters": {
+        "mode": "rules",
+        "dataType": "string",
+        "value1": "={{$json.fb_route}}",
+        "rules": {
+          "rules": [
+            {
+              "operation": "equal",
+              "value2": "error",
+              "output": 0
+            },
+            {
+              "operation": "equal",
+              "value2": "publish",
+              "output": 1
+            }
+          ]
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\nconst platforms = Array.isArray(data.platforms) ? data.platforms : [];\n\nreturn platforms.map((platform) => ({\n  json: {\n    ...data,\n    platform\n  }\n}));"
+      },
+      "id": "n34",
+      "name": "34 - Expand Platforms",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        930,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "n35",
+      "name": "35 - Platform Loop",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        1120,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\n\nreturn [{\n  json: {\n    scheduled_post_id: data.scheduled_post_id,\n    publication_records: [{\n      platform: data.platform ?? 'unknown',\n      status: 'failed',\n      success: false,\n      external_post_id: null,\n      external_publish_id: null,\n      external_url: null,\n      attempt: data.attempt ?? 1,\n      error_code: 'UNKNOWN_PLATFORM',\n      error_message: `Unsupported platform: ${data.platform ?? 'unknown'}`\n    }]\n  }\n}];"
+      },
+      "id": "n36",
+      "name": "36 - Unknown Platform",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1500,
+        620
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const current = $input.first().json || {};\nconst base = $('35 - Platform Loop').item.json;\n\nconst creationId =\n  current.ig_creation_id ||\n  current.id ||\n  null;\n\nif (!creationId) {\n  throw new Error('IG_MISSING_CREATION_ID');\n}\n\nreturn [{\n  json: {\n    ...base,\n    ...current,\n    ig_creation_id: creationId,\n    ig_poll_attempts: Number(current.ig_poll_attempts || 0)\n  }\n}];"
+      },
+      "id": "n37",
+      "name": "37 - IG Prepare Status Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1080,
+        100
+      ]
+    }
+  ],
+  "connections": {
+    "01 - Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "02 - Validate/Normalize Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "02 - Validate/Normalize Input": {
+      "main": [
+        [
+          {
+            "node": "03 - Route Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "03 - Route Input": {
+      "main": [
+        [
+          {
+            "node": "30 - Route Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "08 - IG Create Media": {
+      "main": [
+        [
+          {
+            "node": "37 - IG Prepare Status Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "09 - IG Get Status": {
+      "main": [
+        [
+          {
+            "node": "10 - IG Poll Decision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "10 - IG Poll Decision": {
+      "main": [
+        [
+          {
+            "node": "32 - IG Poll Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "11 - IG Publish Media": {
+      "main": [
+        [
+          {
+            "node": "12 - IG Get Published",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "12 - IG Get Published": {
+      "main": [
+        [
+          {
+            "node": "13 - IG Finalize Record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "13 - IG Finalize Record": {
+      "main": [
+        [
+          {
+            "node": "35 - Platform Loop",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "04 - IG Normalize Error": {
+      "main": [
+        [
+          {
+            "node": "35 - Platform Loop",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "14 - FB Audit Pages": {
+      "main": [
+        [
+          {
+            "node": "15 - FB Validate Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "15 - FB Validate Config": {
+      "main": [
+        [
+          {
+            "node": "33 - FB Validation Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "16 - FB Create Photo Post": {
+      "main": [
+        [
+          {
+            "node": "17 - FB Finalize Record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "17 - FB Finalize Record": {
+      "main": [
+        [
+          {
+            "node": "35 - Platform Loop",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "05 - FB Normalize Error": {
+      "main": [
+        [
+          {
+            "node": "35 - Platform Loop",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "06 - TT Not Configured": {
+      "main": [
+        [
+          {
+            "node": "35 - Platform Loop",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "18 - Unsupported Media Type": {
+      "main": [
+        [
+          {
+            "node": "07 - Aggregate Publication Records",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "19 - Empty Platforms Result": {
+      "main": [
+        [
+          {
+            "node": "07 - Aggregate Publication Records",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "07 - Aggregate Publication Records": {
+      "main": []
+    },
+    "30 - Route Switch": {
+      "main": [
+        [
+          {
+            "node": "19 - Empty Platforms Result",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "18 - Unsupported Media Type",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "34 - Expand Platforms",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "31 - Platform Switch": {
+      "main": [
+        [
+          {
+            "node": "08 - IG Create Media",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "14 - FB Audit Pages",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "06 - TT Not Configured",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "36 - Unknown Platform",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "32 - IG Poll Switch": {
+      "main": [
+        [
+          {
+            "node": "37 - IG Prepare Status Context",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "11 - IG Publish Media",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "04 - IG Normalize Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "33 - FB Validation Switch": {
+      "main": [
+        [
+          {
+            "node": "05 - FB Normalize Error",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "16 - FB Create Photo Post",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "34 - Expand Platforms": {
+      "main": [
+        [
+          {
+            "node": "35 - Platform Loop",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "35 - Platform Loop": {
+      "main": [
+        [
+          {
+            "node": "07 - Aggregate Publication Records",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "31 - Platform Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "36 - Unknown Platform": {
+      "main": [
+        [
+          {
+            "node": "35 - Platform Loop",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "37 - IG Prepare Status Context": {
+      "main": [
+        [
+          {
+            "node": "09 - IG Get Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false,
+  "versionId": "",
+  "meta": {},
+  "tags": [],
+  "id": "0cf4e5de9fd64347b510fb059f"
+}
