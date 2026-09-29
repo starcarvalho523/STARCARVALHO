@@ -1,6 +1,6 @@
 # Star Carvalhos — publicação social (rascunho)
 
-Os dois workflows em `workflows/` foram adaptados ao esquema da Star e importados **inativos** no n8n dedicado. O agendador consulta somente `social_content_items` com `status=scheduled`, `content_type=image` e `scheduled_for` vencido. A reserva condicional muda o status para `publishing` antes de chamar o publicador; os resultados vão para `social_publication_logs` com `unit_id`.
+Os dois workflows em `workflows/` foram adaptados ao esquema da Star e importados **inativos** no n8n dedicado. O agendador consulta somente `social_content_items` com `status=scheduled`, `approved_at` presente, `content_type=image` e `scheduled_for` vencido. A reserva condicional muda o status para `publishing` antes de chamar o publicador; os resultados vão para `social_publication_logs` com `unit_id`.
 
 - Publicador: `6NVhhcO2WKjT004y` (27 nós, Facebook/Instagram para imagem).
 - Agendador: `ufehYBPezWjBP53e` (9 nós, execução a cada minuto somente depois da ativação).
