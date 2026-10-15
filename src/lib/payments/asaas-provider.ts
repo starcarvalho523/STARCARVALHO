@@ -2,7 +2,7 @@ import { timingSafeEqual } from "node:crypto";
 import type { CreateChargeInput, CreateCheckoutInput, CreateProviderCustomerInput, CreateRecurringCardSubscriptionInput, PaymentProvider, ProviderCharge, ProviderCheckout, ProviderCheckoutPayment, ProviderCustomer, ProviderPaymentState, ProviderPixQrCode, ProviderRecurringSubscription, ProviderWebhookEvent, ProviderCheckoutWebhookEvent } from "./payment-provider";
 
 type Fetcher = typeof fetch;
-type AsaasPayment = { id?:unknown; customer?:unknown; status?:unknown; billingType?:unknown; value?:unknown; dueDate?:unknown; externalReference?:unknown; invoiceUrl?:unknown; checkoutSession?:unknown; subscription?:unknown };
+type AsaasPayment = { id?:unknown; customer?:unknown; status?:unknown; billingType?:unknown; value?:unknown; netValue?:unknown; dueDate?:unknown; externalReference?:unknown; invoiceUrl?:unknown; checkoutSession?:unknown; subscription?:unknown };
 type AsaasCustomer = { id?:unknown; externalReference?:unknown };
 type AsaasQrCode = { payload?:unknown; encodedImage?:unknown; expirationDate?:unknown };
 type AsaasList = { data?:unknown };
@@ -165,7 +165,7 @@ export class AsaasProvider implements PaymentProvider {
   parseWebhook(payload:unknown):ProviderWebhookEvent{
     if(!isRecord(payload)||typeof payload.id!=="string"||typeof payload.event!=="string"||!isRecord(payload.payment)||typeof payload.payment.id!=="string") throw new Error("INVALID_ASAAS_WEBHOOK");
     const id=payload.id;const type=payload.event;const payment=payload.payment;const paymentId=payment.id as string;
-    return{id,type,paymentId,paymentStatus:typeof payment.status==="string"?payment.status:"UNKNOWN",amount:numberOrNull(payment.value),externalReference:stringOrNull(payment.externalReference),billingType:stringOrNull(payment.billingType),checkoutId:stringOrNull(payment.checkoutSession),subscriptionId:stringOrNull(payment.subscription)};
+    return{id,type,paymentId,paymentStatus:typeof payment.status==="string"?payment.status:"UNKNOWN",amount:numberOrNull(payment.value),netAmount:numberOrNull(payment.netValue),externalReference:stringOrNull(payment.externalReference),billingType:stringOrNull(payment.billingType),checkoutId:stringOrNull(payment.checkoutSession),subscriptionId:stringOrNull(payment.subscription)};
   }
 
   parseCheckoutWebhook(payload:unknown):ProviderCheckoutWebhookEvent{

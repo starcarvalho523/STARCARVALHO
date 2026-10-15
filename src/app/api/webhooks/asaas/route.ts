@@ -50,9 +50,9 @@ export async function POST(request: Request) {
       const renewalSetupHandled = await tryProcessMonthlyRenewalCardSetupSubscriptionWebhook(payload, provider.environment);
       if (!renewalSetupHandled) await service.processSubscriptionWebhook(payload);
     } else {
+      const event = provider.parseWebhook(payload);
       const initial = await processAsaasPixAutomaticInitialPaymentWebhook(payload, provider.environment);
       if (!initial.handled) {
-        const event = provider.parseWebhook(payload);
         const recurringHandled = await tryProcessMonthlyRecurringCardPayment(event, provider);
         if (!recurringHandled) {
           await service.processWebhook(event);
@@ -65,6 +65,7 @@ export async function POST(request: Request) {
           }
         }
       }
+      await recordAsaasFinancials(event);
     }
 
     return Response.json({ received: true }, { status: 200 });
@@ -92,6 +93,23 @@ export async function POST(request: Request) {
       { status: invalid ? 400 : 500 },
     );
   }
+}
+
+
+async function recordAsaasFinancials(event: ProviderWebhookEvent) {
+  if (event.amount === null || event.netAmount === null) return;
+  const gross = Number(event.amount);
+  const net = Number(event.netAmount);
+  if (!Number.isFinite(gross) || !Number.isFinite(net) || gross < 0 || net < 0 || net > gross) {
+    throw new Error("ASAAS_FINANCIAL_VALUES_INVALID");
+  }
+  const admin = createAdminClient();
+  const { error } = await admin.rpc("record_asaas_payment_financials", {
+    target_provider_payment_id: event.paymentId,
+    target_gross: gross,
+    target_net: net,
+  });
+  if (error) throw new Error(`ASAAS_FINANCIALS_RPC_${error.message}`);
 }
 
 async function tryProcessMonthlyRecurringCardPayment(event: ProviderWebhookEvent, provider: PaymentProvider) {
