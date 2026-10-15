@@ -38,6 +38,7 @@ export async function runMonthlyAsaasReconciliation() {
         paymentId:candidate.provider_payment_id,
         paymentStatus:charge.providerStatus,
         amount:Number(charge.amount),
+        netAmount:null,
         externalReference:charge.externalReference || candidate.external_reference,
         billingType:charge.billingType || "PIX",
         checkoutId:null,

@@ -114,6 +114,7 @@ export type ProviderWebhookEvent = {
   paymentId: string;
   paymentStatus: string;
   amount: number | null;
+  netAmount: number | null;
   externalReference: string | null;
   billingType: string | null;
   /** Server-side correlation data supplied by Asaas for Checkout charges. */
